@@ -2,7 +2,6 @@
 import Image from "next/image";
 import Dropdown from "./dropdown";
 import { useState } from "react";
-import { WalletConnectButton } from "@/components/wallets/walletConnectButton";
 import Link from "next/link";
 
 const Nav = () => {

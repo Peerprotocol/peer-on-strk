@@ -1,11 +1,9 @@
 "use client";
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext,  useState } from "react";
 import { toast } from "react-toastify";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { allowedCoins } from "../constants/coins";
-import { set } from "@project-serum/anchor/dist/cjs/utils/features";
-import { UserContext } from "./WalletConnectProvider";
 import { formatNumber } from "@/data/format_number";
 
 const SelectSwitch = () => {
@@ -15,67 +13,22 @@ const SelectSwitch = () => {
   const [coin, setCoin] = useState(allowedCoins[0]);
   const [client, setClient] = useState(false);
 
-  const pState = useContext(UserContext);
-
   const handleMaxClick = async () => {
-    const balance = await pState.getTokenBalance(coin);
-
-    if (pathname === "/deposit") {
-      setAmount(`${balance}`);
-    } else {
-      setAmount(pState.deposit);
-    }
+    setAmount(maxAmount);
   };
 
   const depositFunds = async (e: any) => {
     e.preventDefault();
     const realAmount = parseFloat(amount);
 
-    try {
-      let transactionMessage = "";
-
-      if (pathname === "/deposit") {
-        await pState.depositCollaterial(realAmount, coin);
-        transactionMessage = `Successfully deposited ${realAmount} tokens.`;
-      } else {
-        await pState.withdrawCollaterial(realAmount, coin);
-        transactionMessage = `Successfully withdrew ${realAmount} tokens.`;
-      }
-
-      toast.success(transactionMessage);
+    try{
+      toast.success('Transaction successful');
     } catch (error: any) {
       console.error("Transaction failed:", error);
       toast.error(`Transaction failed: ${error.message}`);
     }
   };
 
-  useEffect(() => {
-    if (!pState.program) return;
-    if (!pState.publicKey) return;
-    if (!pState.initialized) return;
-    console.log("loans", pState.availableLoans);
-    const getAmount = async () => {
-      // deposit
-      const balance = await pState.getTokenBalance(coin);
-
-      if (pathname === "/deposit") {
-        setMaxAmount(`${balance}`);
-      } else {
-        setMaxAmount(pState.deposit.toString());
-      }
-    };
-    setClient(true);
-    getAmount();
-  }, [
-    pState.program,
-    pState.publicKey,
-    pState.initialized,
-    pState.Trxpend,
-    coin,
-  ]);
-  const selectCoin = (e: any) => {
-    setCoin(allowedCoins[e.target.selectedIndex]);
-  };
 
   const isDepositPage = pathname === "/deposit";
   const actionText = isDepositPage ? "Deposit" : "Withdraw";
@@ -97,21 +50,14 @@ const SelectSwitch = () => {
           <div className="border rounded-xl px-2 bg-[#ffffff15]">
             <select
               className="text-white relative p-2 px-4 py-3 bg-[#ffffff00]"
-              onChange={(e) => selectCoin(e)}
             >
-              {allowedCoins.map((coin_, i) => (
-                <option key={i}>
-                  {/* {client && (
-                    <Image
-                      src={coin["image"]}
-                      alt="Description of the image"
-                      width={20}
-                      height={20}
-                    />
-                  )} */}
-                  {coin_.ticker}
-                </option>
-              ))}
+              <option >
+                Strk
+              </option>
+              <option>USDT</option>
+              <option>USDC</option>
+              <option>DAI</option>
+              <option>ETH</option>
             </select>
           </div>
 
@@ -142,7 +88,6 @@ const SelectSwitch = () => {
         className="px-8 py-4 rounded-2xl bg-green-700 text-white w-full mt-9 h-fit"
         onClick={(e: any) => depositFunds(e)}
       >
-        {pState.Trxpend ? "Processing" : actionText}
       </button>
     </div>
   );

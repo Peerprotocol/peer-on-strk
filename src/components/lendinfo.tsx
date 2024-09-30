@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import Table from "./Table";
 import { infoTableLabels } from "@/lib/data";
-import { UserContext } from "./WalletConnectProvider";
 
 const LendInfoTable = ({ tableItems }: { tableItems: any[] }) => {
   const [showModal, setShowModal] = useState(false);
@@ -21,28 +20,16 @@ const LendInfoTable = ({ tableItems }: { tableItems: any[] }) => {
   };
 
   const [selectedPubKey, setSelectPubKey] = useState("");
-  const pState = useContext(UserContext);
 
   let debt = 0;
-  for (let i = 0; i < pState.userDebt.length; i++) {
-    debt += (pState.userDebt[i] as any).account.amount.toNumber();
-  }
 
   const newdebt = debt / 10 ** 6;
-  const result = (newdebt / parseInt(pState.deposit)) * 100;
+  const result = (newdebt) * 100;
 
   const acceptLoanIdx = async (item: any) => {
     if (result! <= 80) {
-      setSelectPubKey(item.publicKey.toString());
-      await pState.acceptLoan(
-        item.account.idx,
-        item.publicKey.toString(),
-        item.account.lender.toString(),
-        (
-          item.account.mintAddress ??
-          "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU"
-        ).toString()
-      );
+      
+      
     } else {
       alert(
         "You have reached the maximum amount of debt you can take on. Please clear some of your debt before borrowing again"
@@ -62,7 +49,7 @@ const LendInfoTable = ({ tableItems }: { tableItems: any[] }) => {
       {tableItems.map((item, index) => (
         <React.Fragment key={index}>
           <tr className="[*&>td]:py-4">
-            <td>{pState.ellipsify(item.account.lender.toString(), 5)}</td>
+            <td>{item.account.lender.toString().substring(0, 5)}</td>
             <td>{item.assets ?? "USDC"}</td>
             <td>{item.account.amount.toString()}</td>
             <td>{item.account.interestRate}</td>
@@ -84,7 +71,7 @@ const LendInfoTable = ({ tableItems }: { tableItems: any[] }) => {
                     <span className="flex flex-row justify-between">
                       <p>Author:</p>
                       <p>
-                        {pState.ellipsify(item.account.lender.toString(), 5)}
+                        {item.account.lender.toString().substring(0, 5)}
                       </p>
                     </span>
                     <span className="flex flex-row justify-between">
@@ -104,7 +91,7 @@ const LendInfoTable = ({ tableItems }: { tableItems: any[] }) => {
                         </select>
                       </div>
                       <p>
-                        {pState.ellipsify(item.account.lender.toString(), 5)}
+                        {item.account.lender.toString().substring(0, 5)}
                       </p>
                     </span>
                     <span className="flex flex-row justify-between">

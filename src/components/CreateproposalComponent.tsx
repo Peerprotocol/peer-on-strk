@@ -1,7 +1,6 @@
-import React, { useContext, useEffect } from "react";
+import React from "react";
 import { useState } from "react";
 import { allowedCoins } from "../constants/coins";
-import { UserContext } from "./WalletConnectProvider";
 
 const CreateproposalComponent = ({
   show,
@@ -10,7 +9,6 @@ const CreateproposalComponent = ({
   show: any;
   onClose: any;
 }) => {
-  const pState = useContext(UserContext);
   const [amount, setAmount] = useState("");
   const [percentage, setPercentage] = useState("");
   const [duration, setDuration] = useState("");
@@ -18,8 +16,6 @@ const CreateproposalComponent = ({
 
   const createLoanProposal = async (e: any) => {
     e.preventDefault();
-
-    await pState.createLoan(+duration, +percentage, +amount, coin);
   };
 
   if (!show) {
@@ -96,7 +92,6 @@ const CreateproposalComponent = ({
               className="mt-4 rounded-full px-4 py-4 text-[1.2rem] bg-green-600 w-[50%] self-center"
               onClick={(e) => createLoanProposal(e)}
             >
-              {pState.Trxpend ? "Loading" : "Submit"}
             </button>
           </form>
         </div>

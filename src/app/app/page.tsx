@@ -3,8 +3,6 @@ import Sidebar from "./sidebar";
 import Dashboard from "./dashboard";
 import Market from "./market";
 import Footer from "./footer";
-
-import { WalletConnectProvider } from "../../components/WalletConnectProvider";
 import Nav from "./Nav";
 
 export default function Home() {

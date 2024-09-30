@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { AppWalletProvider } from "../components/wallets/solanaWalletProvider";
 import { DarkModeProvider } from "./LandingPage/DarkMode";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -18,11 +17,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <AppWalletProvider>
         <DarkModeProvider>
           <body className={inter.className}>{children}</body>
         </DarkModeProvider>
-      </AppWalletProvider>
     </html>
   );
 }

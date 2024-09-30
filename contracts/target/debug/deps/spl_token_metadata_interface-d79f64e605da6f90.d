@@ -1,8 +1,0 @@
-/Users/davyking/Work/peerprotocol/ contracts/target/debug/deps/libspl_token_metadata_interface-d79f64e605da6f90.rmeta: /Users/davyking/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-token-metadata-interface-0.2.1/src/lib.rs /Users/davyking/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-token-metadata-interface-0.2.1/src/error.rs /Users/davyking/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-token-metadata-interface-0.2.1/src/instruction.rs /Users/davyking/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-token-metadata-interface-0.2.1/src/state.rs
-
-/Users/davyking/Work/peerprotocol/ contracts/target/debug/deps/spl_token_metadata_interface-d79f64e605da6f90.d: /Users/davyking/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-token-metadata-interface-0.2.1/src/lib.rs /Users/davyking/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-token-metadata-interface-0.2.1/src/error.rs /Users/davyking/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-token-metadata-interface-0.2.1/src/instruction.rs /Users/davyking/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-token-metadata-interface-0.2.1/src/state.rs
-
-/Users/davyking/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-token-metadata-interface-0.2.1/src/lib.rs:
-/Users/davyking/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-token-metadata-interface-0.2.1/src/error.rs:
-/Users/davyking/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-token-metadata-interface-0.2.1/src/instruction.rs:
-/Users/davyking/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-token-metadata-interface-0.2.1/src/state.rs:

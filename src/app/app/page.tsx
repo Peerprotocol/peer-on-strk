@@ -10,7 +10,6 @@ import Nav from "./Nav";
 export default function Home() {
   return (
     <main className="bg-[#F5F5F5]">
-      <WalletConnectProvider>
         <div className="flex h-screen">
           <Sidebar />
           <div className="flex-1 flex flex-col h-full max-h-screen overflow-auto">
@@ -22,7 +21,6 @@ export default function Home() {
             </main>
           </div>
         </div>
-      </WalletConnectProvider>
     </main>
   );
 }

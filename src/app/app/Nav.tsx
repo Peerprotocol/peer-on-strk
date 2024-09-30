@@ -45,7 +45,6 @@ const Nav = () => {
             selectedOption={selectedOption}
           />
         </div>
-        <WalletConnectButton network={selectedOption} />
       </div>
 
       {/* Mobile nav toggle */}

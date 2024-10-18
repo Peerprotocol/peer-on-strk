@@ -12,66 +12,62 @@ import { useState } from "react";
 import PeerProtocol from "../../../../public/images/LogoBlack.svg";
 
 // Types
-type ModalType = 'create' | 'counter';
+type ModalType = "create" | "counter";
 
-// Components/TableHeader.tsx
 const TableHeader = () => (
-  <div className="grid grid-cols-7 pt-6 rounded-t-xl bg-smoke-white py-4">
-    <div className="text-center font-semibold">Merchant</div>
-    <div className="text-center font-semibold">Quantity</div>
-    <div className="text-center font-semibold">Value<span className="px-1">($)</span></div>
-    <div className="text-center font-semibold">Interest Rate</div>
-    <div className="text-center font-semibold">Duration</div>
-    <div className="text-center font-semibold">Completed Deals</div>
-  </div>
+  <tr className="bg-black text-white h-20 my-4">
+    <th className="text-center font-semibold">Merchant</th>
+    <th className="text-center font-semibold">Quantity</th>
+    <th className="text-center font-semibold">
+      Value<span className="px-1">($)</span>
+    </th>
+    <th className="text-center font-semibold">Interest Rate</th>
+    <th className="text-center font-semibold">Duration</th>
+    <th className="text-center font-semibold">Completed Deals</th>
+  </tr>
 );
 
 // Components/TableRow.tsx
-const TableRow = ({ row, onCounterProposal }: { 
+const TableRow = ({
+  row,
+  onCounterProposal,
+}: {
   row: any;
   onCounterProposal: () => void;
 }) => (
-  <div className="contents">
-    <div className="flex justify-center text-center px-4 py-6 border-t border-gray-300 gap-2">
+  <tr className="flex">
+    <td className="flex justify-center text-center px-4 py-6 border-t border-gray-300 gap-2">
       <Image src={Phantom} height={20} width={20} alt="phantomicon" />
       <p className="font-medium">{row.borrowers}</p>
-    </div>
-    <div className="text-center px-4 py-6 border-t border-gray-300">
+    </td>
+
+    <td className="text-center px-4 py-6 border-gray-300">
       <p className="font-medium">{row.quantity}</p>
-    </div>
-    <div className="text-center px-4 py-6 border-t border-gray-300">
+    </td>
+
+    <td className="text-center px-4 py-6 border-gray-300">
       <p className="font-medium">{row.amountNeeded}</p>
-    </div>
-    <div className="text-center px-4 py-6 border-t border-gray-300">
+    </td>
+
+    <td className="text-center px-4 py-6 border-gray-300">
       <p className="font-medium">{row.interestRate}%</p>
-    </div>
-    <div className="text-center px-4 py-6 border-t border-gray-300">
+    </td>
+
+    <td className="text-center px-4 py-6 border-gray-300">
       <p className="font-medium">{row.term} days</p>
-    </div>
-    <div className="text-center px-4 py-6 border-t border-gray-300">
+    </td>
+
+    <td className="text-center px-4 py-6 border-gray-300">
       <p className="font-medium">{row.completedDeal}</p>
-    </div>
-    <div className="border-t flex border-gray-300 justify-center items-center">
-      <button className="px-2 text-sm rounded-full bg-[rgba(0,0,0,0.8)] my-5 mx-2 text-white w-20 h-8">
-        Borrow
-      </button>
-      <Image
-        src="/images/edit.svg"
-        alt="counter-proposal"
-        width={15}
-        height={20}
-        className="cursor-pointer"
-        onClick={onCounterProposal}
-      />
-    </div>
-  </div>
+    </td>
+  </tr>
 );
 
 // Components/Pagination.tsx
-const Pagination = ({ 
-  currentPage, 
-  totalPages, 
-  onPageChange 
+const Pagination = ({
+  currentPage,
+  totalPages,
+  onPageChange,
 }: {
   currentPage: number;
   totalPages: number;
@@ -119,11 +115,14 @@ const ProposalModal = ({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm">
       <div className="bg-white rounded-xl w-1/3 h-[470px] relative pt-8">
-        <button className="absolute top-4 right-4 text-black text-xl" onClick={onClose}>
+        <button
+          className="absolute top-4 right-4 text-black text-xl"
+          onClick={onClose}
+        >
           &times;
         </button>
         <h2 className="text-center text-lg text-black">
-          {modalType === 'create' ? 'Create a Proposal' : 'Counter Proposal'}
+          {modalType === "create" ? "Create a Proposal" : "Counter Proposal"}
         </h2>
 
         <div className="space-y-4 px-10 py-6">
@@ -139,7 +138,9 @@ const ProposalModal = ({
           </div>
 
           <div>
-            <label className="text-sm text-gray-500 pl-2">Duration (Days)</label>
+            <label className="text-sm text-gray-500 pl-2">
+              Duration (Days)
+            </label>
             <div className="p-3 border rounded-xl border-gray-600">
               <input
                 type="text"
@@ -150,7 +151,9 @@ const ProposalModal = ({
           </div>
 
           <div>
-            <label className="text-sm text-gray-500 pl-2">Interest Rate (%)</label>
+            <label className="text-sm text-gray-500 pl-2">
+              Interest Rate (%)
+            </label>
             <div className="flex flex-col items-center text-black">
               <input
                 type="range"
@@ -206,9 +209,9 @@ const BorrowersMarket = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [isModalOpen, setModalOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const [modalType, setModalType] = useState<ModalType>('create');
+  const [modalType, setModalType] = useState<ModalType>("create");
   const [interestRate, setInterestRate] = useState(0);
-  const [interestRateInput, setInterestRateInput] = useState('');
+  const [interestRateInput, setInterestRateInput] = useState("");
 
   const ITEMS_PER_PAGE = 7;
   const totalPages = Math.ceil(BorrowerData.length / ITEMS_PER_PAGE);
@@ -222,17 +225,21 @@ const BorrowersMarket = () => {
     setModalType(type);
     setModalOpen(true);
     setInterestRate(0);
-    setInterestRateInput('');
+    setInterestRateInput("");
   };
   const closeModal = () => setModalOpen(false);
 
-  const handleInterestRateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInterestRateChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const value = Number(event.target.value);
     setInterestRate(value);
     setInterestRateInput(event.target.value);
   };
 
-  const handleManualInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleManualInputChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const value = event.target.value;
     setInterestRateInput(value);
     setInterestRate(Number(value));
@@ -244,44 +251,50 @@ const BorrowersMarket = () => {
         <Sidebar />
         <div className="flex-1 flex flex-col h-full max-h-screen overflow-auto">
           <Nav />
-          
+
           {/* Header */}
-          <div className="flex gap-3 p-4">
-            <Link href='/app'>
+          <div className="flex gap-3 m-8">
+            <Link href="/app">
               <Image
                 src={BackButton}
-                height={40}
-                width={40}
+                height={30}
+                width={30}
                 alt="back-button"
                 className="cursor-pointer"
               />
             </Link>
-            <div className="flex gap-2 pb-2">
-              <p className="text-black text-4xl">Borrow Market</p>
-              <div className="flex gap-2 border rounded-3xl text-black border-gray-500 w-24 items-center justify-center">
-                <Image src='/images/starknet.png' height={20} width={20} alt="solana-logo" className="" />
+            <div className="flex justify-center items-center gap-2 pb-2 ">
+              <p className="text-black text-xl lg:text-4xl">Borrow Market</p>
+              <div className="flex gap-1 border rounded-3xl text-black border-gray-500 w-24 items-center justify-center p-2 ">
+                <Image
+                  src="/images/starknet.png"
+                  height={20}
+                  width={20}
+                  alt="solana-logo"
+                  className=""
+                />
                 <p className="text-xs">Starknet</p>
               </div>
             </div>
           </div>
 
-          {/* Table */}
-          <div className="overflow-x-auto text-black border mx-4 mb-4 rounded-xl">
-            <TableHeader />
-            <div className="w-full grid grid-cols-7 rounded-b-xl text-gray-800">
+          <div className="overflow-x-auto my-4">
+            <table className="w-full table-auto border-collapse text-black border mx-4 mb-4 rounded-xl">
+              <TableHeader />
+
               {currentData.map((row, index) => (
                 <TableRow
                   key={index}
                   row={row}
-                  onCounterProposal={() => openModal('counter')}
+                  onCounterProposal={() => openModal("counter")}
                 />
               ))}
-            </div>
+            </table>
           </div>
 
           {/* Create Proposal Button */}
           <button
-            onClick={() => openModal('create')}
+            onClick={() => openModal("create")}
             className="relative flex items-center gap-2 px-6 py-3 rounded-3xl bg-[#F5F5F5] text-black border border-[rgba(0,0,0,0.8)] mx-auto font-light hover:bg-[rgba(0,0,0,0.8)] hover:text-white"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}

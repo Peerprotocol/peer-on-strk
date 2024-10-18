@@ -60,3 +60,8 @@ input[type="number"]:hover {
   font-weight: 700;
   font-style: normal;
 }
+
+tr:nth-of-type(2n){
+  background-color: rgb(54, 53, 53);
+  color: white;
+}

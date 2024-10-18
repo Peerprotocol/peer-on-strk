@@ -161,7 +161,6 @@ docs: update setup instructions
 ```
 peer-protocol/app
 ├── components/         # Reusable React components
-├── LandingPage/         #Our Landing page
 ├── public/            # Static assets
 ├── app/              # The main peer protocol app
 ```

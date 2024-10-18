@@ -4,6 +4,7 @@ import MarketContent from "./marketContent";
 import { MainMarketProps, marketData } from "../../data/mainMarket";
 import { peerMarketData } from "../../data/peerMarketData";
 import DepositWithdraw from "./DepositWithdraw/DepositWithdraw";
+import { ChevronDown } from "lucide-react";
 
 const Market = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -83,23 +84,11 @@ const Market = () => {
 
           <button
             type="button"
-            className="inline-flex justify-between items-center w-full rounded-full border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
+            className="flex justify-between gap-2 items-center w-full rounded-full border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
             onClick={() => setIsOpen(!isOpen)}
           >
             {selectedOption}
-            <svg
-              className="-mr-1 ml-2 h-5 w-5"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path
-                fillRule="evenodd"
-                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 011.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                clipRule="evenodd"
-              />
-            </svg>
+            <ChevronDown size={16} />
           </button>
           {isOpen && (
             <div className="origin-top-right absolute right-0 mt-32 w-36 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">

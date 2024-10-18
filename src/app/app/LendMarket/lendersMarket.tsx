@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import Nav from "../Nav";
 import Sidebar from "../sidebar";
-import { LenderData } from "../LenderData";
+import { LenderData } from "../../../data/LenderData";
 
 // Constants
 const ITEMS_PER_PAGE = 7;

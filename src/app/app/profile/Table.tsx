@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { tableData } from "./TransactionHistory";
+import { tableData } from "../../../data/TransactionHistory";
 import Image from "next/image";
 import PageRight from "../../../../public/images/pageright.svg"
 import PageLeft from "../../../../public/images/pageleft.svg"

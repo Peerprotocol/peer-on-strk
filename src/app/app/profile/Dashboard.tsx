@@ -1,7 +1,7 @@
 import React from "react";
 import Image from "next/image";
 import Info from "../../../../public/images/info.svg";
-import { dashboardItems } from "./DashboardData"; // Import the data
+import { dashboardItems } from "../../../data/DashboardData"; // Import the data
 
 const Dashboard = () => {
   return (

@@ -7,7 +7,7 @@ import Image from "next/image";
 import PlusMathHover from "../../../../public/images/MathPlusHover.png";
 import BackButton from "../../../../public/images/back-button.svg";
 import Phantom from "../../../../public/images/phantom-icon.svg";
-import { BorrowerData } from "../BorrowerData";
+import { BorrowerData } from "../../../data/BorrowerData";
 import { useState } from "react";
 import PeerProtocol from "../../../../public/images/LogoBlack.svg";
 

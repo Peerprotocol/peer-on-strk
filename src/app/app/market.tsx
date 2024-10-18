@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import MarketContent from "./marketContent";
-import { MainMarketProps, marketData } from "./mainMarket";
-import { peerMarketData } from "./peerMarketData";
+import { MainMarketProps, marketData } from "../../data/mainMarket";
+import { peerMarketData } from "../../data/peerMarketData";
 import DepositWithdraw from "./DepositWithdraw/DepositWithdraw";
 
 const Market = () => {

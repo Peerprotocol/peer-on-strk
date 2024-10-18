@@ -2,7 +2,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Nav from "../Nav";
 import Sidebar from "../sidebar";
-import { BorrowerData } from "../BorrowerData";
+import { BorrowerData } from "../../../data/BorrowerData";
 
 // Constants
 const ITEMS_PER_PAGE = 7;

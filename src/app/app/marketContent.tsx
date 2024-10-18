@@ -1,6 +1,6 @@
 import Image from "next/image";
 import React from "react";
-import { MainMarketProps } from "./mainMarket";
+import { MainMarketProps } from "../../data/mainMarket";
 
 interface MarketContentProps {
   marketData: MainMarketProps[];

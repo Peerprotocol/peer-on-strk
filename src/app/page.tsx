@@ -1,14 +1,14 @@
 "use client";
 import React, { useState, useContext, useEffect } from "react";
-import Navbar from "./LandingPage/Navbar";
-import HeroPage from "./LandingPage/HeroSection";
-import Features from "./LandingPage/Features";
-import About from "./LandingPage/About";
-import Team from "./LandingPage/TeamPage";
-import Onboard from "./LandingPage/Onboard";
-import BlogPost from "./LandingPage/Blog";
-import Footer from "./LandingPage/Footer";
-import { DarkModeContext } from "./LandingPage/DarkMode";
+import Navbar from "../components/LandingPage/Navbar";
+import HeroPage from "../components/LandingPage/HeroSection";
+import Features from "../components/LandingPage/Features";
+import About from "../components/LandingPage/About";
+import Team from "../components/LandingPage/TeamPage";
+import Onboard from "../components/LandingPage/Onboard";
+import BlogPost from "../components/LandingPage/Blog";
+import Footer from "../components/LandingPage/Footer";
+import { DarkModeContext } from "../components/LandingPage/DarkMode";
 
 // Sample blog data
 const blogPosts = [

@@ -1,6 +1,6 @@
 "use client";
 import DepositWithdrawPeer from './DepositWithdrawPeer';
-import React, { useState } from 'react';
+import React from 'react';
 import Nav from "../Nav";
 import Sidebar from "../sidebar";
 import Dashboard from '../../app/profile/Dashboard';

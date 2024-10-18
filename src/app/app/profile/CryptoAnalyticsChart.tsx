@@ -76,7 +76,7 @@ const AnalyticsChart = () => {
                 <h2 className="text-lg font-semibold mb-4">Activity Overview</h2>
                 {/* Dropdown to select time period */}
                 <select
-                    className="bg-white border border-gray-300 rounded p-2 focus:outline-none focus:ring-0 focus:border-gray-300"
+                    className="bg-white border border-gray-300 rounded-full p-2 focus:outline-none focus:ring-0 focus:border-gray-300"
                     value={timePeriod}
                     onChange={handleTimePeriodChange}
                 >

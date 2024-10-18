@@ -64,16 +64,16 @@ const Market = () => {
         <p className="text-black text-3xl">Main Market</p>
 
         <div className="flex items-center gap-8">
-          <div className="flex gap-1 bg-gray-200 rounded-xl px-1 py-1">
+          <div className="flex gap-1 bg-gray-200 rounded-full px-1 py-1">
             <div
-              className={`rounded-xl text-black flex gap-3 py-2 px-4 border cursor-pointer ${Protocol === "Protocol" ? "text-white bg-black" : ""
+              className={` text-black flex gap-3 py-2 px-4 border cursor-pointer ${Protocol === "Protocol" ? "text-white bg-black rounded-full" : ""
                 }`}
               onClick={() => setProtocol("Protocol")}
             >
               <p>Protocol</p>
             </div>
             <div
-              className={`rounded-xl text-black flex gap-3 py-2 px-4 border cursor-pointer ${Protocol === "P2P" ? "text-white bg-black" : ""
+              className={` text-black flex gap-3 py-2 px-4 border cursor-pointer ${Protocol === "P2P" ? "text-white bg-black rounded-full" : ""
                 }`}
               onClick={() => setProtocol("P2P")}
             >
@@ -83,7 +83,7 @@ const Market = () => {
 
           <button
             type="button"
-            className="inline-flex justify-between items-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
+            className="inline-flex justify-between items-center w-full rounded-full border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
             onClick={() => setIsOpen(!isOpen)}
           >
             {selectedOption}

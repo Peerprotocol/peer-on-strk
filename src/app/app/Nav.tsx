@@ -1,11 +1,9 @@
 "use client";
 import Image from "next/image";
-import Dropdown from "./dropdown";
 import { useState } from "react";
 import Link from "next/link";
 
 const Nav = () => {
-  const [selectedOption, setSelectedOption] = useState("solana");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const toggleMobileMenu = () => {
@@ -36,18 +34,8 @@ const Nav = () => {
         />
       </div>
 
-      {/* Dropdown and WalletConnectButton */}
-      <div className="flex items-center gap-3">
-        <div className="hidden">
-          <Dropdown
-            setSelectedOption={setSelectedOption}
-            selectedOption={selectedOption}
-          />
-        </div>
-      </div>
-
       {/* Mobile nav toggle */}
-      <div className="md:hidden flex items-center gap-4">
+      <div className="lg:hidden flex items-center gap-4">
         <button onClick={toggleMobileMenu}>
           <Image
             src="/icons/menu.svg"
@@ -60,7 +48,7 @@ const Nav = () => {
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="top-2 fixed mx-auto w-[92%] h-[fit-content] bg-white text-black  z-50 flex flex-col rounded-md p-2">
+        <div className="top-2 fixed mx-auto w-[98%] h-[fit-content] bg-white text-black  z-50 flex flex-col rounded-md p-2">
           <div className="w-full bg-[#efefef] flex flex-col gap-4 p-4 items-start text-left rounded-lg">
             <button onClick={toggleMobileMenu} className="self-end mb-4">
               <Image
@@ -75,7 +63,7 @@ const Nav = () => {
               <Link href="/app">
                 <li className="flex gap-2">
                   <Image
-                    src="/icons/market.svg"
+                    src="/images/institution.svg"
                     height={30}
                     width={30}
                     alt="Notification icon"
@@ -87,7 +75,7 @@ const Nav = () => {
               <Link href="/profile">
                 <li className="flex gap-2">
                   <Image
-                    src="/icons/dashboard.svg"
+                    src="/images/portfolio.svg"
                     height={30}
                     width={30}
                     alt="Notification icon"

@@ -24,7 +24,7 @@ const DepositWithdrawPeer = () => {
     };
 
     return (
-        <div className='border border-[#0000001A] bg-white p-6 rounded-[1rem] md:flex-grow flex-col relative text-black w-full md:h-[fit-content]'>
+        <div className='border border-[#0000001A] bg-white p-6 rounded-[1rem] md:flex-grow flex-col relative text-black w-full md:h-full'>
             <div className='pb-4 flex justify-end'>
                 <div className='flex items-center border py-2 px-4 rounded-3xl border-black cursor-pointer' onClick={() => setIsOpen(!isOpen)}>
                     {selectedOption}
@@ -82,7 +82,7 @@ const DepositWithdrawPeer = () => {
                     ))}
                 </div>
             </div>
-            <button className='bg-black text-white rounded-lg w-full py-3 mt-4'>Deposit</button>
+            <button className='bg-black text-white rounded-full w-full py-3 mt-4'>Deposit</button>
             <div className='flex justify-center gap-2 mt-4'>
                 <p className='text-xs opacity-50'>Powered by Peer Protocol</p>
                 <Image src={Logo} height={15} width={15} alt='logo-icon' />

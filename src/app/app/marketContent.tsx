@@ -56,7 +56,7 @@ const MarketContent: React.FC<MarketContentProps> = ({ marketData, onAction }) =
           {/* Supply APY + Lend Button */}
           <div className="flex flex-col items-center md:w-1/5 text-center px-4 justify-center">
             <button
-              className="px-2 py-1 text-sm rounded-lg bg-black text-white w-20"
+              className="px-2 py-1 text-sm rounded-full bg-black text-white w-20"
               onClick={() => onAction("Lend", row)}
             >
               Lend
@@ -67,7 +67,7 @@ const MarketContent: React.FC<MarketContentProps> = ({ marketData, onAction }) =
           {/* Borrow APY + Borrow Button */}
           <div className="flex flex-col items-center md:w-1/5 text-center px-4 justify-center">
             <button
-              className="px-2 py-1 text-sm rounded-lg bg-black text-white w-20"
+              className="px-2 py-1 text-sm rounded-full bg-black text-white w-20"
               onClick={() => onAction("Borrow", row)}
             >
               Borrow

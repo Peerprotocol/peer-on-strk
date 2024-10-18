@@ -52,7 +52,7 @@ const Table: React.FC = () => {
             <div className="mb-6 flex justify-between mt-3 gap-4">
                 <div className="flex flex-wrap md:flex-row space-x-2 md:space-x-4">
                     <button
-                        className={`px-4 py-2 rounded-md ${activeTab === "Assets" ? "bg-black text-white" : "bg-transparent text-black"}`}
+                        className={`px-4 py-2 rounded-full ${activeTab === "Assets" ? "bg-black text-white" : "bg-transparent text-black"}`}
                         onClick={() => {
                             setActiveTab("Assets");
                             setCurrentPage(1); // Reset to first page when changing tabs
@@ -61,7 +61,7 @@ const Table: React.FC = () => {
                         Assets
                     </button>
                     <button
-                        className={`px-4 py-2 rounded-md ${activeTab === "Position Overview" ? "bg-black text-white" : "bg-transparent text-black"}`}
+                        className={`px-4 py-2 rounded-full ${activeTab === "Position Overview" ? "bg-black text-white" : "bg-transparent text-black"}`}
                         onClick={() => {
                             setActiveTab("Position Overview");
                             setCurrentPage(1); // Reset to first page when changing tabs
@@ -70,7 +70,7 @@ const Table: React.FC = () => {
                         Position Overview
                     </button>
                     <button
-                        className={`px-4 py-2 rounded-md ${activeTab === "Transaction History" ? "bg-black text-white" : "bg-transparent text-black"}`}
+                        className={`px-4 py-2 rounded-full ${activeTab === "Transaction History" ? "bg-black text-white" : "bg-transparent text-black"}`}
                         onClick={() => {
                             setActiveTab("Transaction History");
                             setCurrentPage(1); // Reset to first page when changing tabs
@@ -80,7 +80,7 @@ const Table: React.FC = () => {
                     </button>
                 </div>
                 <div>
-                    <select className="px-4 py-2 border rounded-md text-black">
+                    <select className="px-4 py-2 border rounded-full text-black">
                         <option value="borrow">Borrow</option>
                         <option value="lend">Lend</option>
                     </select>

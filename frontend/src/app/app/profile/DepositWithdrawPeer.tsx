@@ -6,17 +6,19 @@ import { uint256 } from 'starknet'
 import { useContract, useAccount, useNetwork, useContractRead } from '@starknet-react/core'
 import { toast as hotToast } from 'react-hot-toast'
 import { toast as toastify } from 'react-toastify'
-import 'react-toastify/dist/ReactToastify.css'
+import { ChevronDown, Cog } from "lucide-react"
+import { PEER_PROTOCOL_DEPLOYED_CONTRACT_ADDRESS } from "@/components/internal/helpers/constant"
+import { formatCurrency } from "@/components/internal/helpers"
 import protocolAbi from "../../../../public/abi/protocol.json"
 import mockTokenAbi from "../../../../public/abi/mock_token.json"
 import Erc20Abi from "../../../../public/abi/token.abi.json"
 import Logo from "../../../../public/images/LogoBlack.svg"
 import STRK from "../../../../public/images/starknet.png"
 import ETH from "../../../../public/images/ethereumlogo.svg"
-import { ChevronDown, Cog } from "lucide-react"
-import { formatCurrency } from "@/components/internal/helpers"
+import 'react-toastify/dist/ReactToastify.css'
 
-const PROTOCOL_ADDRESS = "0x0241eab3824ce92d6f06ab4d21edb3f1d0a56b6cbf01935d1334a1498561f658"
+
+const PROTOCOL_ADDRESS = PEER_PROTOCOL_DEPLOYED_CONTRACT_ADDRESS;
 const TOKEN_ADDRESSES = {
   STRK: "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
   ETH: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"

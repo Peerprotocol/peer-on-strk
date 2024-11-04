@@ -27,3 +27,28 @@ export type BlogsDataType = {
   ids: string[];
   entries: Record<string, BlogEntry>;
 };
+
+
+export type UserAssetOverview = {
+  total_lent: bigint,
+  total_borrowed: bigint,
+  interest_earned: bigint,
+  available_balance: bigint
+};
+
+
+export type UserAsset = {
+  token_address: string,
+  total_lent: bigint,
+  total_borrowed: bigint,
+  interest_earned: bigint,
+  available_balance: bigint
+};
+
+
+export type TotalAssetsOverviewDisplay = {
+  id: "available_balance" | "total_lent" | "total_borrowed" | "interest_earned";
+  label: string;
+  value: string;
+  info?: string; // Optional for the info icon if needed
+}

@@ -163,7 +163,7 @@ const ConnectModal = () => {
 
 const ConnectButton = ({
   text = " Connect Wallet",
-  className = "rounded-full bg-black px-6 py-3 text-white transition-all duration-300 hover:rounded-[30px] md:py-3",
+  className,
 }: {
   text?: string;
   className?: string;
@@ -182,12 +182,13 @@ const ConnectButton = ({
       });
     }
   };
+  const defaultCSS = "rounded-full bg-black px-6 py-3 text-white transition-all duration-300 hover:rounded-[30px] md:py-3"
   return (
     <>
       <button
         aria-haspopup="dialog"
         onClick={() => togglePopover({ targetId: "connect-modal" })}
-        className={className}
+        className={`${className} ${defaultCSS}` }
       >
         {text}
       </button>

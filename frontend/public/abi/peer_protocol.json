@@ -1,0 +1,241 @@
+[
+    {
+        "type": "impl",
+        "name": "PeerProtocolImpl",
+        "interface_name": "peer_protocol::interfaces::ipeer_protocol::IPeerProtocol"
+    },
+    {
+        "type": "struct",
+        "name": "core::integer::u256",
+        "members": [
+            {
+                "name": "low",
+                "type": "core::integer::u128"
+            },
+            {
+                "name": "high",
+                "type": "core::integer::u128"
+            }
+        ]
+    },
+    {
+        "type": "struct",
+        "name": "peer_protocol::peer_protocol::PeerProtocol::UserAssets",
+        "members": [
+            {
+                "name": "token_address",
+                "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+                "name": "total_lent",
+                "type": "core::integer::u256"
+            },
+            {
+                "name": "total_borrowed",
+                "type": "core::integer::u256"
+            },
+            {
+                "name": "interest_earned",
+                "type": "core::integer::u256"
+            },
+            {
+                "name": "available_balance",
+                "type": "core::integer::u256"
+            }
+        ]
+    },
+    {
+        "type": "struct",
+        "name": "peer_protocol::peer_protocol::PeerProtocol::UserDeposit",
+        "members": [
+            {
+                "name": "token",
+                "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+                "name": "amount",
+                "type": "core::integer::u256"
+            }
+        ]
+    },
+    {
+        "type": "struct",
+        "name": "core::array::Span::<peer_protocol::peer_protocol::PeerProtocol::UserDeposit>",
+        "members": [
+            {
+                "name": "snapshot",
+                "type": "@core::array::Array::<peer_protocol::peer_protocol::PeerProtocol::UserDeposit>"
+            }
+        ]
+    },
+    {
+        "type": "interface",
+        "name": "peer_protocol::interfaces::ipeer_protocol::IPeerProtocol",
+        "items": [
+            {
+                "type": "function",
+                "name": "deposit",
+                "inputs": [
+                    {
+                        "name": "token_address",
+                        "type": "core::starknet::contract_address::ContractAddress"
+                    },
+                    {
+                        "name": "amount",
+                        "type": "core::integer::u256"
+                    }
+                ],
+                "outputs": [],
+                "state_mutability": "external"
+            },
+            {
+                "type": "function",
+                "name": "add_supported_token",
+                "inputs": [
+                    {
+                        "name": "token_address",
+                        "type": "core::starknet::contract_address::ContractAddress"
+                    }
+                ],
+                "outputs": [],
+                "state_mutability": "external"
+            },
+            {
+                "type": "function",
+                "name": "withdraw",
+                "inputs": [
+                    {
+                        "name": "token_address",
+                        "type": "core::starknet::contract_address::ContractAddress"
+                    },
+                    {
+                        "name": "amount",
+                        "type": "core::integer::u256"
+                    }
+                ],
+                "outputs": [],
+                "state_mutability": "external"
+            },
+            {
+                "type": "function",
+                "name": "get_user_assets",
+                "inputs": [
+                    {
+                        "name": "user",
+                        "type": "core::starknet::contract_address::ContractAddress"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "core::array::Array::<peer_protocol::peer_protocol::PeerProtocol::UserAssets>"
+                    }
+                ],
+                "state_mutability": "view"
+            },
+            {
+                "type": "function",
+                "name": "get_user_deposits",
+                "inputs": [
+                    {
+                        "name": "user",
+                        "type": "core::starknet::contract_address::ContractAddress"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "core::array::Span::<peer_protocol::peer_protocol::PeerProtocol::UserDeposit>"
+                    }
+                ],
+                "state_mutability": "view"
+            }
+        ]
+    },
+    {
+        "type": "constructor",
+        "name": "constructor",
+        "inputs": [
+            {
+                "name": "owner",
+                "type": "core::starknet::contract_address::ContractAddress"
+            }
+        ]
+    },
+    {
+        "type": "event",
+        "name": "peer_protocol::peer_protocol::PeerProtocol::DepositSuccessful",
+        "kind": "struct",
+        "members": [
+            {
+                "name": "user",
+                "type": "core::starknet::contract_address::ContractAddress",
+                "kind": "data"
+            },
+            {
+                "name": "token",
+                "type": "core::starknet::contract_address::ContractAddress",
+                "kind": "data"
+            },
+            {
+                "name": "amount",
+                "type": "core::integer::u256",
+                "kind": "data"
+            }
+        ]
+    },
+    {
+        "type": "event",
+        "name": "peer_protocol::peer_protocol::PeerProtocol::SupportedTokenAdded",
+        "kind": "struct",
+        "members": [
+            {
+                "name": "token",
+                "type": "core::starknet::contract_address::ContractAddress",
+                "kind": "data"
+            }
+        ]
+    },
+    {
+        "type": "event",
+        "name": "peer_protocol::peer_protocol::PeerProtocol::WithdrawalSuccessful",
+        "kind": "struct",
+        "members": [
+            {
+                "name": "user",
+                "type": "core::starknet::contract_address::ContractAddress",
+                "kind": "data"
+            },
+            {
+                "name": "token",
+                "type": "core::starknet::contract_address::ContractAddress",
+                "kind": "data"
+            },
+            {
+                "name": "amount",
+                "type": "core::integer::u256",
+                "kind": "data"
+            }
+        ]
+    },
+    {
+        "type": "event",
+        "name": "peer_protocol::peer_protocol::PeerProtocol::Event",
+        "kind": "enum",
+        "variants": [
+            {
+                "name": "DepositSuccessful",
+                "type": "peer_protocol::peer_protocol::PeerProtocol::DepositSuccessful",
+                "kind": "nested"
+            },
+            {
+                "name": "SupportedTokenAdded",
+                "type": "peer_protocol::peer_protocol::PeerProtocol::SupportedTokenAdded",
+                "kind": "nested"
+            },
+            {
+                "name": "WithdrawalSuccessful",
+                "type": "peer_protocol::peer_protocol::PeerProtocol::WithdrawalSuccessful",
+                "kind": "nested"
+            }
+        ]
+    }
+]

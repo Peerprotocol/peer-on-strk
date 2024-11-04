@@ -23,6 +23,17 @@ export const formatCurrency = (currency: number) => {
   return amount || 0;
 }
 
+const USD = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
+});
+export function formatUSD(amount: bigint) {
+  return USD.format(amount);
+}
+
+
 
 
 export const formatDate = (isoString: string): string => {

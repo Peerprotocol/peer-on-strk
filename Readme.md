@@ -1,6 +1,6 @@
 # Peer Protocol
 
-Peer Protocol is a decentralized peer-to-peer lending platform built on Starknet, enabling transparent and efficient borrowing and lending of digital assets.
+[Peer Protocol](https://www.peerprotocol.org/) is a decentralized peer-to-peer lending platform built on Starknet, enabling transparent and efficient borrowing and lending of digital assets.
 
 
 ## Overview
@@ -173,7 +173,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 If you need help or have questions:
 - Open an issue
-- Follwo us on Twitter @peer_protocol
+- Follwo us on X (formerly Twitter) [@peer_protocol](https://x.com/peer_protocol)
 - Join our Discord server / Telegram Channel
 - Email us at peerprotocol.protonmail.com
 

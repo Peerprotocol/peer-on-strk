@@ -30,6 +30,7 @@ struct UserAssets {
     interest_earned: u256,
     available_balance: u256,
 }
+
 #[derive(Drop, Serde, Copy, starknet::Store)]
 struct BorrowProposal {
     borrower: ContractAddress,
@@ -40,10 +41,18 @@ struct BorrowProposal {
     created_at: u64,
 }
 
+#[derive(Drop, Serde, Copy, starknet::Store)]
+struct BorrowPosition {
+    collateral_amount: u256,
+    borrowed_amount: u256,
+    collateral_symbol: felt252,
+    asset_symbol: felt252,   
+}
+
 
 #[starknet::contract]
 mod PeerProtocol {
-    use super::{Transaction, TransactionType, UserDeposit, UserAssets, BorrowProposal};
+    use super::{Transaction, TransactionType, UserDeposit, UserAssets, BorrowProposal, BorrowPosition};
     use peer_protocol::interfaces::ipeer_protocol::IPeerProtocol;
     use peer_protocol::interfaces::ierc20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use starknet::{
@@ -74,6 +83,8 @@ mod PeerProtocol {
         interests_earned: Map<(ContractAddress, ContractAddress), u256>,
         borrow_proposals: Map<u64, BorrowProposal>, // Mapping from proposal ID to proposal details
         borrow_proposals_count: u64,               // Counter for proposal IDs
+        //  Mapping: (user) => borrow position
+        borrow_positions: Map<ContractAddress, BorrowPosition>,
     }
 
     const MAX_U64: u64 = 18446744073709551615_u64;
@@ -372,6 +383,24 @@ pub struct BorrowProposalCreated {
                         }
                     };
             user_deposits.span()
+        }
+
+        fn update_borrow_position(
+            ref self: ContractState,
+            collateral_amount: u256,
+            borrowed_amount: u256,
+            collateral_symbol: felt252,
+            asset_symbol: felt252
+            ) {
+            assert!(collateral_amount > 0, "Collateral amount must be greater than zero");
+            assert!(borrowed_amount > 0, "Borrow amount must be greater than zero");
+
+            let user = get_caller_address();
+            self.borrow_positions.write(user, BorrowPosition{collateral_amount, borrowed_amount, collateral_symbol, asset_symbol})
+        }
+
+        fn get_borrow_position(self: @ContractState,user: ContractAddress) -> BorrowPosition{
+            self.borrow_positions.read(user)
         }
     }
 

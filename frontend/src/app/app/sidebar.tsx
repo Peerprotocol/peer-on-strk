@@ -2,7 +2,17 @@ import Image from "next/image";
 import Link from "next/link";
 
 const Sidebar = () => {
-  return (
+  return (<>
+    <aside className="sidebar">
+    {/* Other links */}
+    <Link
+      href="/app/quests"
+      className="block px-4 py-2 text-gray-700 hover:bg-gray-200 rounded"
+    >
+      Quests Welcome Page
+    </Link>
+  </aside>
+  
     <div className="bg-black w-[15%] h-screen rounded-r-[2.5rem] py-8 hidden lg:flex flex-col sticky top-0">
       <Image
         className="mx-[30%]"
@@ -43,6 +53,7 @@ const Sidebar = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

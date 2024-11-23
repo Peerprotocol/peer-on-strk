@@ -27,6 +27,7 @@ const config: Config = {
       screens: {
         '2xl': '1441px',
         'sm': '200px',
+
       },
       colors: {
         'smoke-white': 'rgba(0, 0, 0, 0.03)',

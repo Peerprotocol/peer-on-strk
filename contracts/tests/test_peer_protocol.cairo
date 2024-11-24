@@ -11,7 +11,11 @@ use peer_protocol::peer_protocol::PeerProtocol;
 
 use peer_protocol::interfaces::ierc20::{IERC20Dispatcher, IERC20DispatcherTrait};
 
+use peer_protocol::peer_protocol::ProposalType;
+
 const ONE_E18: u256 = 1000000000000000000_u256;
+const COLLATERAL_RATIO_NUMERATOR: u256 = 13_u256;
+const COLLATERAL_RATIO_DENOMINATOR: u256 = 10_u256;
 
 fn deploy_token(name: ByteArray) -> ContractAddress {
     let contract = declare("MockToken").unwrap().contract_class();
@@ -26,9 +30,13 @@ fn deploy_token(name: ByteArray) -> ContractAddress {
 
 fn deploy_peer_protocol() -> ContractAddress {
     let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
+    let protocol_fee_address: ContractAddress = starknet::contract_address_const::<0x129996789>();
+    let spok_nft: ContractAddress = starknet::contract_address_const::<0x100026789>();
 
     let mut constructor_calldata = ArrayTrait::new();
     constructor_calldata.append(owner.into());
+    constructor_calldata.append(protocol_fee_address.into());
+    constructor_calldata.append(spok_nft.into());
 
     let contract = declare("PeerProtocol").unwrap().contract_class();
     let (contract_address, _) = contract.deploy(@constructor_calldata).unwrap();
@@ -305,9 +313,11 @@ fn test_get_user_deposits_with_zero_address() {
 #[test]
 fn test_create_borrow_proposal() {
     let token_address = deploy_token("MockToken");
+    let collateral_token_address = deploy_token("MockToken1");
     let peer_protocol_address = deploy_peer_protocol();
 
     let token = IERC20Dispatcher { contract_address: token_address };
+    let collateral_token = IERC20Dispatcher { contract_address: collateral_token_address };
     let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
 
     let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
@@ -317,28 +327,53 @@ fn test_create_borrow_proposal() {
     let borrow_amount: u256 = 500 * ONE_E18;
     let interest_rate: u64 = 5;
     let duration: u64 = 10;
+    let required_collateral_value = 300 * ONE_E18;
+    let collateral_value_with_ratio = (required_collateral_value * COLLATERAL_RATIO_NUMERATOR)
+        / COLLATERAL_RATIO_DENOMINATOR;
 
     // Add supported token
     start_cheat_caller_address(peer_protocol_address, owner);
     peer_protocol.add_supported_token(token_address);
+    peer_protocol.add_supported_token(collateral_token_address);
     stop_cheat_caller_address(peer_protocol_address);
 
     token.mint(borrower, mint_amount);
+    collateral_token.mint(borrower, mint_amount);
 
+    // Approve token
     start_cheat_caller_address(token_address, borrower);
     token.approve(peer_protocol_address, mint_amount);
     stop_cheat_caller_address(token_address);
+
+    // Approve collateral token
+    start_cheat_caller_address(collateral_token_address, borrower);
+    collateral_token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(collateral_token_address);
+
+    // Borrower Deposit collateral
+    start_cheat_caller_address(peer_protocol_address, borrower);
+    peer_protocol.deposit(collateral_token_address, collateral_value_with_ratio);
+    stop_cheat_caller_address(peer_protocol_address);
 
     // Borrower creates a borrow proposal
     start_cheat_caller_address(peer_protocol_address, borrower);
     let mut spy = spy_events();
 
-    peer_protocol.create_borrow_proposal(token_address, borrow_amount, interest_rate, duration);
+    peer_protocol
+        .create_borrow_proposal(
+            token_address,
+            collateral_token_address,
+            borrow_amount,
+            required_collateral_value,
+            interest_rate,
+            duration
+        );
 
     // Check emitted event
     let created_at = starknet::get_block_timestamp();
-    let expected_event = PeerProtocol::Event::BorrowProposalCreated(
-        PeerProtocol::BorrowProposalCreated {
+    let expected_event = PeerProtocol::Event::ProposalCreated(
+        PeerProtocol::ProposalCreated {
+            proposal_type: ProposalType::BORROWING,
             borrower,
             token: token_address,
             amount: borrow_amount,
@@ -357,9 +392,11 @@ fn test_create_borrow_proposal() {
 #[should_panic(expected: "Token not supported")]
 fn test_create_borrow_proposal_should_panic_for_unsupported_token() {
     let token_address = deploy_token("MockToken");
+    let collateral_token_address = deploy_token("MockToken1");
     let peer_protocol_address = deploy_peer_protocol();
 
     let token = IERC20Dispatcher { contract_address: token_address };
+    let collateral_token = IERC20Dispatcher { contract_address: collateral_token_address };
     let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
 
     let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
@@ -369,17 +406,26 @@ fn test_create_borrow_proposal_should_panic_for_unsupported_token() {
     let borrow_amount: u256 = 500 * ONE_E18;
     let interest_rate: u64 = 5;
     let duration: u64 = 10;
+    let required_collateral_value = 300 * ONE_E18;
 
+    // Add supported token
     start_cheat_caller_address(peer_protocol_address, owner);
     peer_protocol.add_supported_token(token_address);
+    peer_protocol.add_supported_token(collateral_token_address);
     stop_cheat_caller_address(peer_protocol_address);
 
     token.mint(borrower, mint_amount);
+    collateral_token.mint(borrower, mint_amount);
 
     // Approve the peer_protocol contract to spend tokens
     start_cheat_caller_address(token_address, borrower);
     token.approve(peer_protocol_address, mint_amount);
     stop_cheat_caller_address(token_address);
+
+    // Approve the peer_protocol contract to spend collateral tokens
+    start_cheat_caller_address(collateral_token_address, borrower);
+    collateral_token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(collateral_token_address);
 
     // Simulate using an unsupported token address
     let unsupported_token_address: ContractAddress = starknet::contract_address_const::<
@@ -389,7 +435,14 @@ fn test_create_borrow_proposal_should_panic_for_unsupported_token() {
     start_cheat_caller_address(peer_protocol_address, borrower);
 
     peer_protocol
-        .create_borrow_proposal(unsupported_token_address, borrow_amount, interest_rate, duration);
+        .create_borrow_proposal(
+            unsupported_token_address,
+            collateral_token_address,
+            borrow_amount,
+            required_collateral_value,
+            interest_rate,
+            duration
+        );
 
     stop_cheat_caller_address(peer_protocol_address);
 }

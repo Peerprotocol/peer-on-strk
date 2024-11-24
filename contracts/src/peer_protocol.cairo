@@ -4,12 +4,20 @@ use starknet::{ContractAddress, get_block_timestamp};
 #[derive(Drop, Serde, Copy, starknet::Store)]
 enum TransactionType {
     DEPOSIT,
-    WITHDRAWAL
+    WITHDRAWAL,
+    LEND,
+    BORROW
+}
+
+#[derive(Drop, Serde, Copy, PartialEq, starknet::Store)]
+enum ProposalType {
+    BORROWING,
+    LENDING
 }
 
 #[derive(Drop, Serde, Copy, starknet::Store)]
 struct Transaction {
-    transaction_type: felt252,
+    transaction_type: TransactionType,
     token: ContractAddress,
     amount: u256,
     timestamp: u64,
@@ -31,21 +39,32 @@ struct UserAssets {
     available_balance: u256,
 }
 #[derive(Drop, Serde, Copy, starknet::Store)]
-struct BorrowProposal {
+struct Proposal {
+    id: u256,
+    lender: ContractAddress,
     borrower: ContractAddress,
+    proposal_type: ProposalType,
     token: ContractAddress,
+    accepted_collateral_token: ContractAddress,
+    required_collateral_value: u256,
     amount: u256,
     interest_rate: u64,
     duration: u64,
     created_at: u64,
+    is_accepted: bool,
+    accepted_at: u64,
+    repayment_date: u64,
+    is_repaid: bool
 }
 
 
 #[starknet::contract]
 mod PeerProtocol {
-    use super::{Transaction, TransactionType, UserDeposit, UserAssets, BorrowProposal};
+    use starknet::event::EventEmitter;
+    use super::{Transaction, TransactionType, UserDeposit, UserAssets, Proposal, ProposalType};
     use peer_protocol::interfaces::ipeer_protocol::IPeerProtocol;
     use peer_protocol::interfaces::ierc20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use peer_protocol::interfaces::ierc721::{IERC721Dispatcher, IERC721DispatcherTrait};
     use starknet::{
         ContractAddress, get_block_timestamp, get_caller_address, get_contract_address,
         contract_address_const, get_tx_info
@@ -72,11 +91,18 @@ mod PeerProtocol {
         lent_assets: Map<(ContractAddress, ContractAddress), u256>,
         // Mapping: (user, token) => interest earned
         interests_earned: Map<(ContractAddress, ContractAddress), u256>,
-        borrow_proposals: Map<u64, BorrowProposal>, // Mapping from proposal ID to proposal details
-        borrow_proposals_count: u64,               // Counter for proposal IDs
+        proposals: Map<u256, Proposal>, // Mapping from proposal ID to proposal details
+        proposals_count: u256,            // Counter for proposal IDs
+        protocol_fee_address: ContractAddress,
+        spok_nft: ContractAddress,
+        next_spok_id: u256,
+        locked_collateral: Map<(ContractAddress, ContractAddress), u256>, // (user, token) => amount
     }
 
     const MAX_U64: u64 = 18446744073709551615_u64;
+    const COLLATERAL_RATIO_NUMERATOR: u256 = 13_u256;
+    const COLLATERAL_RATIO_DENOMINATOR: u256 = 10_u256;
+    const PROTOCOL_FEE_PERCENTAGE: u256 = 1_u256;  // 1%
 
     #[event]
     #[derive(Drop, starknet::Event)]
@@ -85,7 +111,8 @@ mod PeerProtocol {
         SupportedTokenAdded: SupportedTokenAdded,
         WithdrawalSuccessful: WithdrawalSuccessful,
         TransactionRecorded: TransactionRecorded,
-        BorrowProposalCreated:BorrowProposalCreated,       
+        ProposalCreated: ProposalCreated,
+        ProposalAccepted: ProposalAccepted
     }
 
     #[derive(Drop, starknet::Event)]
@@ -116,21 +143,33 @@ mod PeerProtocol {
         pub timestamp: u64,
         pub tx_hash: felt252,
     }
+
     #[derive(Drop, starknet::Event)]
-pub struct BorrowProposalCreated {
-    pub borrower: ContractAddress,
-    pub token: ContractAddress,
-    pub amount: u256,
-    pub interest_rate: u64,
-    pub duration: u64,
-    pub created_at: u64,
-}
+    pub struct ProposalCreated {
+        pub proposal_type: ProposalType,
+        pub borrower: ContractAddress,
+        pub token: ContractAddress,
+        pub amount: u256,
+        pub interest_rate: u64,
+        pub duration: u64,
+        pub created_at: u64,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct ProposalAccepted {
+        pub proposal_type: ProposalType,
+        pub accepted_by: ContractAddress,
+        pub token: ContractAddress,
+        pub amount: u256
+    }
 
 
     #[constructor]
-    fn constructor(ref self: ContractState, owner: ContractAddress) {
-        assert!(owner != contract_address_const::<0>(), "zero address detected");
+    fn constructor(ref self: ContractState, owner: ContractAddress, protocol_fee_address: ContractAddress, spok_nft: ContractAddress) {
+        assert!(owner != self.zero_address(), "zero address detected");
         self.owner.write(owner);
+        self.protocol_fee_address.write(protocol_fee_address);
+        self.spok_nft.write(spok_nft);
     }
 
     #[abi(embed_v0)]
@@ -148,30 +187,9 @@ pub struct BorrowProposalCreated {
 
             let prev_deposit = self.token_deposits.entry((caller, token_address)).read();
             self.token_deposits.entry((caller, token_address)).write(prev_deposit + amount);
-
-            // Record transaction
-            let timestamp = get_block_timestamp();
-            let tx_info = get_tx_info();
-            let transaction = Transaction {
-                transaction_type: 'DEPOSIT',
-                token: token_address,
-                amount,
-                timestamp,
-                tx_hash: tx_info.transaction_hash,
-            };
-            self._add_transaction(caller, transaction);
-
-            self
-                .emit(
-                    TransactionRecorded {
-                        user: caller,
-                        transaction_type: TransactionType::DEPOSIT,
-                        token: token_address,
-                        amount,
-                        timestamp,
-                        tx_hash: tx_info.transaction_hash,
-                    }
-                );
+            
+            // Record Transaction
+            self.record_transaction(token_address, TransactionType::DEPOSIT, amount, caller);
 
             self.emit(DepositSuccessful { user: caller, token: token_address, amount: amount });
         }
@@ -204,28 +222,8 @@ pub struct BorrowProposalCreated {
             let transfer = token.transfer(caller, amount);
             assert!(transfer, "transfer failed");
 
-            // Record transaction
-            let timestamp = get_block_timestamp();
-            let tx_info = get_tx_info();
-            let transaction = Transaction {
-                transaction_type: 'WITHDRAWAL',
-                token: token_address,
-                amount,
-                timestamp,
-                tx_hash: tx_info.transaction_hash,
-            };
-            self._add_transaction(caller, transaction);
-            self
-                .emit(
-                    TransactionRecorded {
-                        user: caller,
-                        transaction_type: TransactionType::WITHDRAWAL,
-                        token: token_address,
-                        amount,
-                        timestamp,
-                        tx_hash: tx_info.transaction_hash,
-                    }
-                );
+            // Record Transaction
+            self.record_transaction(token_address, TransactionType::WITHDRAWAL, amount, caller);
 
             self.emit(WithdrawalSuccessful { user: caller, token: token_address, amount: amount, });
         }
@@ -233,37 +231,57 @@ pub struct BorrowProposalCreated {
         fn create_borrow_proposal(
             ref self: ContractState,
             token: ContractAddress,
+            accepted_collateral_token: ContractAddress,
             amount: u256,
+            required_collateral_value: u256,
             interest_rate: u64,
             duration: u64,
         ) {
-         
+        
             assert!(self.supported_tokens.entry(token).read(), "Token not supported");
+            assert!(self.supported_tokens.entry(accepted_collateral_token).read(), "Collateral token not supported");
             assert!(amount > 0, "Borrow amount must be greater than zero");
             assert!(interest_rate > 0 && interest_rate <= 7, "Interest rate out of bounds");
             assert!(duration >= 7 && duration <= 15, "Duration out of bounds");
-        
-         
+
             let caller = get_caller_address();
             let created_at = get_block_timestamp();
+
+            // Check if borrower has sufficient collateral * 1.3
+            let borrower_collateral_balance = self.token_deposits.entry((caller, accepted_collateral_token)).read();
+            assert(borrower_collateral_balance >= (required_collateral_value * COLLATERAL_RATIO_NUMERATOR) / COLLATERAL_RATIO_DENOMINATOR, 'insufficient collateral funds');
+
+            // Lock borrowers collateral
+            self.locked_collateral.entry((caller, accepted_collateral_token)).write(required_collateral_value);
+
+            let proposal_id = self.proposals_count.read() + 1;
         
             // Create a new proposal
-            let proposal = BorrowProposal {
+            let proposal = Proposal {
+                id: proposal_id,
+                lender: self.zero_address(),
                 borrower: caller,
+                proposal_type: ProposalType::BORROWING,
                 token,
+                accepted_collateral_token,
+                required_collateral_value,
                 amount,
                 interest_rate,
                 duration,
                 created_at,
+                is_accepted: false,
+                accepted_at: 0,
+                repayment_date: 0,
+                is_repaid: false
             };
         
             // Store the proposal
-            let proposal_id = self.borrow_proposals_count.read();
-            self.borrow_proposals.entry(proposal_id).write(proposal);
-            self.borrow_proposals_count.write(proposal_id + 1);
+            self.proposals.entry(proposal_id).write(proposal);
+            self.proposals_count.write(proposal_id);
         
             self.emit(
-                BorrowProposalCreated {
+                ProposalCreated {
+                    proposal_type: ProposalType::BORROWING,
                     borrower: caller,
                     token,
                     amount,
@@ -358,7 +376,7 @@ pub struct BorrowProposalCreated {
         /// - Includes token address and amount for each active deposit
 
         fn get_user_deposits(self: @ContractState, user: ContractAddress) -> Span<UserDeposit> {
-            assert!(user != contract_address_const::<0>(), "invalid user address");
+            assert!(user != self.zero_address(), "invalid user address");
 
             let mut user_deposits = array![];
             for i in 0
@@ -373,6 +391,35 @@ pub struct BorrowProposalCreated {
                     };
             user_deposits.span()
         }
+
+        fn accept_proposal(ref self: ContractState, proposal_id: u256) {
+            let caller = get_caller_address();
+            let proposal = self.proposals.entry(proposal_id).read();
+
+            // Calculate protocol fee
+            let fee_amount = (proposal.amount * PROTOCOL_FEE_PERCENTAGE) / 100;
+            let net_amount = proposal.amount - fee_amount;
+
+            match proposal.proposal_type {
+                ProposalType::BORROWING => {
+                    assert(caller != proposal.borrower, 'borrower not allowed');
+                    self.handle_borrower_acceptance(proposal, caller, net_amount, fee_amount);
+                },
+                ProposalType::LENDING => {
+                    assert(caller != proposal.lender, 'lender not allowed');
+                    self.handle_lender_acceptance(proposal, caller, net_amount, fee_amount);
+                }
+            }
+
+            self.proposals.entry(proposal_id).is_accepted.write(true);
+
+            self.emit(ProposalAccepted {
+                proposal_type: proposal.proposal_type,
+                accepted_by: caller,
+                token: proposal.token,
+                amount: proposal.amount
+            });
+        }
     }
 
     #[generate_trait]
@@ -384,6 +431,108 @@ pub struct BorrowProposalCreated {
             assert!(current_count < MAX_U64, "Transaction count overflow");
             self.user_transactions.entry((user, current_count)).write(transaction);
             self.user_transactions_count.entry(user).write(current_count + 1);
+        }
+
+        fn zero_address(self: @ContractState) -> ContractAddress {
+            contract_address_const::<0>()
+        }
+
+        fn handle_borrower_acceptance(ref self: ContractState, proposal: Proposal, lender: ContractAddress, net_amount: u256, fee_amount: u256) {
+            // Check if acceptor (lender) has sufficient funds
+            let lender_balance = self.token_deposits.entry((lender, proposal.token)).read();
+            assert(lender_balance >= proposal.amount, 'insufficient lender balance');
+
+            // Transfer net amount to borrower
+            IERC20Dispatcher { contract_address: proposal.token }.transfer(proposal.borrower, net_amount);
+
+            // Transfer protocol fee to protocol fee address
+            IERC20Dispatcher { contract_address: proposal.token }.transfer(self.protocol_fee_address.read(), fee_amount);
+
+            // Mint SPOK
+            self.mint_spoks(proposal.borrower, lender);
+
+            // Record Transaction
+            self.record_transaction(proposal.token, TransactionType::LEND, proposal.amount, lender);
+
+            // Update Proposal
+            let mut updated_proposal = proposal;
+
+            updated_proposal.lender = lender;
+            updated_proposal.is_accepted = true;
+            updated_proposal.accepted_at = get_block_timestamp();
+            updated_proposal.repayment_date = updated_proposal.accepted_at + proposal.duration;
+
+            self.proposals.entry(proposal.id).write(updated_proposal);
+        }
+
+        fn handle_lender_acceptance(ref self: ContractState, proposal: Proposal, borrower: ContractAddress, net_amount: u256, fee_amount: u256) {
+            // Check if acceptor (borrower) has sufficient collateral with 1.3x ratio
+            let required_collateral = (proposal.required_collateral_value * COLLATERAL_RATIO_NUMERATOR) / COLLATERAL_RATIO_DENOMINATOR;
+            let borrower_collateral_balance = self.token_deposits.entry((borrower, proposal.accepted_collateral_token)).read();
+            assert(borrower_collateral_balance >= required_collateral, 'Insufficient collateral');
+
+            // Lock borrowers collateral
+            self.locked_collateral.entry((borrower, proposal.accepted_collateral_token)).write(required_collateral);
+
+            // Transfer main amount from lender to borrower
+            IERC20Dispatcher { contract_address: proposal.token }.transfer(borrower, net_amount);
+            // Transfer protocol fee to protocol fee address
+            IERC20Dispatcher { contract_address: proposal.token }.transfer(self.protocol_fee_address.read(), fee_amount);
+
+            // Mint SPOK
+            self.mint_spoks(proposal.lender, borrower);
+
+            // Record Transaction
+            self.record_transaction(proposal.token, TransactionType::BORROW, proposal.amount, borrower);
+
+            // Update Proposal
+            let mut updated_proposal = proposal;
+
+            updated_proposal.borrower = borrower;
+            updated_proposal.is_accepted = true;
+            updated_proposal.accepted_at = get_block_timestamp();
+            updated_proposal.repayment_date = updated_proposal.accepted_at + proposal.duration;
+
+            self.proposals.entry(proposal.id).write(updated_proposal);
+        }
+
+        fn mint_spoks(ref self: ContractState, creator: ContractAddress, acceptor: ContractAddress) {
+            let spok = IERC721Dispatcher { contract_address: self.spok_nft.read() };
+
+            // Mint NFTs for both parties
+            let creator_token_id = self.next_spok_id.read();
+            let acceptor_token_id = creator_token_id + 1;
+
+            spok.mint(creator, creator_token_id);
+            spok.mint(acceptor, acceptor_token_id);
+
+            self.next_spok_id.write(acceptor_token_id + 1);
+        }
+
+        fn record_transaction(ref self: ContractState, token_address: ContractAddress, transaction_type: TransactionType, amount: u256, caller: ContractAddress) {
+            // Record transaction
+            let timestamp = get_block_timestamp();
+            let tx_info = get_tx_info();
+            let transaction = Transaction {
+                transaction_type: transaction_type,
+                token: token_address,
+                amount,
+                timestamp,
+                tx_hash: tx_info.transaction_hash,
+            };
+            self._add_transaction(caller, transaction);
+
+            self
+                .emit(
+                    TransactionRecorded {
+                        user: caller,
+                        transaction_type: TransactionType::WITHDRAWAL,
+                        token: token_address,
+                        amount,
+                        timestamp,
+                        tx_hash: tx_info.transaction_hash,
+                    }
+                );
         }
     }
 }

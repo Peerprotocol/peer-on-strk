@@ -2,9 +2,5 @@ target
 .snfoundry_cache/
 node_modules
 target
-src
 .env
 .DS_Store
-Scarb.toml
-Scarb.lock
-run

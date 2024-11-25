@@ -1,6 +1,6 @@
 use core::array::ArrayTrait;
 use starknet::{ContractAddress, get_block_timestamp};
-use peer_protocol::::{Proposal, ProposalType};
+use peer_protocol::interfaces::{Proposal, ProposalType};
 
 #[derive(Drop, Serde, Copy, starknet::Store)]
 enum TransactionType {
@@ -422,6 +422,86 @@ mod PeerProtocol {
                 amount: proposal.amount
             });
         }
+
+        fn create_lending_proposal(
+            ref self: ContractState,
+            token: ContractAddress,
+            amount: u256,
+            interest_rate: u64,
+            duration: u64,
+        ) {
+            // Input validation
+            assert!(self.supported_tokens.entry(token).read(), "Token not supported");
+            assert!(amount > 0, "Amount must be greater than zero");
+            assert!(interest_rate > 0 && interest_rate <= 7, "Interest rate must be <= 7%");
+            assert!(duration >= 7 && duration <= 15, "Duration must be 7-15 days");
+    
+            let caller = get_caller_address();
+            let created_at = get_block_timestamp();
+    
+            // Check if lender has sufficient funds to lend
+            let lender_balance = self.token_deposits.entry((caller, token)).read();
+            assert(lender_balance >= amount, 'insufficient lender balance');
+    
+            // Create proposal ID
+            let proposal_id = self.proposals_count.read() + 1;
+    
+            // Create new lending proposal
+            let proposal = Proposal {
+                id: proposal_id,
+                lender: caller,
+                borrower: self.zero_address(),  // Will be set when accepted
+                proposal_type: ProposalType::LENDING,
+                token,
+                accepted_collateral_token: self.zero_address(), // Will be set by borrower
+                required_collateral_value: 0,  // Will be set by borrower
+                amount,
+                interest_rate,
+                duration,
+                created_at,
+                is_accepted: false,
+                accepted_at: 0,
+                repayment_date: 0,
+                is_repaid: false
+            };
+    
+            // Store the proposal
+            self.proposals.entry(proposal_id).write(proposal);
+            self.proposals_count.write(proposal_id);
+    
+            // Reserve the funds by recording them as lent
+            self.lent_assets.entry((caller, token)).write(amount);
+    
+            // Emit proposal created event
+            self.emit(
+                ProposalCreated {
+                    proposal_type: ProposalType::LENDING,
+                    borrower: self.zero_address(),
+                    token,
+                    amount,
+                    interest_rate,
+                    duration,
+                    created_at,
+                }
+            );
+        }
+    
+        // Function to get all lending proposals
+        fn get_lending_proposals(self: @ContractState) -> Array<Proposal> {
+            let mut lending_proposals = ArrayTrait::new();
+            let proposal_count = self.proposals_count.read();
+            
+            let mut i: u256 = 1;
+            while i <= proposal_count {
+                let proposal = self.proposals.entry(i).read();
+                if proposal.proposal_type == ProposalType::LENDING && !proposal.is_accepted {
+                    lending_proposals.append(proposal);
+                }
+                i += 1;
+            };
+    
+            lending_proposals
+        }
     }
 
     #[generate_trait]
@@ -536,88 +616,5 @@ mod PeerProtocol {
                     }
                 );
         }
-    }
-}
-
-#[starknet::contract]
-impl PeerProtocolImpl of IPeerProtocol<ContractState> {
-    fn create_lending_proposal(
-        ref self: ContractState,
-        token: ContractAddress,
-        amount: u256,
-        interest_rate: u64,
-        duration: u64,
-    ) {
-        // Input validation
-        assert!(self.supported_tokens.entry(token).read(), "Token not supported");
-        assert!(amount > 0, "Amount must be greater than zero");
-        assert!(interest_rate > 0 && interest_rate <= 7, "Interest rate must be <= 7%");
-        assert!(duration >= 7 && duration <= 15, "Duration must be 7-15 days");
-
-        let caller = get_caller_address();
-        let created_at = get_block_timestamp();
-
-        // Check if lender has sufficient funds to lend
-        let lender_balance = self.token_deposits.entry((caller, token)).read();
-        assert(lender_balance >= amount, 'insufficient lender balance');
-
-        // Create proposal ID
-        let proposal_id = self.proposals_count.read() + 1;
-
-        // Create new lending proposal
-        let proposal = Proposal {
-            id: proposal_id,
-            lender: caller,
-            borrower: self.zero_address(),  // Will be set when accepted
-            proposal_type: ProposalType::LENDING,
-            token,
-            accepted_collateral_token: self.zero_address(), // Will be set by borrower
-            required_collateral_value: 0,  // Will be set by borrower
-            amount,
-            interest_rate,
-            duration,
-            created_at,
-            is_accepted: false,
-            accepted_at: 0,
-            repayment_date: 0,
-            is_repaid: false
-        };
-
-        // Store the proposal
-        self.proposals.entry(proposal_id).write(proposal);
-        self.proposals_count.write(proposal_id);
-
-        // Reserve the funds by recording them as lent
-        self.lent_assets.entry((caller, token)).write(amount);
-
-        // Emit proposal created event
-        self.emit(
-            ProposalCreated {
-                proposal_type: ProposalType::LENDING,
-                borrower: self.zero_address(),
-                token,
-                amount,
-                interest_rate,
-                duration,
-                created_at,
-            }
-        );
-    }
-
-    // Function to get all lending proposals
-    fn get_lending_proposals(self: @ContractState) -> Array<Proposal> {
-        let mut lending_proposals = ArrayTrait::new();
-        let proposal_count = self.proposals_count.read();
-        
-        let mut i: u256 = 1;
-        while i <= proposal_count {
-            let proposal = self.proposals.entry(i).read();
-            if proposal.proposal_type == ProposalType::LENDING && !proposal.is_accepted {
-                lending_proposals.append(proposal);
-            }
-            i += 1;
-        };
-
-        lending_proposals
     }
 }

@@ -84,6 +84,24 @@ const Table: React.FC = () => {
       : ({} as any)
   );
 
+  // Read borrowed tokens
+  const {
+    data: borrowedTokens,
+    isLoading: isLoadingTokens,
+    refetch: refetchTokens,
+    isFetching: isFetchingTokens,
+  } = useContractRead(
+    user
+      ? {
+          abi: protocolAbi,
+          address: PROTOCOL_ADDRESS,
+          functionName: "get_position_overview",
+          args: [user],
+        }
+      : ({} as any)
+  );
+
+
   // Filter data based on the active tab
   const getDataForActiveTab = () => {
     switch (activeTab) {
@@ -295,6 +313,7 @@ const Table: React.FC = () => {
           </table>
         </div>
       )}
+
       {activeTab === "Transaction History" && (
         <div className="overflow-x-auto text-black my-6">
           <table className="w-full border-collapse">
@@ -307,9 +326,7 @@ const Table: React.FC = () => {
                 <th className="p-4 text-left border-b font-semibold">
                   Quantity
                 </th>
-                <th className="p-4 text-left border-b font-semibold">
-                  Amount
-                </th>
+                <th className="p-4 text-left border-b font-semibold">Amount</th>
                 <th className="p-4 text-left border-b font-semibold">
                   Timestamp
                 </th>
@@ -367,7 +384,8 @@ const Table: React.FC = () => {
                         )}
                       </td>
                       <td className="p-4 border-b border-l">
-                      ${token && !priceError
+                        $
+                        {token && !priceError
                           ? (
                               usdValues[
                                 token.symbol.toLowerCase() as "eth" | "strk"
@@ -380,7 +398,115 @@ const Table: React.FC = () => {
                       </td>
                       <td className="p-4 border-b border-l">
                         <a
-                          href={`https://sepolia.voyager.online/tx/${felt252ToHex(row.tx_hash)}`}
+                          href={`https://sepolia.voyager.online/tx/${felt252ToHex(
+                            row.tx_hash
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-md"
+                        >
+                          See transaction...
+                        </a>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={5} className="p-4 text-center">
+                    No transaction history available
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {activeTab === "Position Overview" && (
+        <div className="overflow-x-auto text-black my-6">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="border bg-smoke-white">
+                <th className="p-4 text-left border-b font-semibold">Token</th>
+                <th className="p-4 text-left border-b font-semibold">
+                  Expected Repayment Time
+                </th>
+                <th className="p-4 text-left border-b font-semibold">Intrest Rate</th>
+                <th className="p-4 text-left border-b font-semibold">
+                  Amount Borrowed
+                </th>
+                <th className="p-4 text-left border-b font-semibold"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoadingTransactions || isFetchingTransactions ? (
+                <tr>
+                  <td colSpan={5} className="p-4 text-center">
+                    <AssetsLoader />
+                  </td>
+                </tr>
+              ) : transactions ? (
+                currentRows &&
+                currentRows.map((row, index: number) => {
+                  let tokenAddressHex = "";
+                  try {
+                    tokenAddressHex = toHex(row.token.toString());
+                  } catch (error) {
+                    if (error instanceof TypeError || error instanceof Error) {
+                      console.error(
+                        `Error converting token to hex: ${error.message}`
+                      );
+                    } else {
+                      console.error(
+                        "An unknown error occurred during token conversion."
+                      );
+                    }
+                  }
+                  const token = tokens.find(
+                    (token) => token.address == tokenAddressHex
+                  );
+                  return (
+                    <tr key={index}>
+                      <td className="p-4 border-b border-l">
+                        {getTransactionTypeLabel(row.transaction_type)}
+                      </td>
+                      <td className="p-4 border-b border-l flex gap-3 items-center">
+                        {token && (
+                          <>
+                            <Image
+                              src={token.icon}
+                              width={20}
+                              height={20}
+                              alt={`${token.symbol} Token`}
+                            />
+                            <span>{token.symbol}</span>
+                          </>
+                        )}
+                      </td>
+                      <td className="p-4 border-b border-l">
+                        {Number(formatCurrency(row.amount?.toString())).toFixed(
+                          3
+                        )}
+                      </td>
+                      <td className="p-4 border-b border-l">
+                        $
+                        {token && !priceError
+                          ? (
+                              usdValues[
+                                token.symbol.toLowerCase() as "eth" | "strk"
+                              ] * Number(formatCurrency(Number(row.amount)))
+                            ).toFixed(3)
+                          : priceError}
+                      </td>
+                      <td className="p-4 border-b border-l">
+                        {formatDate1(row.timestamp?.toString())}
+                      </td>
+                      <td className="p-4 border-b border-l">
+                        <a
+                          href={`https://sepolia.voyager.online/tx/${felt252ToHex(
+                            row.tx_hash
+                          )}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-md"

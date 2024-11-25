@@ -56,7 +56,7 @@ struct Proposal {
     accepted_at: u64,
     repayment_date: u64,
     is_repaid: bool,
-    counter_proposal_count: u256
+    num_proposal_counters: u256
 }
 
 #[derive(Drop, Serde, Copy, starknet::Store)]
@@ -319,7 +319,7 @@ mod PeerProtocol {
                 accepted_at: 0,
                 repayment_date: 0,
                 is_repaid: false,
-                counter_proposal_count: 0
+                num_proposal_counters: 0
             };
 
             // Store the proposal
@@ -484,7 +484,11 @@ mod PeerProtocol {
             let created_at = get_block_timestamp();
             let proposal = self.proposals.entry(proposal_id).read();
 
-            let counter_proposal_id = proposal.counter_proposal_count + 1;
+            assert!(
+                proposal.proposal_type == ProposalType::LENDING, "Can only counter lending proposal"
+            );
+
+            let counter_proposal_id = proposal.num_proposal_counters + 1;
 
             let counter_proposal = CounterProposal {
                 id: counter_proposal_id,
@@ -498,7 +502,7 @@ mod PeerProtocol {
             };
 
             let mut updated_proposal = proposal;
-            updated_proposal.counter_proposal_count = counter_proposal_id;
+            updated_proposal.num_proposal_counters = counter_proposal_id;
 
             // update the proposal
             self.proposals.entry(proposal_id).write(updated_proposal);

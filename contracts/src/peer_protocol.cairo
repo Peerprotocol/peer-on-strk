@@ -290,7 +290,22 @@ mod PeerProtocol {
                     created_at,
                 },
             );
-        }        
+        } 
+        
+                /// Retrieves all borrow proposals from the contract storage.
+        fn get_all_borrow_proposals(self: @ContractState) -> Array<Proposal> {
+            let mut proposals_array: Array<Proposal> = ArrayTrait::new();
+            
+            let count = self.proposals_count.read();
+            for id in 1..=count {
+                let proposal = self.proposals.entry(id).read();
+                if proposal.proposal_type == ProposalType::BORROWING {
+                    proposals_array.append(proposal);
+                }
+            }
+
+            proposals_array
+        }       
 
         fn get_transaction_history(
             self: @ContractState, user: ContractAddress, offset: u64, limit: u64

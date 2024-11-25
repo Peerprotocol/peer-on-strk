@@ -184,6 +184,46 @@ mod PeerProtocol {
         pub amount: u256
     }
 
+    #[event]
+    #[derive(Drop, starknet::Event)]
+    struct LiquidationExecuted {
+        borrower: ContractAddress,
+        lender: ContractAddress,
+        loan_token: ContractAddress,
+        collateral_token: ContractAddress,
+        loan_value: u256,
+        collateral_value: u256,
+        timestamp: u64
+    }
+
+    #[abi]
+    trait IPriceOracle {
+        fn get_price(token: ContractAddress) -> u256;
+    }
+
+    // Price Oracle Dispatcher
+    #[derive(Copy, Drop)]
+    struct IPriceOracleDispatcher {
+        contract_address: ContractAddress
+    }
+
+    trait IPriceOracleDispatcherTrait {
+        fn get_price(self: @IPriceOracleDispatcher, token: ContractAddress) -> u256;
+    }
+
+    impl IPriceOracleDispatcherImpl of IPriceOracleDispatcherTrait {
+        fn get_price(self: @IPriceOracleDispatcher, token: ContractAddress) -> u256 {
+            let mut calldata = array![];
+            calldata.append(token.into());
+
+            let ret_data = starknet::call_contract_syscall(
+                *self.contract_address, selector!("get_price"), calldata.span()
+            )
+                .unwrap();
+
+            *ret_data.at(0)
+        }
+    }
 
     #[constructor]
     fn constructor(
@@ -574,8 +614,15 @@ mod PeerProtocol {
         }
 
         fn get_token_price(self: @ContractState, token: ContractAddress) -> u256 {
-            // Implement price fetching from oracle
-            1_u256 
+            let oracle_address = self.price_oracles.entry(token).read();
+            assert(oracle_address != self.zero_address(), 'no oracle for token');
+
+            // Create oracle dispatcher and get price
+            let oracle = IPriceOracleDispatcher { contract_address: oracle_address };
+            let price = oracle.get_price(token);
+            assert(price > 0, 'invalid price returned');
+
+            price
         }
 
         fn record_liquidation(
@@ -586,7 +633,40 @@ mod PeerProtocol {
             collateral_token: ContractAddress,
             loan_value: u256,
             collateral_value: u256
-        ) {// TODO - Record the liquidation event - implement as needed
+        ) {
+            // Create liquidation transaction record for borrower
+            let borrower_transaction = Transaction {
+                transaction_type: TransactionType::WITHDRAWAL, 
+                token: collateral_token,
+                amount: collateral_value,
+                timestamp: get_block_timestamp(),
+                tx_hash: get_tx_info().transaction_hash,
+            };
+            self._add_transaction(borrower, borrower_transaction);
+
+            // Create liquidation transaction record for lender
+            let lender_transaction = Transaction {
+                transaction_type: TransactionType::DEPOSIT, 
+                token: collateral_token,
+                amount: collateral_value,
+                timestamp: get_block_timestamp(),
+                tx_hash: get_tx_info().transaction_hash,
+            };
+            self._add_transaction(lender, lender_transaction);
+
+            // Emit liquidation event
+            self
+                .emit(
+                    LiquidationExecuted {
+                        borrower,
+                        lender,
+                        loan_token,
+                        collateral_token,
+                        loan_value,
+                        collateral_value,
+                        timestamp: get_block_timestamp()
+                    }
+                );
         }
     }
 

@@ -3,7 +3,7 @@ import Link from "next/link";
 
 const Sidebar = () => {
   return (
-    <div className="bg-black w-[15%] h-screen rounded-r-[2.5rem] py-8 hidden lg:flex flex-col sticky top-0">
+    <div className="bg-black w-[15%] h-screen rounded-r-[2.5rem] py-8 hidden text-white lg:flex flex-col sticky top-0">
       <Image
         className="mx-[30%]"
         src="/images/LogoWhite.svg"

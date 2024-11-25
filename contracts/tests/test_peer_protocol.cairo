@@ -447,3 +447,153 @@ fn test_create_borrow_proposal_should_panic_for_unsupported_token() {
     stop_cheat_caller_address(peer_protocol_address);
 }
 
+#[test]
+fn test_get_all_proposals_with_no_proposals() {
+    let peer_protocol_address = deploy_peer_protocol();
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+    let proposals = peer_protocol.get_all_proposals();
+    assert(proposals.len() == 0, 'Should be empty');
+}
+
+#[test]
+fn test_get_all_proposals() {
+    // Deploy and setup
+    let (token_address, collateral_token_address, peer_protocol_address) = setup_protocol();
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+    let borrower = starknet::contract_address_const::<0x122226789>();
+
+    // Setup borrower
+    setup_borrower(
+        peer_protocol_address, 
+        token_address,
+        collateral_token_address,
+        borrower, 
+        1000 * ONE_E18
+    );
+
+    // Create two proposals
+    start_cheat_caller_address(peer_protocol_address, borrower);
+    create_test_proposal(
+        peer_protocol_address, 
+        token_address,
+        collateral_token_address,
+        500 * ONE_E18, 
+        5_u64, 
+        7_u64
+    );
+    create_test_proposal(
+        peer_protocol_address, 
+        token_address,
+        collateral_token_address,
+        300 * ONE_E18, 
+        7_u64, 
+        10_u64
+    );
+
+    // Verify proposals
+    let proposals = peer_protocol.get_all_proposals();
+    assert(proposals.len() == 2, 'Wrong number of proposals');
+
+    let first = *proposals.at(0);
+    assert(first.amount == 500 * ONE_E18, 'Wrong first amount');
+    assert(first.interest_rate == 5_u64, 'Wrong first rate');
+
+    let second = *proposals.at(1);
+    assert(second.amount == 300 * ONE_E18, 'Wrong second amount');
+    assert(second.interest_rate == 7_u64, 'Wrong second rate');
+    
+    stop_cheat_caller_address(peer_protocol_address);
+}
+
+fn deploy_spok_nft() -> ContractAddress {
+    let contract = declare("MockNFT").unwrap().contract_class();
+    let mut constructor_calldata = ArrayTrait::new();
+    let (contract_address, _) = contract.deploy(@constructor_calldata).unwrap();
+    contract_address
+}
+
+// Helper function to setup protocol and tokens
+fn setup_protocol() -> (ContractAddress, ContractAddress, ContractAddress) {
+    let token_address = deploy_token("MockToken");
+    let collateral_token_address = deploy_token("MockToken1");
+    let peer_protocol_address = deploy_peer_protocol();
+    
+    let owner = starknet::contract_address_const::<0x123626789>();
+    
+    start_cheat_caller_address(peer_protocol_address, owner);
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+    peer_protocol.add_supported_token(token_address);
+    peer_protocol.add_supported_token(collateral_token_address);
+    stop_cheat_caller_address(peer_protocol_address);
+    
+    (token_address, collateral_token_address, peer_protocol_address)
+}
+
+// Helper function to setup borrower
+fn setup_borrower(
+    peer_protocol_address: ContractAddress,
+    token_address: ContractAddress,
+    collateral_token_address: ContractAddress,
+    borrower: ContractAddress,
+    amount: u256
+) {
+    let token = IERC20Dispatcher { contract_address: token_address };
+    let collateral_token = IERC20Dispatcher { contract_address: collateral_token_address };
+    
+    // Mint tokens
+    token.mint(borrower, amount);
+    collateral_token.mint(borrower, amount);
+
+    // Approve tokens
+    start_cheat_caller_address(token_address, borrower);
+    token.approve(peer_protocol_address, amount);
+    stop_cheat_caller_address(token_address);
+
+    start_cheat_caller_address(collateral_token_address, borrower);
+    collateral_token.approve(peer_protocol_address, amount);
+    stop_cheat_caller_address(collateral_token_address);
+}
+
+// Helper function to setup lender
+fn setup_lender(
+    peer_protocol_address: ContractAddress,
+    token_address: ContractAddress,
+    lender: ContractAddress,
+    amount: u256
+) {
+    let token = IERC20Dispatcher { contract_address: token_address };
+    token.mint(lender, amount);
+    
+    start_cheat_caller_address(token_address, lender);
+    token.approve(peer_protocol_address, amount);
+    stop_cheat_caller_address(token_address);
+    
+    start_cheat_caller_address(peer_protocol_address, lender);
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+    peer_protocol.deposit(token_address, amount);
+    stop_cheat_caller_address(peer_protocol_address);
+}
+
+// Helper function to create a test proposal
+fn create_test_proposal(
+    peer_protocol_address: ContractAddress,
+    token_address: ContractAddress,
+    collateral_token_address: ContractAddress,
+    amount: u256,
+    rate: u64,
+    duration: u64
+) {
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+    let collateral_value = 300 * ONE_E18;
+    let collateral_with_ratio = (collateral_value * COLLATERAL_RATIO_NUMERATOR) / COLLATERAL_RATIO_DENOMINATOR;
+    
+    peer_protocol.deposit(collateral_token_address, collateral_with_ratio);
+    peer_protocol.create_borrow_proposal(
+        token_address,
+        collateral_token_address,
+        amount,
+        collateral_value,
+        rate,
+        duration
+    );
+}

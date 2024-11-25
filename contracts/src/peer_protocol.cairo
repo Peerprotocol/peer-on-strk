@@ -420,6 +420,21 @@ mod PeerProtocol {
                 amount: proposal.amount
             });
         }
+
+        fn get_all_proposals(self: @ContractState) -> Array<Proposal> {
+            let mut proposals = ArrayTrait::new();
+            let proposals_count = self.proposals_count.read();
+
+            let mut i: u256 = 1;
+
+            while i <= proposals_count {
+                let proposal = self.proposals.entry(i).read();
+                proposals.append(proposal);
+                i += 1;
+            };
+
+            proposals
+        }
     }
 
     #[generate_trait]

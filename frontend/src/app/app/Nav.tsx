@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import ConnectButton from "@/components/lib/Connect";
 import AddressBar from "@/components/lib/AddressBar";
-import MenuButton from "@/components/internal/MenuButton";
 import { useAccount } from "@starknet-react/core";
 
 
@@ -99,6 +98,18 @@ const Nav = () => {
                     className=""
                   />
                   Dashboard
+                </li>
+              </Link>
+              <Link href="/app/quests">
+                <li className="flex gap-2">
+                  <Image
+                    src="/icons/quests.svg"
+                    height={30}
+                    width={30}
+                    alt="Notification icon"
+                    className=""
+                  />
+                  Quests
                 </li>
               </Link>
             </ul>

@@ -1,7 +1,41 @@
+'use client'
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
+import { generateCodeChallenge, generateCodeVerifier } from "./callback/oauth-utils";
 
 export default function WelcomePage() {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleTwitterLogin = async () => {
+    setIsLoading(true);
+    
+    // Twitter OAuth 2.0 parameters
+    const state = crypto.randomUUID();
+    const codeVerifier = generateCodeVerifier();
+    const codeChallenge = await generateCodeChallenge(codeVerifier);
+    
+    // Store code_verifier for later use
+    localStorage.setItem('twitter_code_verifier', codeVerifier);
+
+    // Save state to verify later
+    localStorage.setItem('twitter_oauth_state', state);
+
+    // Construct Twitter OAuth URL
+    const authUrl = `https://twitter.com/i/oauth2/authorize?${new URLSearchParams({
+      response_type: 'code',
+      client_id: process.env.NEXT_PUBLIC_TWITTER_CLIENT_ID!,
+      redirect_uri: process.env.NEXT_PUBLIC_REDIRECT_URI!,
+      scope: 'tweet.read users.read',
+      state: state,
+      code_challenge: codeChallenge,
+      code_challenge_method: 'S256'
+    })}`;
+
+    // Redirect to Twitter
+    window.location.href = authUrl;
+  };
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <header className="p-6">
@@ -29,15 +63,27 @@ export default function WelcomePage() {
           </p>
         </div>
 
-        <button className="inline-flex items-center justify-center rounded-full border-2 border-black px-8 py-3 text-base font-medium text-black hover:bg-black/70 hover:text-white transition-colors">
-          Login with
-          <Image
-            src="/images/TwitterXsvg.svg"
-            alt="X (formerly Twitter)"
-            width={20}
-            height={20}
-            className="ml-2"
-          />
+        <button
+          onClick={handleTwitterLogin}
+          disabled={isLoading}
+          className="inline-flex items-center justify-center rounded-full border-2 border-black px-8 py-3 text-base font-medium text-black hover:bg-black/70 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isLoading ? (
+            <>
+              Connecting...
+            </>
+          ) : (
+            <>
+              Login with
+              <Image
+                src="/images/TwitterXsvg.svg"
+                alt="X (formerly Twitter)"
+                width={20}
+                height={20}
+                className="ml-2"
+              />
+            </>
+          )}
         </button>
       </main>
 

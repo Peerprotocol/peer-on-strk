@@ -1,18 +1,26 @@
 "use client";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-
 
 const Nav = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [user, setUser] = useState<string | null>(null); // State to store user data
+
+  useEffect(() => {
+    // Retrieve user data from localStorage on the client side
+    const storedUser = localStorage.getItem('twitter_user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
   return (
-    <nav className="flex justify-between items-center p-4 z-10 w-full gap-3">
+    <nav className="flex justify-between items-center p-4 w-full gap-3">
       {/* Logo for mobile */}
       <div className="md:hidden flex">
         <Image
@@ -27,7 +35,7 @@ const Nav = () => {
       {/* Notification icon hidden on mobile */}
       <div className="hidden md:flex self-end">
         <Image
-          src="/images/LogoBlack.svg"
+          src="/images/notification.svg"
           height={30}
           width={30}
           alt="Notification icon"
@@ -35,12 +43,16 @@ const Nav = () => {
         />
       </div>
 
+      {/* Display the username */}
+      <div className="relative text-white bg-black rounded-full px-4 py-2">
+        {user ? `Welcome, ${user}` : "@I_amprof"}
+      </div>
 
       {/* Mobile nav toggle */}
       <div className="lg:hidden flex items-center gap-4">
         <button onClick={toggleMobileMenu}>
           <Image
-            src="/icons/hamburger.svg"
+            src="/icons/menu.svg"
             height={30}
             width={30}
             alt="Mobile Menu"
@@ -50,9 +62,7 @@ const Nav = () => {
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-
-        //fixed the navbar for my social section so it has margin at both left and right,
-        <div className="top-2 fixed mx-auto w-[93%] h-[fit-content] bg-white text-black  z-50 flex flex-col rounded-md p-2">
+        <div className="top-2 fixed mx-auto w-[98%] h-[fit-content] bg-white text-black  z-50 flex flex-col rounded-md p-2">
           <div className="w-full bg-[#efefef] flex flex-col gap-4 p-4 items-start text-left rounded-lg">
             <button onClick={toggleMobileMenu} className="self-end mb-4">
               <Image
@@ -70,61 +80,22 @@ const Nav = () => {
                     src="/images/institution.svg"
                     height={30}
                     width={30}
-                    alt="quest icon"
+                    alt="Market icon"
                     className=""
                   />
                   Market
                 </li>
               </Link>
-              
               <Link href="/profile">
                 <li className="flex gap-2">
                   <Image
-                    src="/images/drop-of-liquid.svg"
+                    src="/images/portfolio.svg"
                     height={30}
                     width={30}
-                    alt="quest icon"
+                    alt="Dashboard icon"
                     className=""
                   />
-                  Liquidity
-                </li>
-              </Link>
-
-              <Link href="/profile">
-                <li className="flex gap-2">
-                  <Image
-                    src="/images/reverse-arrow.svg"
-                    height={30}
-                    width={30}
-                    alt="quest icon"
-                    className=""
-                  />
-                  Swap
-                </li>
-              </Link>
-              <Link href="/profile">
-                <li className="flex gap-2">
-                  <Image
-                    src="/images/dashboard.svg"
-                    height={30}
-                    width={30}
-                    alt="quest icon"
-                    className=""
-                  />
-                  Porfolio
-                </li>
-              </Link>
-
-              <Link href="/profile">
-                <li className="flex gap-2">
-                  <Image
-                    src="/images/asset-allocation.svg"
-                    height={30}
-                    width={30}
-                    alt="quest icon"
-                    className=""
-                  />
-                  Asset manager
+                  Dashboard
                 </li>
               </Link>
             </ul>

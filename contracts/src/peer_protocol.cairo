@@ -24,11 +24,21 @@ struct Transaction {
     tx_hash: felt252,
 }
 
+#[derive(Drop, Serde, Copy, starknet::Store)]
+struct BorrowedDetails {
+    token_borrowed: ContractAddress,
+    repayment_time: u256,
+    interest_rate: u64,
+    amount_borrowed: u64,
+}
+
 #[derive(Drop, Serde)]
 struct UserDeposit {
     token: ContractAddress,
     amount: u256,
 }
+
+
 
 #[derive(Drop, Serde)]
 struct UserAssets {
@@ -61,7 +71,7 @@ struct Proposal {
 #[starknet::contract]
 mod PeerProtocol {
     use starknet::event::EventEmitter;
-    use super::{Transaction, TransactionType, UserDeposit, UserAssets, Proposal, ProposalType};
+    use super::{Transaction, TransactionType, UserDeposit, UserAssets, Proposal, ProposalType, BorrowedDetails};
     use peer_protocol::interfaces::ipeer_protocol::IPeerProtocol;
     use peer_protocol::interfaces::ierc20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use peer_protocol::interfaces::ierc721::{IERC721Dispatcher, IERC721DispatcherTrait};
@@ -420,6 +430,56 @@ mod PeerProtocol {
                 amount: proposal.amount
             });
         }
+
+        fn get_borrowed_tokens(self: @ContractState, user: ContractAddress) -> Array<BorrowedDetails> {
+            let mut borrowed_assets: Array<BorrowedDetails> = ArrayTrait::new();
+
+
+            for i in 0
+                ..self
+                    .supported_token_list
+                    .len() {
+                        let supported_token = self.supported_token_list.at(i).read();
+
+                        let total_deposits = self
+                            .token_deposits
+                            .entry((user, supported_token))
+                            .read();
+                        let total_borrowed = self
+                            .borrowed_assets
+                            .entry((user, supported_token))
+                            .read();
+                        let total_lent = self.lent_assets.entry((user, supported_token)).read();
+                        let interest_earned = self
+                            .interests_earned
+                            .entry((user, supported_token))
+                            .read();
+
+                        let available_balance = if total_borrowed == 0 {
+                            total_deposits
+                        } else {
+                            match total_deposits > total_borrowed {
+                                true => total_deposits - total_borrowed,
+                                false => 0
+                            }
+                        };
+
+                        let token_assets = UserAssets {
+                            token_address: supported_token,
+                            total_lent,
+                            total_borrowed,
+                            interest_earned,
+                            available_balance
+                        };
+
+                        if total_deposits > 0 || total_lent > 0 || total_borrowed > 0 {
+                            user_assets.append(token_assets);
+                        }
+                    };
+
+
+            borrowed_assets
+        }
     }
 
     #[generate_trait]
@@ -447,6 +507,8 @@ mod PeerProtocol {
 
             // Transfer protocol fee to protocol fee address
             IERC20Dispatcher { contract_address: proposal.token }.transfer(self.protocol_fee_address.read(), fee_amount);
+
+
 
             // Mint SPOK
             self.mint_spoks(proposal.borrower, lender);

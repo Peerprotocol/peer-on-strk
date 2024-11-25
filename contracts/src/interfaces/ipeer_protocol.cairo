@@ -1,5 +1,5 @@
 use starknet::ContractAddress;
-use peer_protocol::peer_protocol::{Transaction, UserAssets, UserDeposit};
+use peer_protocol::peer_protocol::{Transaction, UserAssets, UserDeposit, BorrowedDetails};
 use core::array::Array;
 use core::array::SpanTrait;
 
@@ -12,6 +12,7 @@ pub trait IPeerProtocol<TContractState> {
     fn accept_proposal(ref self: TContractState, proposal_id: u256);
 
     fn get_transaction_history(self: @TContractState, user: ContractAddress, offset: u64, limit: u64) -> Array<Transaction>;
+    fn get_borrowed_tokens(self: @TContractState, user: ContractAddress) -> Array<BorrowedDetails>;
     fn get_user_assets(self: @TContractState, user: ContractAddress) -> Array<UserAssets>;
     fn get_user_deposits(self: @TContractState, user: ContractAddress) -> Span<UserDeposit>;
 }

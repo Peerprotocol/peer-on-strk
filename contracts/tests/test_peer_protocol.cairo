@@ -448,7 +448,7 @@ fn test_create_borrow_proposal_should_panic_for_unsupported_token() {
 }
 
 #[test]
-fn test_repay_loan() {
+fn test_repay_proposal() {
     let token_address = deploy_token("MockToken");
     let collateral_token_address = deploy_token("MockToken1");
     let peer_protocol_address = deploy_peer_protocol();

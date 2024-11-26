@@ -27,9 +27,9 @@ struct Transaction {
 #[derive(Drop, Serde, Copy, starknet::Store)]
 struct BorrowedDetails {
     token_borrowed: ContractAddress,
-    repayment_time: u256,
+    repayment_time: u64,
     interest_rate: u64,
-    amount_borrowed: u64,
+    amount_borrowed: u256,
 }
 
 #[derive(Drop, Serde)]
@@ -466,8 +466,6 @@ mod PeerProtocol {
             // Transfer protocol fee to protocol fee address
             IERC20Dispatcher { contract_address: proposal.token }.transfer(self.protocol_fee_address.read(), fee_amount);
 
-
-
             // Mint SPOK
             self.mint_spoks(proposal.borrower, lender);
 
@@ -499,6 +497,7 @@ mod PeerProtocol {
             // Transfer protocol fee to protocol fee address
             IERC20Dispatcher { contract_address: proposal.token }.transfer(self.protocol_fee_address.read(), fee_amount);
 
+
             // Mint SPOK
             self.mint_spoks(proposal.lender, borrower);
 
@@ -512,6 +511,13 @@ mod PeerProtocol {
             updated_proposal.is_accepted = true;
             updated_proposal.accepted_at = get_block_timestamp();
             updated_proposal.repayment_date = updated_proposal.accepted_at + proposal.duration;
+
+            let borrowed_token_details = BorrowedDetails {
+                token_borrowed: updated_proposal.token, 
+                repayment_time:  updated_proposal.accepted_at + proposal.duration,
+                interest_rate: proposal.interest_rate ,
+                amount_borrowed: net_amount
+            };
 
             self.proposals.entry(proposal.id).write(updated_proposal);
         }

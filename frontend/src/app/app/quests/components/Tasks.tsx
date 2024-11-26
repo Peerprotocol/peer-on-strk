@@ -1,6 +1,5 @@
 import React, { useContext, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
-import { DarkModeContext } from "./DarkMode";
 interface AmbassadorTasksProps {
     title: string;
     completedText: string;
@@ -8,7 +7,6 @@ interface AmbassadorTasksProps {
 
 const AmbassadorTasks: React.FC<AmbassadorTasksProps> = ({ title, completedText }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const { isDarkMode, toggleDark } = useContext(DarkModeContext);
 
     const toggleOpen = (event: React.MouseEvent<SVGSVGElement>) => {
         event.preventDefault();
@@ -17,7 +15,7 @@ const AmbassadorTasks: React.FC<AmbassadorTasksProps> = ({ title, completedText 
 
     return (
         <div className="p-2 flex flex-col gap-2 w-full">
-            <h2 className={`font-[600] xl:text-[1.25rem] lg:text-[1rem] md:text-[2.8rem] sm:text-[2rem] xs:text-[1.5rem] sm:mt-[-1rem] text-[3rem]  ${isDarkMode ? "  text-white" : "   text-black"}`}>
+            <h2 className={`font-[600] xl:text-[1.25rem] lg:text-[1rem] md:text-[2.8rem] sm:text-[2rem] xs:text-[1.5rem] sm:mt-[-1rem] text-[3rem]  text-black`}>
                 {title}
             </h2>
             <div className="bg-white flex flex-col gap-2 rounded-2xl p-4">

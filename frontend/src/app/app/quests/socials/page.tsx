@@ -1,13 +1,9 @@
-// app/QuestPage/page.tsx
 'use client'
-import { useContext, useState } from "react";
-// import { ChevronDown } from "lucide-react";
-
-import { DarkModeContext } from "./components/DarkMode";
-import Task from './components/Tasks'
-import TaskMobile from './components/TasksMobile'
-import NavMain from './components/NavMain'
-import Sidebar from './components/sidebar'
+import { useState } from "react";
+import Task from '../components/Tasks'
+import TaskMobile from '../components/TasksMobile'
+import Sidebar from "../../sidebar";
+import Nav from "../components/Nav";
 
 interface Quest {
     id: number;
@@ -18,27 +14,25 @@ interface Quest {
 }
 
 export default function Socials() {
-    const { isDarkMode } = useContext(DarkModeContext);
-
-
     const [isOpen, setIsOpen] = useState<Boolean>(false)
 
     const toggleOpen = () => {
         setIsOpen(!isOpen);
     };
+
   return (
     <main className="bg-[#F5F5F5]">
       <div className="flex h-screen">
         <Sidebar />
         <div className='flex-1 flex flex-col h-full max-h-screen overflow-auto '>
-          {<NavMain />}
+          {<Nav />}
 
           <main className='flex-1 px-3 md:px-6 '>
           <section className="md:p-4 flex flex-col gap-6">
             <div className='flex flex-col gap-2'>
-                <h1 className={`font-[600] xl:text-[3.1rem] lg:text-[2.9rem] md:text-[2.8rem] sm:text-[2rem] xs:text-[1.5rem]  ${isDarkMode ? "  text-white" : "   text-black"}`}>Tasks</h1>
+                <h1 className={`font-[600] xl:text-[3.1rem] lg:text-[2.9rem] md:text-[2.8rem] sm:text-[2rem] xs:text-[1.5rem]  text-black`}>Tasks</h1>
 
-                <p className={` xl:max-w-[70%] opacity-60 md:w-[80%] md:text-lg text-[1rem] ${isDarkMode ? "  text-white" : "   text-black"}`}>Get rewarded for completing Quests</p>
+                <p className={` xl:max-w-[70%] opacity-60 md:w-[80%] md:text-lg text-[1rem] text-black`}>Get rewarded for completing Quests</p>
 
             </div>
 

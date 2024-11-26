@@ -67,6 +67,26 @@ pub struct Proposal {
     is_repaid: bool
 }
 
+
+#[derive(Drop, Serde, Copy, starknet::Store)]
+pub struct LiquidationThreshold {
+    token: ContractAddress,
+    threshold_percentage: u256,
+    minimum_liquidation_amount: u256
+}
+
+#[derive(Drop, Serde, Copy)]
+pub struct LiquidationInfo {
+    proposal_id: u256,
+    borrower: ContractAddress,
+    collateral_token: ContractAddress,
+    loan_token: ContractAddress,
+    collateral_amount: u256,
+    loan_amount: u256,
+    current_ltv: u256,
+    can_be_liquidated: bool
+}
+
 #[starknet::contract]
 pub mod PeerProtocol {
     use starknet::event::EventEmitter;
@@ -88,6 +108,9 @@ pub mod PeerProtocol {
     };
     use core::array::ArrayTrait;
     use core::array::SpanTrait;
+    use super::{LiquidationThreshold, LiquidationInfo};
+    use pragma_lib::abi::{IPragmaABIDispatcher, IPragmaABIDispatcherTrait};
+    use pragma_lib::types::{DataType, PragmaPricesResponse};
 
     #[storage]
     struct Storage {
@@ -111,6 +134,8 @@ pub mod PeerProtocol {
         spok_nft: ContractAddress,
         next_spok_id: u256,
         locked_collateral: Map<(ContractAddress, ContractAddress), u256>, // (user, token) => amount
+        liquidation_thresholds: Map<ContractAddress, LiquidationThreshold>,
+        price_oracles: Map<ContractAddress, ContractAddress>
     }
 
     const MAX_U64: u64 = 18446744073709551615_u64;
@@ -199,6 +224,17 @@ pub mod PeerProtocol {
         pub repaid_by: ContractAddress,
         pub token: ContractAddress,
         pub amount: u256
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct LiquidationExecuted {
+        pub borrower: ContractAddress,
+        pub lender: ContractAddress,
+        pub loan_token: ContractAddress,
+        pub collateral_token: ContractAddress,
+        pub loan_value: u256,
+        pub collateral_value: u256,
+        pub timestamp: u64
     }
 
     #[constructor]
@@ -567,7 +603,6 @@ pub mod PeerProtocol {
                         amount: proposal.amount
                     }
                 );
-
         }
 
         fn get_borrowed_tokens(
@@ -591,7 +626,6 @@ pub mod PeerProtocol {
             };
 
             borrowed_assets
-
         }
 
         fn repay_proposal(ref self: ContractState, proposal_id: u256) {
@@ -659,6 +693,162 @@ pub mod PeerProtocol {
                         amount
                     }
                 );
+        }
+
+        fn check_positions_for_liquidation(
+            ref self: ContractState, user: ContractAddress
+        ) -> Array<LiquidationInfo> {
+            let mut liquidatable_positions = ArrayTrait::new();
+
+            let total_proposals = self.proposals_count.read();
+            let mut i: u256 = 1;
+
+            while i <= total_proposals {
+                let proposal = self.proposals.entry(i).read();
+
+                if proposal.borrower == user
+                    && proposal.is_accepted == true
+                    && proposal.is_repaid == false {
+                    // Get current prices from oracle
+                    let loan_token_price = self.get_token_price(proposal.token);
+                    let collateral_token_price = self
+                        .get_token_price(proposal.accepted_collateral_token);
+
+                    // Calculate current loan value
+                    let current_loan_value = proposal.amount * loan_token_price;
+                    let current_collateral_value = proposal.required_collateral_value
+                        * collateral_token_price;
+
+                    // Calculate current LTV ratio
+                    let current_ltv = (current_loan_value * 100) / current_collateral_value;
+
+                    // Get liquidation threshold for this token
+                    let threshold = self.liquidation_thresholds.entry(proposal.token).read();
+
+                    let can_liquidate = current_ltv >= threshold.threshold_percentage;
+
+                    let liquidation_info = LiquidationInfo {
+                        proposal_id: proposal.id,
+                        borrower: proposal.borrower,
+                        collateral_token: proposal.accepted_collateral_token,
+                        loan_token: proposal.token,
+                        collateral_amount: proposal.required_collateral_value,
+                        loan_amount: proposal.amount,
+                        current_ltv: current_ltv,
+                        can_be_liquidated: can_liquidate
+                    };
+
+                    if can_liquidate {
+                        liquidatable_positions.append(liquidation_info);
+                    }
+                }
+
+                i += 1;
+            };
+
+            liquidatable_positions
+        }
+
+        fn liquidate_position(ref self: ContractState, proposal_id: u256) {
+            let caller = get_caller_address();
+            assert(caller == self.owner.read(), 'unauthorized liquidator');
+
+            let proposal = self.proposals.entry(proposal_id).read();
+            assert(proposal.is_accepted && !proposal.is_repaid, 'invalid proposal state');
+
+            // Verify position is liquidatable
+            let loan_token_price = self.get_token_price(proposal.token);
+            let collateral_token_price = self.get_token_price(proposal.accepted_collateral_token);
+
+            let current_loan_value = proposal.amount * loan_token_price;
+            let current_collateral_value = proposal.required_collateral_value
+                * collateral_token_price;
+            let current_ltv = (current_loan_value * 100) / current_collateral_value;
+
+            let threshold = self.liquidation_thresholds.entry(proposal.token).read();
+            assert(current_ltv >= threshold.threshold_percentage, 'position not liquidatable');
+
+            // Calculate liquidation amounts
+            let protocol_fee = (current_loan_value * PROTOCOL_FEE_PERCENTAGE) / 100;
+            let remaining_value = current_loan_value - protocol_fee;
+
+            // Transfer collateral to lender
+            let collateral_token = IERC20Dispatcher {
+                contract_address: proposal.accepted_collateral_token
+            };
+            collateral_token.transfer(proposal.lender, proposal.required_collateral_value);
+
+            // Update protocol state
+            self
+                .locked_collateral
+                .entry((proposal.borrower, proposal.accepted_collateral_token))
+                .write(0);
+
+            // Mark proposal as repaid (liquidated)
+            let mut updated_proposal = proposal;
+            updated_proposal.is_repaid = true;
+            self.proposals.entry(proposal_id).write(updated_proposal);
+
+            // Record liquidation transaction
+            self
+                .record_liquidation(
+                    proposal.borrower,
+                    proposal.lender,
+                    proposal.token,
+                    proposal.accepted_collateral_token,
+                    current_loan_value,
+                    proposal.required_collateral_value
+                );
+        }
+
+        fn get_token_price(self: @ContractState, token: ContractAddress) -> u256 {
+            let oracle = self.price_oracles.entry(token).read();
+            assert(oracle != self.zero_address(), 'no oracle for token');
+            let asset_id = 0;
+
+            // Create oracle dispatcher and get price
+            let oracle_dispatcher = IPragmaABIDispatcher {
+                contract_address: self.price_oracles.entry(token).read()
+            };
+            let output: PragmaPricesResponse = oracle_dispatcher
+                .get_data_median(DataType::SpotEntry(asset_id));
+            assert(output.price > 0, 'invalid price returned');
+
+            let price: u256 = (output.price).try_into().unwrap();
+            price
+        }
+
+
+        fn record_liquidation(
+            ref self: ContractState,
+            borrower: ContractAddress,
+            lender: ContractAddress,
+            loan_token: ContractAddress,
+            collateral_token: ContractAddress,
+            loan_value: u256,
+            collateral_value: u256
+        ) {
+            // Create liquidation transaction record for borrower
+            let borrower_transaction = Transaction {
+                transaction_type: TransactionType::WITHDRAWAL,
+                token: collateral_token,
+                amount: collateral_value,
+                timestamp: get_block_timestamp(),
+                tx_hash: get_tx_info().transaction_hash,
+            };
+            self._add_transaction(borrower, borrower_transaction);
+
+            // Create liquidation transaction record for lender
+            let lender_transaction = Transaction {
+                transaction_type: TransactionType::DEPOSIT,
+                token: collateral_token,
+                amount: collateral_value,
+                timestamp: get_block_timestamp(),
+                tx_hash: get_tx_info().transaction_hash,
+            };
+            self._add_transaction(lender, lender_transaction);
+            // Emit liquidation event
+
         }
     }
 

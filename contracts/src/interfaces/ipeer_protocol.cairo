@@ -1,6 +1,6 @@
 use starknet::ContractAddress;
 
-use peer_protocol::peer_protocol::{Transaction, UserAssets, UserDeposit, BorrowedDetails};
+use peer_protocol::peer_protocol::{Transaction, UserAssets, UserDeposit, BorrowedDetails, Proposal};
 
 use core::array::Array;
 use core::array::SpanTrait;

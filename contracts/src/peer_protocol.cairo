@@ -770,7 +770,7 @@ pub mod PeerProtocol {
 
             // Calculate liquidation amounts
             let protocol_fee = (current_loan_value * PROTOCOL_FEE_PERCENTAGE) / 100;
-            let remaining_value = current_loan_value - protocol_fee;
+            let _remaining_value = current_loan_value - protocol_fee;
 
             // Transfer collateral to lender
             let collateral_token = IERC20Dispatcher {

@@ -578,6 +578,9 @@ pub mod PeerProtocol {
 
             // Repay principal + interests
             let amount = net_amount + interests_amount_over_duration;
+            let borrower_balance = IERC20Dispatcher { contract_address: proposal.token }
+                .balance_of(caller);
+            assert(borrower_balance >= amount, 'insufficient borrower balance');
             IERC20Dispatcher { contract_address: proposal.token }
                 .transfer_from(caller, proposal.lender, amount);
 

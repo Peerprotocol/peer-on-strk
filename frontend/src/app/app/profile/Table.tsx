@@ -95,7 +95,7 @@ const Table: React.FC = () => {
       ? {
           abi: protocolAbi,
           address: PROTOCOL_ADDRESS,
-          functionName: "get_position_overview",
+          functionName: "get_borrowed_tokens",
           args: [user],
         }
       : ({} as any)
@@ -440,13 +440,13 @@ const Table: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {isLoadingTransactions || isFetchingTransactions ? (
+              {isLoadingTokens || isFetchingTokens ? (
                 <tr>
                   <td colSpan={5} className="p-4 text-center">
                     <AssetsLoader />
                   </td>
                 </tr>
-              ) : transactions ? (
+              ) : borrowedTokens ? (
                 currentRows &&
                 currentRows.map((row, index: number) => {
                   let tokenAddressHex = "";

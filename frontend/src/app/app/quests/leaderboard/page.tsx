@@ -1,9 +1,6 @@
 "use client";
-// import Dashboard from "./dashboard";
-// import Sidebar from "../sidebar";
-// import Nav from "../Nav";
-import Dashboard from "../../leaderboard/dashboard";
-import Nav from "../../Nav";
+import Dashboard from "../components/leaderboard";
+import Nav from "../components/Nav";
 import Sidebar from "../../sidebar";
 
 export default function Home() {

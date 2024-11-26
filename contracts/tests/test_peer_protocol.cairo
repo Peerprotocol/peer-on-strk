@@ -76,6 +76,7 @@ fn test_deposit() {
     let peer_protocol_address = deploy_peer_protocol();
 
     let token = IERC20Dispatcher { contract_address: token_address };
+    
     let caller: ContractAddress = starknet::contract_address_const::<0x122226789>();
     let mint_amount: u256 = 1000 * ONE_E18;
 

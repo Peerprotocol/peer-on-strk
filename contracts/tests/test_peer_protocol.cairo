@@ -389,6 +389,61 @@ fn test_create_borrow_proposal() {
 }
 
 #[test]
+fn test_create_lending_proposal() {
+    // Setup
+    let token_address = deploy_token("MockToken");
+    let collateral_token_address = deploy_token("MockToken1");
+    let peer_protocol_address = deploy_peer_protocol();
+
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+
+    let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
+    let lender: ContractAddress = starknet::contract_address_const::<0x122226789>();
+
+    let amount: u256 = 500 * ONE_E18;
+    let required_collateral_value: u256 = 300 * ONE_E18;
+    let interest_rate: u64 = 5;
+    let duration: u64 = 10;
+
+    // Add supported tokens
+    start_cheat_caller_address(peer_protocol_address, owner);
+    peer_protocol.add_supported_token(token_address);
+    peer_protocol.add_supported_token(collateral_token_address);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // Create lending proposal
+    start_cheat_caller_address(peer_protocol_address, lender);
+    let mut spy = spy_events();
+
+    peer_protocol
+        .create_lending_proposal(
+            token_address,
+            collateral_token_address,
+            amount,
+            required_collateral_value,
+            interest_rate,
+            duration
+        );
+
+    // Check emitted event
+    let created_at = starknet::get_block_timestamp();
+    let expected_event = PeerProtocol::Event::LendingProposalCreated(
+        PeerProtocol::LendingProposalCreated {
+            proposal_type: ProposalType::LENDING,
+            lender,
+            token: token_address,
+            amount,
+            interest_rate,
+            duration,
+            created_at,
+        }
+    );
+    spy.assert_emitted(@array![(peer_protocol_address, expected_event)]);
+
+    stop_cheat_caller_address(peer_protocol_address);
+}
+
+#[test]
 fn test_get_borrow_proposal_details() {
     let token_address = deploy_token("MockToken");
     let collateral_token_address = deploy_token("MockToken1");
@@ -521,5 +576,14 @@ fn test_create_borrow_proposal_should_panic_for_unsupported_token() {
         );
 
     stop_cheat_caller_address(peer_protocol_address);
+}
+
+#[test]
+fn test_get_lending_proposal_details_empty() {
+    let peer_protocol_address = deploy_peer_protocol();
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+
+    let lending_proposals = peer_protocol.get_lending_proposal_details();
+    assert!(lending_proposals.is_empty(), "Proposals array should be empty");
 }
 

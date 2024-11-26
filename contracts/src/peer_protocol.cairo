@@ -39,7 +39,7 @@ struct UserAssets {
     available_balance: u256,
 }
 #[derive(Drop, Serde, Copy, starknet::Store)]
-struct Proposal {
+pub struct Proposal {
     id: u256,
     lender: ContractAddress,
     borrower: ContractAddress,
@@ -57,14 +57,14 @@ struct Proposal {
     is_repaid: bool
 }
 
-
 #[starknet::contract]
-mod PeerProtocol {
+pub mod PeerProtocol {
     use starknet::event::EventEmitter;
     use super::{Transaction, TransactionType, UserDeposit, UserAssets, Proposal, ProposalType};
     use peer_protocol::interfaces::ipeer_protocol::IPeerProtocol;
     use peer_protocol::interfaces::ierc20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use peer_protocol::interfaces::ierc721::{IERC721Dispatcher, IERC721DispatcherTrait};
+
     use starknet::{
         ContractAddress, get_block_timestamp, get_caller_address, get_contract_address,
         contract_address_const, get_tx_info
@@ -112,6 +112,7 @@ mod PeerProtocol {
         WithdrawalSuccessful: WithdrawalSuccessful,
         TransactionRecorded: TransactionRecorded,
         ProposalCreated: ProposalCreated,
+        LendingProposalCreated: LendingProposalCreated,
         ProposalAccepted: ProposalAccepted
     }
 
@@ -155,6 +156,18 @@ mod PeerProtocol {
         pub created_at: u64,
     }
 
+
+    #[derive(Drop, starknet::Event)]
+    pub struct LendingProposalCreated {
+        pub proposal_type: ProposalType,
+        pub lender: ContractAddress,
+        pub token: ContractAddress,
+        pub amount: u256,
+        pub interest_rate: u64,
+        pub duration: u64,
+        pub created_at: u64,
+    }
+
     #[derive(Drop, starknet::Event)]
     pub struct ProposalAccepted {
         pub proposal_type: ProposalType,
@@ -175,6 +188,7 @@ mod PeerProtocol {
         self.owner.write(owner);
         self.protocol_fee_address.write(protocol_fee_address);
         self.spok_nft.write(spok_nft);
+        self.proposals_count.write(0);
     }
 
     #[abi(embed_v0)]
@@ -337,6 +351,90 @@ mod PeerProtocol {
             };
 
             borrow_proposals
+        }
+        fn create_lending_proposal(
+            ref self: ContractState,
+            token: ContractAddress,
+            accepted_collateral_token: ContractAddress,
+            amount: u256,
+            required_collateral_value: u256,
+            interest_rate: u64,
+            duration: u64,
+        ) {
+            // Validation of token support
+            assert!(self.supported_tokens.entry(token).read(), "Token not supported");
+            assert!(
+                self.supported_tokens.entry(accepted_collateral_token).read(),
+                "Collateral token not supported"
+            );
+
+            // Validation of parameters
+            assert!(amount > 0, "Amount must be greater than zero");
+            assert!(interest_rate > 0 && interest_rate <= 7, "Interest rate out of bounds");
+            assert!(duration >= 7 && duration <= 15, "Duration out of bounds");
+
+            let caller = get_caller_address();
+            let created_at = get_block_timestamp();
+
+            let proposal_id = self.proposals_count.read() + 1;
+
+            // Create lendingproposal
+            let lending_proposal = Proposal {
+                id: proposal_id,
+                lender: caller,
+                borrower: contract_address_const::<0>(), // zero address for unaccepted proposal
+                proposal_type: ProposalType::LENDING,
+                token,
+                accepted_collateral_token,
+                required_collateral_value,
+                amount,
+                interest_rate,
+                duration,
+                created_at,
+                is_accepted: false,
+                accepted_at: 0,
+                repayment_date: 0,
+                is_repaid: false
+            };
+
+            // Store proposal
+            self.proposals.entry(proposal_id).write(lending_proposal);
+            self.proposals_count.write(proposal_id);
+
+            // Emit event
+            self
+                .emit(
+                    LendingProposalCreated {
+                        proposal_type: ProposalType::LENDING,
+                        lender: caller,
+                        token,
+                        amount,
+                        interest_rate,
+                        duration,
+                        created_at,
+                    }
+                );
+        }
+
+        fn get_lending_proposal_details(self: @ContractState) -> Array<Proposal> {
+            let mut proposals = array::ArrayTrait::new();
+            let proposals_count = self.proposals_count.read();
+
+            let mut proposal_id = 0;
+            loop {
+                if proposal_id >= proposals_count {
+                    break;
+                }
+
+                let proposal = self.proposals.entry(proposal_id).read();
+                if proposal.proposal_type == ProposalType::LENDING {
+                    proposals.append(proposal);
+                }
+
+                proposal_id += 1;
+            };
+
+            proposals
         }
 
 

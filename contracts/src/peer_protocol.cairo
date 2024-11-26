@@ -6,7 +6,8 @@ enum TransactionType {
     DEPOSIT,
     WITHDRAWAL,
     LEND,
-    BORROW
+    BORROW,
+    REPAY
 }
 
 #[derive(Drop, Serde, Copy, PartialEq, starknet::Store)]
@@ -103,6 +104,8 @@ mod PeerProtocol {
     const COLLATERAL_RATIO_NUMERATOR: u256 = 13_u256;
     const COLLATERAL_RATIO_DENOMINATOR: u256 = 10_u256;
     const PROTOCOL_FEE_PERCENTAGE: u256 = 1_u256; // 1%
+    const ONE_E18: u256 = 1000000000000000000_u256;
+    const SECONDS_IN_YEAR: u256 = 31536000_u256;
 
     #[event]
     #[derive(Drop, starknet::Event)]
@@ -317,7 +320,7 @@ mod PeerProtocol {
                         created_at,
                     },
                 );
-            
+
             proposal_id
         }
 
@@ -456,7 +459,51 @@ mod PeerProtocol {
         fn repay_proposal(ref self: ContractState, proposal_id: u256) {
             let caller = get_caller_address();
             let proposal = self.proposals.entry(proposal_id).read();
-            // TODO
+            assert(caller == proposal.borrower, 'invalid borrower');
+            let block_timestamp = get_block_timestamp();
+            assert(block_timestamp <= proposal.repayment_date, 'repayment date overdue');
+
+            // Calculate protocol fee
+            let fee_amount = (proposal.amount * PROTOCOL_FEE_PERCENTAGE) / 100;
+            let net_amount = proposal.amount - fee_amount;
+
+            // Calculate interests
+            let loan_duration: u256 = (block_timestamp - proposal.accepted_at).into();
+            let interest_rate: u256 = proposal.interest_rate.into();
+            let interests_amount_over_year = (net_amount * interest_rate) / 100;
+            let interests_duration = loan_duration * ONE_E18 / SECONDS_IN_YEAR;
+            let interests_amount_over_duration = interests_amount_over_year
+                * interests_duration
+                / ONE_E18;
+
+            // Repay principal + interests
+            let amount = net_amount + interests_amount_over_duration;
+            IERC20Dispatcher { contract_address: proposal.token }
+                .transfer_from(caller, proposal.lender, amount);
+
+            // Unlock borrowers collateral
+            let locked_collateral = self
+                .locked_collateral
+                .entry((caller, proposal.accepted_collateral_token))
+                .read();
+            self
+                .locked_collateral
+                .entry((caller, proposal.accepted_collateral_token))
+                .write(locked_collateral - proposal.required_collateral_value);
+
+            // Record Transaction
+            self.record_transaction(proposal.token, TransactionType::REPAY, amount, caller);
+
+            // Record interests earned
+            let interests_earned = self
+                .interests_earned
+                .entry((proposal.lender, proposal.token))
+                .read();
+            self
+                .interests_earned
+                .entry((proposal.lender, proposal.token))
+                .write(interests_earned + interests_amount_over_duration);
+
             // Update Proposal
             let mut updated_proposal = proposal;
             updated_proposal.is_repaid = true;
@@ -468,7 +515,7 @@ mod PeerProtocol {
                         proposal_type: proposal.proposal_type,
                         repaid_by: caller,
                         token: proposal.token,
-                        amount: proposal.amount
+                        amount
                     }
                 );
         }
@@ -520,7 +567,8 @@ mod PeerProtocol {
             updated_proposal.lender = lender;
             updated_proposal.is_accepted = true;
             updated_proposal.accepted_at = get_block_timestamp();
-            updated_proposal.repayment_date = updated_proposal.accepted_at + proposal.duration;
+            updated_proposal.repayment_date = updated_proposal.accepted_at
+                + proposal.duration * 86400;
 
             self.proposals.entry(proposal.id).write(updated_proposal);
         }
@@ -569,7 +617,8 @@ mod PeerProtocol {
             updated_proposal.borrower = borrower;
             updated_proposal.is_accepted = true;
             updated_proposal.accepted_at = get_block_timestamp();
-            updated_proposal.repayment_date = updated_proposal.accepted_at + proposal.duration;
+            updated_proposal.repayment_date = updated_proposal.accepted_at
+                + proposal.duration * 86400;
 
             self.proposals.entry(proposal.id).write(updated_proposal);
         }

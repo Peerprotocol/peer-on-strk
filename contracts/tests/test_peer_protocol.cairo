@@ -1,7 +1,7 @@
-use starknet::{ContractAddress, get_contract_address};
+use starknet::{ContractAddress, get_contract_address, get_block_timestamp};
 use snforge_std::{
     declare, ContractClassTrait, DeclareResultTrait, DeclareResult, start_cheat_caller_address,
-    stop_cheat_caller_address, spy_events, EventSpyAssertionsTrait
+    stop_cheat_caller_address, start_cheat_block_timestamp, spy_events, EventSpyAssertionsTrait
 };
 
 use peer_protocol::interfaces::ipeer_protocol::{
@@ -513,7 +513,6 @@ fn test_repay_loan() {
     stop_cheat_caller_address(token_address);
     start_cheat_caller_address(peer_protocol_address, lender);
     peer_protocol.deposit(token_address, borrow_amount);
-    println!("deposit OK");
     stop_cheat_caller_address(peer_protocol_address);
 
     // Lender accepts the borrow proposal
@@ -521,8 +520,34 @@ fn test_repay_loan() {
     peer_protocol.accept_proposal(proposal_id);
     stop_cheat_caller_address(peer_protocol_address);
 
+    let balance_before_repay = token.balance_of(borrower);
+
     // Borrower repays loan
     start_cheat_caller_address(peer_protocol_address, borrower);
+    start_cheat_block_timestamp(peer_protocol_address, get_block_timestamp() + duration * 86400);
+    let mut spy = spy_events();
     peer_protocol.repay_proposal(proposal_id);
     stop_cheat_caller_address(peer_protocol_address);
+
+    // Get lender assets
+    let user_assets = peer_protocol.get_user_assets(lender);
+    let interest_earned = *user_assets[0].interest_earned;
+    let fee_amount = (borrow_amount * PeerProtocol::PROTOCOL_FEE_PERCENTAGE) / 100;
+    let net_amount = borrow_amount - fee_amount;
+    let repaid_amount = net_amount + interest_earned;
+
+    // Check borrower balance after repayment
+    let balance_after_repay = token.balance_of(borrower);
+    assert_eq!(balance_after_repay, balance_before_repay - repaid_amount);
+
+    // Check emitted event
+    let expected_event = PeerProtocol::Event::ProposalRepaid(
+        PeerProtocol::ProposalRepaid {
+            proposal_type: ProposalType::BORROWING,
+            repaid_by: borrower,
+            token: token_address,
+            amount: repaid_amount
+        }
+    );
+    spy.assert_emitted(@array![(peer_protocol_address, expected_event)]);
 }

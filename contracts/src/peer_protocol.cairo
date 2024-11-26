@@ -39,7 +39,7 @@ struct UserAssets {
     available_balance: u256,
 }
 #[derive(Drop, Serde, Copy, starknet::Store)]
-struct Proposal {
+pub struct Proposal {
     id: u256,
     lender: ContractAddress,
     borrower: ContractAddress,
@@ -57,14 +57,14 @@ struct Proposal {
     is_repaid: bool
 }
 
-
 #[starknet::contract]
-mod PeerProtocol {
+pub mod PeerProtocol {
     use starknet::event::EventEmitter;
     use super::{Transaction, TransactionType, UserDeposit, UserAssets, Proposal, ProposalType};
     use peer_protocol::interfaces::ipeer_protocol::IPeerProtocol;
     use peer_protocol::interfaces::ierc20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use peer_protocol::interfaces::ierc721::{IERC721Dispatcher, IERC721DispatcherTrait};
+
     use starknet::{
         ContractAddress, get_block_timestamp, get_caller_address, get_contract_address,
         contract_address_const, get_tx_info
@@ -97,10 +97,6 @@ mod PeerProtocol {
         spok_nft: ContractAddress,
         next_spok_id: u256,
         locked_collateral: Map<(ContractAddress, ContractAddress), u256>, // (user, token) => amount
-
-        lending_proposals: Map<u256, Proposal>, // Mapping from Lendingproposal ID to proposal details
-        lending_proposals_count: u256,            // Counter for Lendingproposal IDs
-
     }
 
     const MAX_U64: u64 = 18446744073709551615_u64;
@@ -192,7 +188,7 @@ mod PeerProtocol {
         self.owner.write(owner);
         self.protocol_fee_address.write(protocol_fee_address);
         self.spok_nft.write(spok_nft);
-        self.lending_proposals_count.write(0);
+        self.proposals_count.write(0);
     }
 
     #[abi(embed_v0)]
@@ -340,8 +336,11 @@ mod PeerProtocol {
         ) {
             // Validation of token support
             assert!(self.supported_tokens.entry(token).read(), "Token not supported");
-            assert!(self.supported_tokens.entry(accepted_collateral_token).read(), "Collateral token not supported");
-            
+            assert!(
+                self.supported_tokens.entry(accepted_collateral_token).read(),
+                "Collateral token not supported"
+            );
+
             // Validation of parameters
             assert!(amount > 0, "Amount must be greater than zero");
             assert!(interest_rate > 0 && interest_rate <= 7, "Interest rate out of bounds");
@@ -349,14 +348,14 @@ mod PeerProtocol {
 
             let caller = get_caller_address();
             let created_at = get_block_timestamp();
-            
-            let lending_proposal_id = self.lending_proposals_count.read() + 1;
+
+            let proposal_id = self.proposals_count.read() + 1;
 
             // Create lendingproposal
             let lending_proposal = Proposal {
-                id: lending_proposal_id,
+                id: proposal_id,
                 lender: caller,
-                borrower: contract_address_const::<0>(),  // zero address for unaccepted proposal
+                borrower: contract_address_const::<0>(), // zero address for unaccepted proposal
                 proposal_type: ProposalType::LENDING,
                 token,
                 accepted_collateral_token,
@@ -372,44 +371,45 @@ mod PeerProtocol {
             };
 
             // Store proposal
-            self.lending_proposals.entry(lending_proposal_id).write(lending_proposal);
-            self.lending_proposals_count.write(lending_proposal_id);
+            self.proposals.entry(proposal_id).write(lending_proposal);
+            self.proposals_count.write(proposal_id);
 
             // Emit event
-            self.emit(
-                LendingProposalCreated {
-                    proposal_type: ProposalType::LENDING,
-                    lender: caller,
-                    token,
-                    amount,
-                    interest_rate,
-                    duration,
-                    created_at,
-                }
-            );
+            self
+                .emit(
+                    LendingProposalCreated {
+                        proposal_type: ProposalType::LENDING,
+                        lender: caller,
+                        token,
+                        amount,
+                        interest_rate,
+                        duration,
+                        created_at,
+                    }
+                );
         }
 
-    //    fn get_lending_proposal_details(self: @ContractState) -> Array<Proposal> {
-    //         let mut proposals = array::ArrayTrait::new();
-    //         let proposals_count = self.proposals_count.read();
-            
-    //         let mut proposal_id = 0;
-    //         loop {
-    //             if proposal_id >= proposals_count {
-    //                 break;
-    //             }
-                
-    //             let proposal = self.proposals.entry(proposal_id).read();
-    //             if proposal.proposal_type == ProposalType::LENDING {
-    //                 proposals.append(proposal);
-    //             }
-                
-    //             proposal_id += 1;
-    //         };
-            
-    //         proposals
-    //     }
-    // }
+        fn get_lending_proposal_details(self: @ContractState) -> Array<Proposal> {
+            let mut proposals = array::ArrayTrait::new();
+            let proposals_count = self.proposals_count.read();
+
+            let mut proposal_id = 0;
+            loop {
+                if proposal_id >= proposals_count {
+                    break;
+                }
+
+                let proposal = self.proposals.entry(proposal_id).read();
+                if proposal.proposal_type == ProposalType::LENDING {
+                    proposals.append(proposal);
+                }
+
+                proposal_id += 1;
+            };
+
+            proposals
+        }
+
 
         fn get_transaction_history(
             self: @ContractState, user: ContractAddress, offset: u64, limit: u64

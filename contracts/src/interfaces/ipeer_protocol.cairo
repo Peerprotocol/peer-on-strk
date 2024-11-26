@@ -1,6 +1,8 @@
 use starknet::ContractAddress;
 
-use peer_protocol::peer_protocol::{Transaction, UserAssets, UserDeposit, BorrowedDetails, Proposal};
+use peer_protocol::peer_protocol::{
+    Transaction, UserAssets, UserDeposit, BorrowedDetails, Proposal, LiquidationInfo
+};
 
 use core::array::Array;
 use core::array::SpanTrait;
@@ -35,6 +37,20 @@ pub trait IPeerProtocol<TContractState> {
     );
 
     fn get_lending_proposal_details(self: @TContractState) -> Array<Proposal>;
+    fn check_positions_for_liquidation(
+        ref self: TContractState, user: ContractAddress
+    ) -> Array<LiquidationInfo>;
+    fn liquidate_position(ref self: TContractState, proposal_id: u256);
+    fn get_token_price(self: @TContractState, token: ContractAddress) -> u256;
+    fn record_liquidation(
+        ref self: TContractState,
+        borrower: ContractAddress,
+        lender: ContractAddress,
+        loan_token: ContractAddress,
+        collateral_token: ContractAddress,
+        loan_value: u256,
+        collateral_value: u256
+    );
 
     fn get_transaction_history(
         self: @TContractState, user: ContractAddress, offset: u64, limit: u64

@@ -25,11 +25,20 @@ struct Transaction {
     tx_hash: felt252,
 }
 
+#[derive(Drop, Serde, Copy, starknet::Store)]
+struct BorrowedDetails {
+    token_borrowed: ContractAddress,
+    repayment_time: u64,
+    interest_rate: u64,
+    amount_borrowed: u256,
+}
+
 #[derive(Drop, Serde)]
 struct UserDeposit {
     token: ContractAddress,
     amount: u256,
 }
+
 
 #[derive(Drop, Serde)]
 struct UserAssets {
@@ -61,7 +70,10 @@ pub struct Proposal {
 #[starknet::contract]
 pub mod PeerProtocol {
     use starknet::event::EventEmitter;
-    use super::{Transaction, TransactionType, UserDeposit, UserAssets, Proposal, ProposalType};
+    use super::{
+        Transaction, TransactionType, UserDeposit, UserAssets, Proposal, ProposalType,
+        BorrowedDetails
+    };
     use peer_protocol::interfaces::ipeer_protocol::IPeerProtocol;
     use peer_protocol::interfaces::ierc20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use peer_protocol::interfaces::ierc721::{IERC721Dispatcher, IERC721DispatcherTrait};
@@ -86,6 +98,7 @@ pub mod PeerProtocol {
         token_deposits: Map<(ContractAddress, ContractAddress), u256>,
         user_transactions_count: Map<ContractAddress, u64>,
         user_transactions: Map<(ContractAddress, u64), Transaction>,
+        borrowed_tokens: Map<ContractAddress, BorrowedDetails>,
         // Mapping: (user, token) => borrowed amount
         borrowed_assets: Map<(ContractAddress, ContractAddress), u256>,
         // Mapping: (user, token) => lent amount
@@ -554,6 +567,31 @@ pub mod PeerProtocol {
                         amount: proposal.amount
                     }
                 );
+
+        }
+
+        fn get_borrowed_tokens(
+            self: @ContractState, user: ContractAddress
+        ) -> Array<BorrowedDetails> {
+            let mut borrowed_assets: Array<BorrowedDetails> = ArrayTrait::new();
+
+            let mut i = 0;
+            loop {
+                // Try to read the borrowed details
+                let borrowed_details = self.borrowed_tokens.entry(user).read();
+
+                // If the entry is valid (has meaningful data), add it
+                if borrowed_details.amount_borrowed > 0 {
+                    borrowed_assets.append(borrowed_details);
+                } else {
+                    break;
+                }
+
+                i += 1;
+            };
+
+            borrowed_assets
+
         }
 
         fn repay_proposal(ref self: ContractState, proposal_id: u256) {
@@ -722,6 +760,14 @@ pub mod PeerProtocol {
             updated_proposal.accepted_at = get_block_timestamp();
             updated_proposal.repayment_date = updated_proposal.accepted_at
                 + proposal.duration * 86400;
+
+            let borrowed_token_details = BorrowedDetails {
+                token_borrowed: updated_proposal.token,
+                repayment_time: updated_proposal.accepted_at + proposal.duration,
+                interest_rate: proposal.interest_rate,
+                amount_borrowed: net_amount
+            };
+            self.borrowed_tokens.write(borrower, borrowed_token_details);
 
             self.proposals.entry(proposal.id).write(updated_proposal);
         }

@@ -18,8 +18,9 @@ pub trait IPeerProtocol<TContractState> {
         required_collateral_value: u256,
         interest_rate: u64,
         duration: u64
-    );
+    ) -> u256;
     fn accept_proposal(ref self: TContractState, proposal_id: u256);
+    fn repay_proposal(ref self: TContractState, proposal_id: u256);
 
     fn get_borrowed_tokens(self: @TContractState, user: ContractAddress) -> Array<BorrowedDetails>;
 

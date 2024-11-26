@@ -94,7 +94,6 @@ mod PeerProtocol {
         // Mapping: (user, token) => deposited amount
         token_deposits: Map<(ContractAddress, ContractAddress), u256>,
         user_transactions_count: Map<ContractAddress, u64>,
-        
         user_transactions: Map<(ContractAddress, u64), Transaction>,
         // Mapping: (user, token) => borrowed amount
         borrowed_assets: Map<(ContractAddress, ContractAddress), u256>,

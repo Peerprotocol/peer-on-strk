@@ -94,6 +94,7 @@ mod PeerProtocol {
         // Mapping: (user, token) => deposited amount
         token_deposits: Map<(ContractAddress, ContractAddress), u256>,
         user_transactions_count: Map<ContractAddress, u64>,
+        
         user_transactions: Map<(ContractAddress, u64), Transaction>,
         // Mapping: (user, token) => borrowed amount
         borrowed_assets: Map<(ContractAddress, ContractAddress), u256>,
@@ -434,48 +435,6 @@ mod PeerProtocol {
         fn get_borrowed_tokens(self: @ContractState, user: ContractAddress) -> Array<BorrowedDetails> {
             let mut borrowed_assets: Array<BorrowedDetails> = ArrayTrait::new();
 
-
-            for i in 0
-                ..self
-                    .supported_token_list
-                    .len() {
-                        let supported_token = self.supported_token_list.at(i).read();
-
-                        let total_deposits = self
-                            .token_deposits
-                            .entry((user, supported_token))
-                            .read();
-                        let total_borrowed = self
-                            .borrowed_assets
-                            .entry((user, supported_token))
-                            .read();
-                        let total_lent = self.lent_assets.entry((user, supported_token)).read();
-                        let interest_earned = self
-                            .interests_earned
-                            .entry((user, supported_token))
-                            .read();
-
-                        let available_balance = if total_borrowed == 0 {
-                            total_deposits
-                        } else {
-                            match total_deposits > total_borrowed {
-                                true => total_deposits - total_borrowed,
-                                false => 0
-                            }
-                        };
-
-                        let token_assets = UserAssets {
-                            token_address: supported_token,
-                            total_lent,
-                            total_borrowed,
-                            interest_earned,
-                            available_balance
-                        };
-
-                        if total_deposits > 0 || total_lent > 0 || total_borrowed > 0 {
-                            user_assets.append(token_assets);
-                        }
-                    };
 
 
             borrowed_assets

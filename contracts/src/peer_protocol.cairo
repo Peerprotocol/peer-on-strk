@@ -66,7 +66,8 @@ pub struct Proposal {
     accepted_at: u64,
     repayment_date: u64,
     is_repaid: bool,
-    num_proposal_counters: u256
+    num_proposal_counters: u256,
+    is_cancelled: bool
 }
 
 #[derive(Drop, Serde, Copy, starknet::Store)]
@@ -170,7 +171,8 @@ pub mod PeerProtocol {
         ProposalAccepted: ProposalAccepted,
         ProposalCountered: ProposalCountered,
         ProposalRepaid: ProposalRepaid,
-        LendingProposalCreated: LendingProposalCreated
+        LendingProposalCreated: LendingProposalCreated,
+        ProposalCancelled: ProposalCancelled
     }
 
     #[derive(Drop, starknet::Event)]
@@ -260,6 +262,12 @@ pub mod PeerProtocol {
         pub loan_value: u256,
         pub collateral_value: u256,
         pub timestamp: u64
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct ProposalCancelled {
+        pub caller: ContractAddress,
+        pub proposal_id: u256
     }
 
     #[constructor]
@@ -394,7 +402,8 @@ pub mod PeerProtocol {
                 accepted_at: 0,
                 repayment_date: 0,
                 is_repaid: false,
-                num_proposal_counters: 0
+                num_proposal_counters: 0,
+                is_cancelled: false
             };
 
             // Store the proposal
@@ -500,7 +509,8 @@ pub mod PeerProtocol {
                 accepted_at: 0,
                 repayment_date: 0,
                 is_repaid: false,
-                num_proposal_counters: 0
+                num_proposal_counters: 0,
+                is_cancelled: false
             };
 
             // Store proposal
@@ -652,9 +662,38 @@ pub mod PeerProtocol {
             user_deposits.span()
         }
 
+        fn cancel_proposal(ref self: ContractState, proposal_id: u256) {
+            let caller = get_caller_address();
+            let proposal = self.proposals.entry(proposal_id).read();
+
+            assert(proposal.is_cancelled == false, 'proposal already cancelled');
+
+            match proposal.proposal_type {
+                ProposalType::BORROWING => {
+                    assert(caller == proposal.borrower, 'unauthorized caller');
+                    let borrower_locked_funds = self.locked_funds.entry((caller, proposal.accepted_collateral_token)).read();
+                    self.locked_funds.entry((caller, proposal.accepted_collateral_token)).write(borrower_locked_funds - proposal.required_collateral_value);
+                },
+                ProposalType::LENDING => {
+                    assert(caller == proposal.lender, 'unauthorized caller');
+                    let lender_locked_funds = self.locked_funds.entry((caller, proposal.token)).read();
+                    self.locked_funds.entry((caller, proposal.token)).write(lender_locked_funds - proposal.amount);
+                },
+            }
+
+            self.proposals.entry(proposal_id).is_cancelled.write(true);
+
+            self.emit(ProposalCancelled {
+                caller,
+                proposal_id
+            });
+        }
+
         fn accept_proposal(ref self: ContractState, proposal_id: u256) {
             let caller = get_caller_address();
             let proposal = self.proposals.entry(proposal_id).read();
+
+            assert(proposal.is_cancelled == false, 'proposal is cancelled');
 
             // Calculate protocol fee
             let fee_amount = (proposal.amount * PROTOCOL_FEE_PERCENTAGE) / 100;
@@ -695,6 +734,8 @@ pub mod PeerProtocol {
             let caller = get_caller_address();
             let created_at = get_block_timestamp();
             let proposal = self.proposals.entry(proposal_id).read();
+
+            assert(proposal.is_cancelled == false, 'proposal is cancelled');
 
             assert!(
                 proposal.proposal_type == ProposalType::LENDING, "Can only counter lending proposal"

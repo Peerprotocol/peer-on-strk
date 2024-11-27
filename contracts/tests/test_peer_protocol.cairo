@@ -317,7 +317,6 @@ fn test_create_borrow_proposal() {
     let collateral_token_address = deploy_token("MockToken1");
     let peer_protocol_address = deploy_peer_protocol();
 
-    let token = IERC20Dispatcher { contract_address: token_address };
     let collateral_token = IERC20Dispatcher { contract_address: collateral_token_address };
     let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
 
@@ -338,13 +337,7 @@ fn test_create_borrow_proposal() {
     peer_protocol.add_supported_token(collateral_token_address);
     stop_cheat_caller_address(peer_protocol_address);
 
-    token.mint(borrower, mint_amount);
     collateral_token.mint(borrower, mint_amount);
-
-    // Approve token
-    start_cheat_caller_address(token_address, borrower);
-    token.approve(peer_protocol_address, mint_amount);
-    stop_cheat_caller_address(token_address);
 
     // Approve collateral token
     start_cheat_caller_address(collateral_token_address, borrower);

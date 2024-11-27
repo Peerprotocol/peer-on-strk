@@ -469,8 +469,12 @@ pub mod PeerProtocol {
             assert!(duration >= 7 && duration <= 15, "Duration out of bounds");
 
             let caller = get_caller_address();
-            let created_at = get_block_timestamp();
+            let lender_token_balance = self.token_deposits.entry((caller, token)).read();
 
+            // Check to ensure that lender has deposited the token they want to lend
+            assert!(lender_token_balance >= amount, "Insufficient token balance");
+
+            let created_at = get_block_timestamp();
             let proposal_id = self.proposals_count.read() + 1;
 
             // Create lending proposal

@@ -4,3 +4,5 @@ node_modules
 target
 .env
 .DS_Store
+package.json
+Scarb.lock

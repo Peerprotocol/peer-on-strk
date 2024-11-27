@@ -491,7 +491,7 @@ fn test_get_borrow_proposal_details() {
 
     // Deposit collateral token into peer protocol before creating borrow proposal
     start_cheat_caller_address(peer_protocol_address, borrower);
-    peer_protocol.deposit(collateral_token_address, collateral_value_with_ratio);
+    peer_protocol.deposit(collateral_token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
 
     // Create multiple borrow proposals

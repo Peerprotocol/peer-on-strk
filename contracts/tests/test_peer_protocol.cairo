@@ -923,6 +923,7 @@ fn test_repay_proposal() {
     start_cheat_caller_address(token_address, lender);
     token.approve(peer_protocol_address, borrow_amount);
     stop_cheat_caller_address(token_address);
+    
     start_cheat_caller_address(peer_protocol_address, lender);
     peer_protocol.deposit(token_address, borrow_amount);
     stop_cheat_caller_address(peer_protocol_address);

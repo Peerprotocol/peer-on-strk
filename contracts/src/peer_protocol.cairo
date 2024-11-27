@@ -473,11 +473,11 @@ pub mod PeerProtocol {
 
             let proposal_id = self.proposals_count.read() + 1;
 
-            // Create lendingproposal
+            // Create lending proposal
             let lending_proposal = Proposal {
                 id: proposal_id,
                 lender: caller,
-                borrower: contract_address_const::<0>(), // zero address for unaccepted proposal
+                borrower: self.zero_address(), // zero address for unaccepted proposal
                 proposal_type: ProposalType::LENDING,
                 token,
                 accepted_collateral_token,
@@ -1070,11 +1070,11 @@ pub mod PeerProtocol {
                 .entry((borrower, proposal.accepted_collateral_token))
                 .write(required_collateral);
 
+            let proposal_token = IERC20Dispatcher { contract_address: proposal.token };
             // Transfer main amount from lender to borrower
-            IERC20Dispatcher { contract_address: proposal.token }.transfer(borrower, net_amount);
+            proposal_token.transfer(borrower, net_amount);
             // Transfer protocol fee to protocol fee address
-            IERC20Dispatcher { contract_address: proposal.token }
-                .transfer(self.protocol_fee_address.read(), fee_amount);
+            proposal_token.transfer(self.protocol_fee_address.read(), fee_amount);
 
             // Mint SPOK
             self.mint_spoks(proposal.lender, borrower);

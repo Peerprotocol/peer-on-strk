@@ -817,10 +817,10 @@ fn test_get_lending_proposal_details() {
 
     // Lender Deposit Token into Peer Protocol
     start_cheat_caller_address(peer_protocol_address, lender);
-    peer_protocol.deposit(token_address, lending_amount);
+    peer_protocol.deposit(token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
-    assert!(lending_token.balance_of(lender) == mint_amount - lending_amount, "deposit failed");
-    assert!(lending_token.balance_of(peer_protocol_address) == lending_amount, "wrong contract balance");
+    assert!(lending_token.balance_of(lender) == 0, "deposit failed");
+    assert!(lending_token.balance_of(peer_protocol_address) == mint_amount, "wrong contract balance");
 
 
     // Create lending proposal

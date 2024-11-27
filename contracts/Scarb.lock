@@ -5,8 +5,14 @@ version = 1
 name = "peer_protocol"
 version = "0.1.0"
 dependencies = [
+ "pragma_lib",
  "snforge_std",
 ]
+
+[[package]]
+name = "pragma_lib"
+version = "1.0.0"
+source = "git+https://github.com/astraly-labs/pragma-lib#86d7ccdc15b349b8b48d9796fc8464c947bea6e1"
 
 [[package]]
 name = "snforge_scarb_plugin"

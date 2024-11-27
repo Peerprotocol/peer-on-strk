@@ -1,7 +1,8 @@
 use starknet::ContractAddress;
 
 use peer_protocol::peer_protocol::{
-    Transaction, UserAssets, UserDeposit, BorrowedDetails, Proposal, LiquidationInfo
+    Transaction, UserAssets, UserDeposit, BorrowedDetails, Proposal, LiquidationInfo,
+    CounterProposal
 };
 
 use core::array::Array;
@@ -20,10 +21,19 @@ pub trait IPeerProtocol<TContractState> {
         required_collateral_value: u256,
         interest_rate: u64,
         duration: u64
-    )->u256;
+    ) -> u256;
+    fn accept_proposal(ref self: TContractState, proposal_id: u256);
+    fn counter_proposal(
+        ref self: TContractState,
+        proposal_id: u256,
+        amount: u256,
+        required_collateral_value: u256,
+        interest_rate: u64,
+        duration: u64
+    );
+    fn get_counter_proposals(self: @TContractState, proposal_id: u256) -> Array<CounterProposal>;
 
     fn get_borrow_proposal_details(self: @TContractState) -> Array<Proposal>;
-    fn accept_proposal(ref self: TContractState, proposal_id: u256);
     fn repay_proposal(ref self: TContractState, proposal_id: u256);
 
     fn get_borrowed_tokens(self: @TContractState, user: ContractAddress) -> Array<BorrowedDetails>;
@@ -36,7 +46,8 @@ pub trait IPeerProtocol<TContractState> {
         required_collateral_value: u256,
         interest_rate: u64,
         duration: u64
-    );
+    ) -> u256;
+
 
     fn get_lending_proposal_details(self: @TContractState) -> Array<Proposal>;
     fn check_positions_for_liquidation(
@@ -59,6 +70,6 @@ pub trait IPeerProtocol<TContractState> {
     ) -> Array<Transaction>;
 
     fn get_user_assets(self: @TContractState, user: ContractAddress) -> Array<UserAssets>;
-    
+
     fn get_user_deposits(self: @TContractState, user: ContractAddress) -> Span<UserDeposit>;
 }

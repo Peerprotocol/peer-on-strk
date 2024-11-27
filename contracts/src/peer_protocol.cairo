@@ -48,6 +48,7 @@ struct UserAssets {
     interest_earned: u256,
     available_balance: u256,
 }
+
 #[derive(Drop, Serde, Copy, starknet::Store)]
 pub struct Proposal {
     id: u256,
@@ -64,9 +65,21 @@ pub struct Proposal {
     is_accepted: bool,
     accepted_at: u64,
     repayment_date: u64,
-    is_repaid: bool
+    is_repaid: bool,
+    num_proposal_counters: u256
 }
 
+#[derive(Drop, Serde, Copy, starknet::Store)]
+struct CounterProposal {
+    id: u256,
+    proposal_id: u256,
+    creator: ContractAddress,
+    required_collateral_value: u256,
+    amount: u256,
+    interest_rate: u64,
+    duration: u64,
+    created_at: u64,
+}
 
 #[derive(Drop, Serde, Copy, starknet::Store)]
 pub struct LiquidationThreshold {
@@ -92,7 +105,7 @@ pub mod PeerProtocol {
     use starknet::event::EventEmitter;
     use super::{
         Transaction, TransactionType, UserDeposit, UserAssets, Proposal, ProposalType,
-        BorrowedDetails
+        CounterProposal, BorrowedDetails
     };
     use peer_protocol::interfaces::ipeer_protocol::IPeerProtocol;
     use peer_protocol::interfaces::ierc20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -130,6 +143,7 @@ pub mod PeerProtocol {
         interests_earned: Map<(ContractAddress, ContractAddress), u256>,
         proposals: Map<u256, Proposal>, // Mapping from proposal ID to proposal details
         proposals_count: u256, // Counter for proposal IDs
+        counter_proposals: Map<(u256, u256), CounterProposal>,
         protocol_fee_address: ContractAddress,
         spok_nft: ContractAddress,
         next_spok_id: u256,
@@ -154,6 +168,7 @@ pub mod PeerProtocol {
         TransactionRecorded: TransactionRecorded,
         ProposalCreated: ProposalCreated,
         ProposalAccepted: ProposalAccepted,
+        ProposalCountered: ProposalCountered,
         ProposalRepaid: ProposalRepaid,
         LendingProposalCreated: LendingProposalCreated
     }
@@ -216,6 +231,16 @@ pub mod PeerProtocol {
         pub accepted_by: ContractAddress,
         pub token: ContractAddress,
         pub amount: u256
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct ProposalCountered {
+        pub proposal_id: u256,
+        pub creator: ContractAddress,
+        pub amount: u256,
+        pub interest_rate: u64,
+        pub duration: u64,
+        pub created_at: u64,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -364,7 +389,8 @@ pub mod PeerProtocol {
                 is_accepted: false,
                 accepted_at: 0,
                 repayment_date: 0,
-                is_repaid: false
+                is_repaid: false,
+                num_proposal_counters: 0
             };
 
             // Store the proposal
@@ -414,6 +440,7 @@ pub mod PeerProtocol {
 
             borrow_proposals
         }
+
         fn create_lending_proposal(
             ref self: ContractState,
             token: ContractAddress,
@@ -422,7 +449,7 @@ pub mod PeerProtocol {
             required_collateral_value: u256,
             interest_rate: u64,
             duration: u64,
-        ) {
+        ) -> u256 {
             // Validation of token support
             assert!(self.supported_tokens.entry(token).read(), "Token not supported");
             assert!(
@@ -456,7 +483,8 @@ pub mod PeerProtocol {
                 is_accepted: false,
                 accepted_at: 0,
                 repayment_date: 0,
-                is_repaid: false
+                is_repaid: false,
+                num_proposal_counters: 0
             };
 
             // Store proposal
@@ -476,6 +504,8 @@ pub mod PeerProtocol {
                         created_at,
                     }
                 );
+
+            proposal_id
         }
 
         fn get_lending_proposal_details(self: @ContractState) -> Array<Proposal> {
@@ -630,6 +660,86 @@ pub mod PeerProtocol {
                         amount: proposal.amount
                     }
                 );
+        }
+
+        fn counter_proposal(
+            ref self: ContractState,
+            proposal_id: u256,
+            amount: u256,
+            required_collateral_value: u256,
+            interest_rate: u64,
+            duration: u64
+        ) {
+            let caller = get_caller_address();
+            let created_at = get_block_timestamp();
+            let proposal = self.proposals.entry(proposal_id).read();
+
+            assert!(
+                proposal.proposal_type == ProposalType::LENDING, "Can only counter lending proposal"
+            );
+
+            let counter_proposal_id = proposal.num_proposal_counters + 1;
+
+            let counter_proposal = CounterProposal {
+                id: counter_proposal_id,
+                creator: caller,
+                proposal_id: proposal_id,
+                required_collateral_value,
+                amount,
+                interest_rate,
+                duration,
+                created_at,
+            };
+
+            let mut updated_proposal = proposal;
+            updated_proposal.num_proposal_counters = counter_proposal_id;
+
+            // update the proposal
+            self.proposals.entry(proposal_id).write(updated_proposal);
+
+            // store counter proposal
+            self
+                .counter_proposals
+                .entry((proposal_id, counter_proposal_id))
+                .write(counter_proposal);
+
+            self
+                .emit(
+                    ProposalCountered {
+                        proposal_id, creator: caller, amount, interest_rate, duration, created_at,
+                    },
+                );
+        }
+
+        fn get_counter_proposals(
+            self: @ContractState, proposal_id: u256
+        ) -> Array<CounterProposal> {
+            // Create an empty array to store counter proposals
+            let mut counter_proposals: Array<CounterProposal> = ArrayTrait::new();
+
+            // Read the proposal
+            let proposal = self.proposals.entry(proposal_id).read();
+
+            // Check if the proposal is a lend proposal
+            if proposal.proposal_type == ProposalType::LENDING {
+                // Iterate through all proposals
+                let mut i: u256 = 1;
+                loop {
+                    // Break the loop if we've checked all proposals
+                    if i > proposal.num_proposal_counters {
+                        break;
+                    }
+
+                    // Read the counter proposal
+                    let counter_proposal = self.counter_proposals.entry((proposal_id, i)).read();
+
+                    counter_proposals.append(counter_proposal);
+
+                    i += 1;
+                };
+            }
+
+            counter_proposals
         }
 
         fn get_borrowed_tokens(
@@ -875,9 +985,9 @@ pub mod PeerProtocol {
             };
             self._add_transaction(lender, lender_transaction);
             // Emit liquidation event
-
         }
     }
+
 
     #[generate_trait]
     impl InternalFunctions of InternalFunctionsTrait {

@@ -364,18 +364,19 @@ pub mod PeerProtocol {
                 .token_deposits
                 .entry((caller, accepted_collateral_token))
                 .read();
-            assert(
-                borrower_collateral_balance >= (required_collateral_value
-                    * COLLATERAL_RATIO_NUMERATOR)
-                    / COLLATERAL_RATIO_DENOMINATOR,
-                'insufficient collateral funds'
-            );
+            let borrower_locked_collateral = self.locked_collateral.entry((caller, accepted_collateral_token)).read();
+            let available_collateral = borrower_collateral_balance - borrower_locked_collateral;
+            let required_collateral_ratio = (required_collateral_value * COLLATERAL_RATIO_NUMERATOR) / COLLATERAL_RATIO_DENOMINATOR;
+
+            assert(available_collateral >= required_collateral_ratio, 'insufficient collateral funds');
 
             // Lock borrowers collateral
+            let prev_locked_funds = self.locked_collateral.entry((caller, accepted_collateral_token)).read();
+
             self
                 .locked_collateral
                 .entry((caller, accepted_collateral_token))
-                .write(required_collateral_value);
+                .write(prev_locked_funds + required_collateral_value);
 
             let proposal_id = self.proposals_count.read() + 1;
 

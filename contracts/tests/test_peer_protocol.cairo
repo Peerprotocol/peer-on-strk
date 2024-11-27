@@ -461,7 +461,6 @@ fn test_get_borrow_proposal_details() {
     let collateral_token_address = deploy_token("MockToken1");
     let peer_protocol_address = deploy_peer_protocol();
 
-    let token = IERC20Dispatcher { contract_address: token_address };
     let collateral_token = IERC20Dispatcher { contract_address: collateral_token_address };
     let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
 
@@ -476,25 +475,21 @@ fn test_get_borrow_proposal_details() {
     let collateral_value_with_ratio = (required_collateral_value * COLLATERAL_RATIO_NUMERATOR)
         / COLLATERAL_RATIO_DENOMINATOR;
 
-    // Setup tokens and deposits (same as previous test)
+    // Add supported tokens to peer protocol contract
     start_cheat_caller_address(peer_protocol_address, owner);
     peer_protocol.add_supported_token(token_address);
     peer_protocol.add_supported_token(collateral_token_address);
     stop_cheat_caller_address(peer_protocol_address);
 
-    token.mint(borrower, mint_amount);
+    // Mint collateral token to borrower
     collateral_token.mint(borrower, mint_amount);
 
-    // Approve tokens
-    start_cheat_caller_address(token_address, borrower);
-    token.approve(peer_protocol_address, mint_amount);
-    stop_cheat_caller_address(token_address);
-
+    // Approve peer protocol contract to spend collateral token
     start_cheat_caller_address(collateral_token_address, borrower);
     collateral_token.approve(peer_protocol_address, mint_amount);
     stop_cheat_caller_address(collateral_token_address);
 
-    // Deposit collateral
+    // Deposit collateral token into peer protocol before creating borrow proposal
     start_cheat_caller_address(peer_protocol_address, borrower);
     peer_protocol.deposit(collateral_token_address, collateral_value_with_ratio);
     stop_cheat_caller_address(peer_protocol_address);

@@ -387,6 +387,33 @@ pub mod PeerProtocol {
             proposal_id
         }
 
+        fn get_borrow_proposal_details(self: @ContractState) -> Array<Proposal> {
+            // Create an empty array to store borrow proposals
+            let mut borrow_proposals: Array<Proposal> = ArrayTrait::new();
+
+            // Get the total number of proposals
+            let proposals_count = self.proposals_count.read();
+
+            // Iterate through all proposals
+            let mut i: u256 = 1;
+            loop {
+                // Break the loop if we've checked all proposals
+                if i > proposals_count {
+                    break;
+                }
+                // Read the proposal
+                let proposal = self.proposals.entry(i).read();
+                // Check if the proposal is a borrow proposal
+                if proposal.proposal_type == ProposalType::BORROWING {
+                    // Add to the borrow proposals array
+                    borrow_proposals.append(proposal);
+                }
+
+                i += 1;
+            };
+
+            borrow_proposals
+        }
         fn create_lending_proposal(
             ref self: ContractState,
             token: ContractAddress,

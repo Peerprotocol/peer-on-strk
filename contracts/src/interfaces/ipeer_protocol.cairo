@@ -20,7 +20,9 @@ pub trait IPeerProtocol<TContractState> {
         required_collateral_value: u256,
         interest_rate: u64,
         duration: u64
-    ) -> u256;
+    );
+
+    fn get_borrow_proposal_details(self: @TContractState) -> Array<Proposal>;
     fn accept_proposal(ref self: TContractState, proposal_id: u256);
     fn repay_proposal(ref self: TContractState, proposal_id: u256);
 
@@ -57,5 +59,6 @@ pub trait IPeerProtocol<TContractState> {
     ) -> Array<Transaction>;
 
     fn get_user_assets(self: @TContractState, user: ContractAddress) -> Array<UserAssets>;
+    
     fn get_user_deposits(self: @TContractState, user: ContractAddress) -> Span<UserDeposit>;
 }

@@ -389,12 +389,14 @@ fn test_create_lending_proposal() {
     let collateral_token_address = deploy_token("MockToken1");
     let peer_protocol_address = deploy_peer_protocol();
 
+    let lending_token = IERC20Dispatcher { contract_address: token_address };
     let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
 
     let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
     let lender: ContractAddress = starknet::contract_address_const::<0x122226789>();
 
-    let amount: u256 = 500 * ONE_E18;
+    let mint_amount: u256 = 1000 * ONE_E18;
+    let lending_amount: u256 = 500 * ONE_E18;
     let required_collateral_value: u256 = 300 * ONE_E18;
     let interest_rate: u64 = 5;
     let duration: u64 = 10;
@@ -405,6 +407,22 @@ fn test_create_lending_proposal() {
     peer_protocol.add_supported_token(collateral_token_address);
     stop_cheat_caller_address(peer_protocol_address);
 
+    lending_token.mint(lender, mint_amount);
+    assert!(lending_token.balance_of(lender) == mint_amount, "mint failed");
+
+    // Approve contract to spend lending token : Needs to be done before deposits
+    start_cheat_caller_address(token_address, lender);
+    lending_token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(token_address);
+
+    // Lender Deposit Token into Peer Protocol
+    start_cheat_caller_address(peer_protocol_address, lender);
+    peer_protocol.deposit(token_address, lending_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+    assert!(lending_token.balance_of(lender) == mint_amount - lending_amount, "deposit failed");
+    assert!(lending_token.balance_of(peer_protocol_address) == lending_amount, "wrong contract balance");
+
+
     // Create lending proposal
     start_cheat_caller_address(peer_protocol_address, lender);
     let mut spy = spy_events();
@@ -413,7 +431,7 @@ fn test_create_lending_proposal() {
         .create_lending_proposal(
             token_address,
             collateral_token_address,
-            amount,
+            lending_amount,
             required_collateral_value,
             interest_rate,
             duration
@@ -426,7 +444,7 @@ fn test_create_lending_proposal() {
             proposal_type: ProposalType::LENDING,
             lender,
             token: token_address,
-            amount,
+            amount: lending_amount,
             interest_rate,
             duration,
             created_at,

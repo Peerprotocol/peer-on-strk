@@ -4,7 +4,7 @@ version = "0.1.0"
 
 [dependencies]
 starknet = "2.8.2"
-openzeppelin = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v0.15.0" }
+# openzeppelin = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v0.15.0" }
 pragma_lib = { git = "https://github.com/astraly-labs/pragma-lib" }
 
 [dev-dependencies]

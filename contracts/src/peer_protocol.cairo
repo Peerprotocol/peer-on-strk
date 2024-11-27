@@ -147,7 +147,7 @@ pub mod PeerProtocol {
         protocol_fee_address: ContractAddress,
         spok_nft: ContractAddress,
         next_spok_id: u256,
-        locked_collateral: Map<(ContractAddress, ContractAddress), u256>, // (user, token) => amount
+        locked_funds: Map<(ContractAddress, ContractAddress), u256>, // (user, token) => amount
         liquidation_thresholds: Map<ContractAddress, LiquidationThreshold>,
         price_oracles: Map<ContractAddress, ContractAddress>
     }
@@ -320,11 +320,11 @@ pub mod PeerProtocol {
             let key = (caller, token_address);
 
             let current_balance = self.token_deposits.entry(key).read();
-            let locked_collateral = self.locked_collateral.entry(key).read();
+            let locked_funds = self.locked_funds.entry(key).read();
 
-            let withrawable_amount = current_balance - locked_collateral;
+            let available_amount = current_balance - locked_funds;
 
-            assert!(amount <= withrawable_amount, "insufficient balance");
+            assert!(amount <= available_amount, "insufficient balance");
 
             self.token_deposits.entry(key).write(current_balance - amount);
 
@@ -360,21 +360,18 @@ pub mod PeerProtocol {
             let created_at = get_block_timestamp();
 
             // Check if borrower has sufficient collateral * 1.3
-            let borrower_collateral_balance = self
-                .token_deposits
-                .entry((caller, accepted_collateral_token))
-                .read();
-            let borrower_locked_collateral = self.locked_collateral.entry((caller, accepted_collateral_token)).read();
-            let available_collateral = borrower_collateral_balance - borrower_locked_collateral;
+            let borrower_collateral_balance = self.token_deposits.entry((caller, accepted_collateral_token)).read();
+            let borrower_locked_funds = self.locked_funds.entry((caller, accepted_collateral_token)).read();
+            let available_collateral = borrower_collateral_balance - borrower_locked_funds;
             let required_collateral_ratio = (required_collateral_value * COLLATERAL_RATIO_NUMERATOR) / COLLATERAL_RATIO_DENOMINATOR;
 
             assert(available_collateral >= required_collateral_ratio, 'insufficient collateral funds');
 
             // Lock borrowers collateral
-            let prev_locked_funds = self.locked_collateral.entry((caller, accepted_collateral_token)).read();
+            let prev_locked_funds = self.locked_funds.entry((caller, accepted_collateral_token)).read();
 
             self
-                .locked_collateral
+                .locked_funds
                 .entry((caller, accepted_collateral_token))
                 .write(prev_locked_funds + required_collateral_value);
 
@@ -469,11 +466,19 @@ pub mod PeerProtocol {
             assert!(interest_rate > 0 && interest_rate <= 7, "Interest rate out of bounds");
             assert!(duration >= 7 && duration <= 15, "Duration out of bounds");
 
+            
             let caller = get_caller_address();
             let lender_token_balance = self.token_deposits.entry((caller, token)).read();
+            let locked_funds = self.locked_funds.entry((caller, token)).read();
 
-            // Check to ensure that lender has deposited the token they want to lend
-            assert!(lender_token_balance >= amount, "Insufficient token balance");
+            let available_lending_funds = lender_token_balance - locked_funds;
+
+            // Check to ensure that lender has deposited the token they want to lend after deducting the locked funds
+            assert!(available_lending_funds >= amount, "Insufficient token balance");
+
+            // Lock lender's funds before creating a lending proposal
+            let prev_locked_funds = self.locked_funds.entry((caller, token)).read();
+            self.locked_funds.entry((caller, token)).write(prev_locked_funds + amount);
 
             let created_at = get_block_timestamp();
             let proposal_id = self.proposals_count.read() + 1;
@@ -811,14 +816,14 @@ pub mod PeerProtocol {
                 .transfer_from(caller, proposal.lender, amount);
 
             // Unlock borrowers collateral
-            let locked_collateral = self
-                .locked_collateral
+            let locked_funds = self
+                .locked_funds
                 .entry((caller, proposal.accepted_collateral_token))
                 .read();
             self
-                .locked_collateral
+                .locked_funds
                 .entry((caller, proposal.accepted_collateral_token))
-                .write(locked_collateral - proposal.required_collateral_value);
+                .write(locked_funds - proposal.required_collateral_value);
 
             // Record Transaction
             self.record_transaction(proposal.token, TransactionType::REPAY, amount, caller);
@@ -934,7 +939,7 @@ pub mod PeerProtocol {
 
             // Update protocol state
             self
-                .locked_collateral
+                .locked_funds
                 .entry((proposal.borrower, proposal.accepted_collateral_token))
                 .write(0);
 
@@ -1077,7 +1082,7 @@ pub mod PeerProtocol {
 
             // Lock borrowers collateral
             self
-                .locked_collateral
+                .locked_funds
                 .entry((borrower, proposal.accepted_collateral_token))
                 .write(required_collateral);
 

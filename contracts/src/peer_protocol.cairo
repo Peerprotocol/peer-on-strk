@@ -105,8 +105,7 @@ pub mod PeerProtocol {
     use starknet::event::EventEmitter;
     use super::{
         Transaction, TransactionType, UserDeposit, UserAssets, Proposal, ProposalType,
-        CounterProposal,
-        BorrowedDetails
+        CounterProposal, BorrowedDetails
     };
     use peer_protocol::interfaces::ipeer_protocol::IPeerProtocol;
     use peer_protocol::interfaces::ierc20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -169,7 +168,7 @@ pub mod PeerProtocol {
         TransactionRecorded: TransactionRecorded,
         ProposalCreated: ProposalCreated,
         ProposalAccepted: ProposalAccepted,
-        ProposalCountered: ProposalCountered
+        ProposalCountered: ProposalCountered,
         ProposalRepaid: ProposalRepaid,
         LendingProposalCreated: LendingProposalCreated
     }
@@ -244,7 +243,7 @@ pub mod PeerProtocol {
         pub created_at: u64,
     }
 
- #[derive(Drop, starknet::Event)]
+    #[derive(Drop, starknet::Event)]
     pub struct ProposalRepaid {
         pub proposal_type: ProposalType,
         pub repaid_by: ContractAddress,
@@ -342,7 +341,6 @@ pub mod PeerProtocol {
             interest_rate: u64,
             duration: u64,
         ) -> u256 {
-
             assert!(self.supported_tokens.entry(token).read(), "Token not supported");
             assert!(
                 self.supported_tokens.entry(accepted_collateral_token).read(),
@@ -442,6 +440,7 @@ pub mod PeerProtocol {
 
             borrow_proposals
         }
+
         fn create_lending_proposal(
             ref self: ContractState,
             token: ContractAddress,
@@ -450,7 +449,7 @@ pub mod PeerProtocol {
             required_collateral_value: u256,
             interest_rate: u64,
             duration: u64,
-        ) {
+        ) -> u256 {
             // Validation of token support
             assert!(self.supported_tokens.entry(token).read(), "Token not supported");
             assert!(
@@ -484,7 +483,8 @@ pub mod PeerProtocol {
                 is_accepted: false,
                 accepted_at: 0,
                 repayment_date: 0,
-                is_repaid: false
+                is_repaid: false,
+                num_proposal_counters: 0
             };
 
             // Store proposal
@@ -504,6 +504,8 @@ pub mod PeerProtocol {
                         created_at,
                     }
                 );
+
+            proposal_id
         }
 
         fn get_lending_proposal_details(self: @ContractState) -> Array<Proposal> {
@@ -707,8 +709,39 @@ pub mod PeerProtocol {
                         proposal_id, creator: caller, amount, interest_rate, duration, created_at,
                     },
                 );
-                  }
-    }
+        }
+
+        fn get_counter_proposals(
+            self: @ContractState, proposal_id: u256
+        ) -> Array<CounterProposal> {
+            // Create an empty array to store counter proposals
+            let mut counter_proposals: Array<CounterProposal> = ArrayTrait::new();
+
+            // Read the proposal
+            let proposal = self.proposals.entry(proposal_id).read();
+
+            // Check if the proposal is a lend proposal
+            if proposal.proposal_type == ProposalType::LENDING {
+                // Iterate through all proposals
+                let mut i: u256 = 1;
+                loop {
+                    // Break the loop if we've checked all proposals
+                    if i > proposal.num_proposal_counters {
+                        break;
+                    }
+
+                    // Read the counter proposal
+                    let counter_proposal = self.counter_proposals.entry((proposal_id, i)).read();
+
+                    counter_proposals.append(counter_proposal);
+
+                    i += 1;
+                };
+            }
+
+            counter_proposals
+        }
+
         fn get_borrowed_tokens(
             self: @ContractState, user: ContractAddress
         ) -> Array<BorrowedDetails> {
@@ -954,6 +987,7 @@ pub mod PeerProtocol {
             // Emit liquidation event
         }
     }
+
 
     #[generate_trait]
     impl InternalFunctions of InternalFunctionsTrait {

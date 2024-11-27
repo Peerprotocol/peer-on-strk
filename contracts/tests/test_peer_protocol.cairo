@@ -76,7 +76,7 @@ fn test_deposit() {
     let peer_protocol_address = deploy_peer_protocol();
 
     let token = IERC20Dispatcher { contract_address: token_address };
-    
+
     let caller: ContractAddress = starknet::contract_address_const::<0x122226789>();
     let mint_amount: u256 = 1000 * ONE_E18;
 
@@ -490,27 +490,29 @@ fn test_get_borrow_proposal_details() {
 
     // Create multiple borrow proposals
     start_cheat_caller_address(peer_protocol_address, borrower);
-    peer_protocol.create_borrow_proposal(
-        token_address,
-        collateral_token_address,
-        borrow_amount,
-        required_collateral_value,
-        interest_rate,
-        duration
-    );
+    peer_protocol
+        .create_borrow_proposal(
+            token_address,
+            collateral_token_address,
+            borrow_amount,
+            required_collateral_value,
+            interest_rate,
+            duration
+        );
 
     // Create another borrow proposal with different parameters
     let another_borrow_amount = 250 * ONE_E18;
     let another_interest_rate: u64 = 3;
     let another_duration: u64 = 7;
-    peer_protocol.create_borrow_proposal(
-        token_address,
-        collateral_token_address,
-        another_borrow_amount,
-        required_collateral_value,
-        another_interest_rate,
-        another_duration
-    );
+    peer_protocol
+        .create_borrow_proposal(
+            token_address,
+            collateral_token_address,
+            another_borrow_amount,
+            required_collateral_value,
+            another_interest_rate,
+            another_duration
+        );
     stop_cheat_caller_address(peer_protocol_address);
 
     // Retrieve borrow proposals
@@ -518,6 +520,165 @@ fn test_get_borrow_proposal_details() {
 
     // Assertions
     assert!(borrow_proposals.len() == 2, "Incorrect number of proposals");
+}
+
+
+#[test]
+fn test_create_counter_proposal() {
+    // Setup
+    let token_address = deploy_token("MockToken");
+    let collateral_token_address = deploy_token("MockToken1");
+    let peer_protocol_address = deploy_peer_protocol();
+
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+
+    let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
+    let lender: ContractAddress = starknet::contract_address_const::<0x122226789>();
+    let borrower: ContractAddress = starknet::contract_address_const::<0x122226737>();
+
+    let amount: u256 = 500 * ONE_E18;
+    let required_collateral_value: u256 = 300 * ONE_E18;
+    let interest_rate: u64 = 5;
+    let duration: u64 = 10;
+
+    // Add supported tokens
+    start_cheat_caller_address(peer_protocol_address, owner);
+    peer_protocol.add_supported_token(token_address);
+    peer_protocol.add_supported_token(collateral_token_address);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // Create lending proposal
+    start_cheat_caller_address(peer_protocol_address, lender);
+    let mut spy = spy_events();
+
+    let proposal_id = peer_protocol
+        .create_lending_proposal(
+            token_address,
+            collateral_token_address,
+            amount,
+            required_collateral_value,
+            interest_rate,
+            duration
+        );
+
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // borrower creates counter proposal
+    start_cheat_caller_address(peer_protocol_address, borrower);
+
+    let counter_amount: u256 = 250 * ONE_E18;
+    let counter_required_collateral_value: u256 = 200 * ONE_E18;
+    let counter_interest_rate: u64 = 3;
+    let counter_duration: u64 = 8;
+
+    peer_protocol
+        .counter_proposal(
+            proposal_id,
+            counter_amount,
+            counter_required_collateral_value,
+            counter_interest_rate,
+            counter_duration
+        );
+
+    // Check emitted event
+    let created_at = starknet::get_block_timestamp();
+    let expected_event = PeerProtocol::Event::ProposalCountered(
+        PeerProtocol::ProposalCountered {
+            proposal_id,
+            creator: borrower,
+            amount: counter_amount,
+            interest_rate: counter_interest_rate,
+            duration: counter_duration,
+            created_at,
+        }
+    );
+    spy.assert_emitted(@array![(peer_protocol_address, expected_event)]);
+}
+
+
+#[test]
+fn test_get_counter_proposals() {
+    // Setup
+    let token_address = deploy_token("MockToken");
+    let collateral_token_address = deploy_token("MockToken1");
+    let peer_protocol_address = deploy_peer_protocol();
+
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+
+    let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
+    let lender: ContractAddress = starknet::contract_address_const::<0x122226789>();
+    let borrower1: ContractAddress = starknet::contract_address_const::<0x122226737>();
+    let borrower2: ContractAddress = starknet::contract_address_const::<0x122225637>();
+
+    let amount: u256 = 500 * ONE_E18;
+    let required_collateral_value: u256 = 300 * ONE_E18;
+    let interest_rate: u64 = 5;
+    let duration: u64 = 10;
+
+    // Add supported tokens
+    start_cheat_caller_address(peer_protocol_address, owner);
+    peer_protocol.add_supported_token(token_address);
+    peer_protocol.add_supported_token(collateral_token_address);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // Create lending proposal
+    start_cheat_caller_address(peer_protocol_address, lender);
+
+    let proposal_id = peer_protocol
+        .create_lending_proposal(
+            token_address,
+            collateral_token_address,
+            amount,
+            required_collateral_value,
+            interest_rate,
+            duration
+        );
+
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // borrower creates counter proposal
+    start_cheat_caller_address(peer_protocol_address, borrower1);
+
+    let counter_amount: u256 = 250 * ONE_E18;
+    let counter_required_collateral_value: u256 = 200 * ONE_E18;
+    let counter_interest_rate: u64 = 3;
+    let counter_duration: u64 = 8;
+
+    peer_protocol
+        .counter_proposal(
+            proposal_id,
+            counter_amount,
+            counter_required_collateral_value,
+            counter_interest_rate,
+            counter_duration
+        );
+
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // borrower creates counter proposal
+    start_cheat_caller_address(peer_protocol_address, borrower2);
+
+    let counter_amount_2: u256 = 400 * ONE_E18;
+    let counter_required_collateral_value_2: u256 = 300 * ONE_E18;
+    let counter_interest_rate_2: u64 = 7;
+    let counter_duration_2: u64 = 30;
+
+    peer_protocol
+        .counter_proposal(
+            proposal_id,
+            counter_amount_2,
+            counter_required_collateral_value_2,
+            counter_interest_rate_2,
+            counter_duration_2
+        );
+
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // Retrieve counter proposals
+    let counter_proposals = peer_protocol.get_counter_proposals(proposal_id);
+
+    // Assertions
+    assert!(counter_proposals.len() == 2, "Incorrect number of proposals");
 }
 
 #[test]

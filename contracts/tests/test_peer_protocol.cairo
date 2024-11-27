@@ -472,8 +472,6 @@ fn test_get_borrow_proposal_details() {
     let interest_rate: u64 = 5;
     let duration: u64 = 10;
     let required_collateral_value = 300 * ONE_E18;
-    let collateral_value_with_ratio = (required_collateral_value * COLLATERAL_RATIO_NUMERATOR)
-        / COLLATERAL_RATIO_DENOMINATOR;
 
     // Add supported tokens to peer protocol contract
     start_cheat_caller_address(peer_protocol_address, owner);
@@ -525,7 +523,7 @@ fn test_get_borrow_proposal_details() {
     let borrow_proposals = peer_protocol.get_borrow_proposal_details();
 
     // Assertions
-    assert!(borrow_proposals.len() == 2, "Incorrect number of proposals");
+    assert!(borrow_proposals.len() == 2, "Incorrect number of borrow proposals");
 }
 
 
@@ -718,7 +716,7 @@ fn test_get_counter_proposals() {
     let counter_proposals = peer_protocol.get_counter_proposals(proposal_id);
 
     // Assertions
-    assert!(counter_proposals.len() == 2, "Incorrect number of proposals");
+    assert!(counter_proposals.len() == 2, "Incorrect number counter of proposals");
 }
 
 #[test]
@@ -781,12 +779,76 @@ fn test_create_borrow_proposal_should_panic_for_unsupported_token() {
 }
 
 #[test]
-fn test_get_lending_proposal_details_empty() {
+fn test_get_lending_proposal_details() {
+    // Setup
+    let token_address = deploy_token("MockToken");
+    let collateral_token_address = deploy_token("MockToken1");
     let peer_protocol_address = deploy_peer_protocol();
+
+    let lending_token = IERC20Dispatcher { contract_address: token_address };
     let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
 
+    let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
+    let lender: ContractAddress = starknet::contract_address_const::<0x122226789>();
+
+    let mint_amount: u256 = 1000 * ONE_E18;
+    let lending_amount: u256 = 500 * ONE_E18;
+    let required_collateral_value: u256 = 300 * ONE_E18;
+    let interest_rate: u64 = 5;
+    let duration: u64 = 10;
+
+    // Add supported tokens
+    start_cheat_caller_address(peer_protocol_address, owner);
+    peer_protocol.add_supported_token(token_address);
+    peer_protocol.add_supported_token(collateral_token_address);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    lending_token.mint(lender, mint_amount);
+    assert!(lending_token.balance_of(lender) == mint_amount, "mint failed");
+
+    // Approve contract to spend lending token : Needs to be done before deposits
+    start_cheat_caller_address(token_address, lender);
+    lending_token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(token_address);
+
+    // Lender Deposit Token into Peer Protocol
+    start_cheat_caller_address(peer_protocol_address, lender);
+    peer_protocol.deposit(token_address, lending_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+    assert!(lending_token.balance_of(lender) == mint_amount - lending_amount, "deposit failed");
+    assert!(lending_token.balance_of(peer_protocol_address) == lending_amount, "wrong contract balance");
+
+
+    // Create lending proposal
+    start_cheat_caller_address(peer_protocol_address, lender);
+
+    peer_protocol
+        .create_lending_proposal(
+            token_address,
+            collateral_token_address,
+            lending_amount,
+            required_collateral_value,
+            interest_rate,
+            duration
+        );
+
+    // Create another lending proposal with different parameters
+    let another_lending_amount: u256 = 250 * ONE_E18;
+    let another_interest_rate: u64 = 3;
+    let another_duration: u64 = 7;
+    peer_protocol
+    .create_lending_proposal(
+        token_address,
+        collateral_token_address,
+        another_lending_amount,
+        required_collateral_value,
+        another_interest_rate,
+        another_duration
+    );
+
     let lending_proposals = peer_protocol.get_lending_proposal_details();
-    assert!(lending_proposals.is_empty(), "Proposals array should be empty");
+    
+    assert!(lending_proposals.len() == 2, "Incorrect number of lending proposals");
 }
 
 #[test]

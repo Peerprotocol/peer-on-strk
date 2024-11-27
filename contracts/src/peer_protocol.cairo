@@ -520,26 +520,32 @@ pub mod PeerProtocol {
         }
 
         fn get_lending_proposal_details(self: @ContractState) -> Array<Proposal> {
-            let mut proposals = array::ArrayTrait::new();
+            // Create an empty array to store borrow proposals
+            let mut lending_proposals: Array<Proposal> = ArrayTrait::new();
+
+            // Get the total number of proposals
             let proposals_count = self.proposals_count.read();
 
-            let mut proposal_id = 0;
+            // Iterate through all proposals
+            let mut i: u256 = 1;
             loop {
-                if proposal_id >= proposals_count {
+                // Break the loop if we've checked all proposals
+                if i > proposals_count {
                     break;
                 }
-
-                let proposal = self.proposals.entry(proposal_id).read();
+                // Read the proposal
+                let proposal = self.proposals.entry(i).read();
+                // Check if the proposal is a borrow proposal
                 if proposal.proposal_type == ProposalType::LENDING {
-                    proposals.append(proposal);
+                    // Add to the borrow proposals array
+                    lending_proposals.append(proposal);
                 }
 
-                proposal_id += 1;
+                i += 1;
             };
 
-            proposals
+            lending_proposals
         }
-
 
         fn get_transaction_history(
             self: @ContractState, user: ContractAddress, offset: u64, limit: u64

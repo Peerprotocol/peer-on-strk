@@ -315,10 +315,16 @@ pub mod PeerProtocol {
         fn withdraw(ref self: ContractState, token_address: ContractAddress, amount: u256) {
             assert!(self.supported_tokens.entry(token_address).read(), "token not supported");
             assert!(amount > 0, "can't withdraw zero value");
+
             let caller = get_caller_address();
             let key = (caller, token_address);
+
             let current_balance = self.token_deposits.entry(key).read();
-            assert!(amount <= current_balance, "insufficient balance");
+            let locked_collateral = self.locked_collateral.entry(key).read();
+
+            let withrawable_amount = current_balance - locked_collateral;
+
+            assert!(amount <= withrawable_amount, "insufficient balance");
 
             self.token_deposits.entry(key).write(current_balance - amount);
 

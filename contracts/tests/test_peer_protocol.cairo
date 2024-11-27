@@ -524,6 +524,10 @@ fn test_get_borrow_proposal_details() {
 
     // Assertions
     assert!(borrow_proposals.len() == 2, "Incorrect number of borrow proposals");
+    assert!(*borrow_proposals.at(0).borrower == borrower, "Wrong borrower");
+    assert!(*borrow_proposals.at(1).borrower == borrower, "Wrong borrower");
+    assert!(*borrow_proposals.at(0).amount == borrow_amount, "Wrong borrow amount1");
+    assert!(*borrow_proposals.at(1).amount == another_borrow_amount, "Wrong borrow amount2");
 }
 
 
@@ -849,6 +853,10 @@ fn test_get_lending_proposal_details() {
     let lending_proposals = peer_protocol.get_lending_proposal_details();
     
     assert!(lending_proposals.len() == 2, "Incorrect number of lending proposals");
+    assert!(*lending_proposals.at(0).lender == lender, "Wrong lender");
+    assert!(*lending_proposals.at(1).lender == lender, "Wrong lender");
+    assert!(*lending_proposals.at(0).amount == lending_amount, "Wrong lending amount1");
+    assert!(*lending_proposals.at(1).amount == another_lending_amount, "Wrong lending amount2");
 }
 
 #[test]

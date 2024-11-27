@@ -693,6 +693,7 @@ pub mod PeerProtocol {
             let caller = get_caller_address();
             let proposal = self.proposals.entry(proposal_id).read();
 
+            assert(proposal.is_accepted == false, 'proposal already accepted');
             assert(proposal.is_cancelled == false, 'proposal is cancelled');
 
             // Calculate protocol fee

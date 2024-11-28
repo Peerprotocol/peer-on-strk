@@ -388,7 +388,7 @@ pub mod PeerProtocol {
             self
                 .locked_funds
                 .entry((caller, accepted_collateral_token))
-                .write(prev_locked_funds + required_collateral_value);
+                .write(prev_locked_funds + required_collateral_ratio);
 
             let proposal_id = self.proposals_count.read() + 1;
 
@@ -679,7 +679,8 @@ pub mod PeerProtocol {
                 ProposalType::BORROWING => {
                     assert(caller == proposal.borrower, 'unauthorized caller');
                     let borrower_locked_funds = self.locked_funds.entry((caller, proposal.accepted_collateral_token)).read();
-                    self.locked_funds.entry((caller, proposal.accepted_collateral_token)).write(borrower_locked_funds - proposal.required_collateral_value);
+                    let locked_collateral_ratio = (proposal.required_collateral_value * COLLATERAL_RATIO_NUMERATOR) / COLLATERAL_RATIO_DENOMINATOR;
+                    self.locked_funds.entry((caller, proposal.accepted_collateral_token)).write(borrower_locked_funds - locked_collateral_ratio);
                 },
                 ProposalType::LENDING => {
                     assert(caller == proposal.lender, 'unauthorized caller');
@@ -765,7 +766,7 @@ pub mod PeerProtocol {
             self
                 .locked_funds
                 .entry((caller, proposal.accepted_collateral_token))
-                .write(prev_locked_funds + required_collateral_value);
+                .write(prev_locked_funds + required_collateral_ratio);
 
 
             let counter_proposal_id = proposal.num_proposal_counters + 1;

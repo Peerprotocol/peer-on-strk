@@ -1244,7 +1244,6 @@ pub mod PeerProtocol {
                 tx_hash: get_tx_info().transaction_hash,
             };
             self._add_transaction(lender, lender_transaction);
-            // Emit liquidation event
         }
     }
 }

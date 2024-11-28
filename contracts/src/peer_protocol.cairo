@@ -110,7 +110,7 @@ pub mod PeerProtocol {
     };
     use peer_protocol::interfaces::ipeer_protocol::IPeerProtocol;
     use peer_protocol::interfaces::ierc20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use peer_protocol::interfaces::ierc721::{IERC721Dispatcher, IERC721DispatcherTrait};
+    use peer_protocol::interfaces::ipeer_spok_nft::{IPeerSPOKNFTDispatcher, IPeerSPOKNFTDispatcherTrait};
 
     use starknet::{
         ContractAddress, get_block_timestamp, get_caller_address, get_contract_address,
@@ -1173,7 +1173,7 @@ pub mod PeerProtocol {
         fn mint_spoks(
             ref self: ContractState, proposal_id: u256, creator: ContractAddress, acceptor: ContractAddress
         ) {
-            let spok = IERC721Dispatcher { contract_address: self.spok_nft.read() };
+            let spok = IPeerSPOKNFTDispatcher { contract_address: self.spok_nft.read() };
 
             // Mint NFTs for both parties
             let creator_token_id = self.next_spok_id.read();

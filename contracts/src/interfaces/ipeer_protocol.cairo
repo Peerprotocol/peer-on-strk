@@ -22,6 +22,7 @@ pub trait IPeerProtocol<TContractState> {
         interest_rate: u64,
         duration: u64
     ) -> u256;
+    fn cancel_proposal(ref self: TContractState, proposal_id: u256);
     fn accept_proposal(ref self: TContractState, proposal_id: u256);
     fn counter_proposal(
         ref self: TContractState,
@@ -31,9 +32,13 @@ pub trait IPeerProtocol<TContractState> {
         interest_rate: u64,
         duration: u64
     );
+
+    fn get_locked_funds(self: @TContractState, user: ContractAddress, token: ContractAddress) -> u256;
+
     fn get_counter_proposals(self: @TContractState, proposal_id: u256) -> Array<CounterProposal>;
 
     fn get_borrow_proposal_details(self: @TContractState) -> Array<Proposal>;
+
     fn repay_proposal(ref self: TContractState, proposal_id: u256);
 
     fn get_borrowed_tokens(self: @TContractState, user: ContractAddress) -> Array<BorrowedDetails>;

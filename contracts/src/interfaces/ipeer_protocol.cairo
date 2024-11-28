@@ -60,15 +60,6 @@ pub trait IPeerProtocol<TContractState> {
     ) -> Array<LiquidationInfo>;
     fn liquidate_position(ref self: TContractState, proposal_id: u256);
     fn get_token_price(self: @TContractState, token: ContractAddress) -> u256;
-    fn record_liquidation(
-        ref self: TContractState,
-        borrower: ContractAddress,
-        lender: ContractAddress,
-        loan_token: ContractAddress,
-        collateral_token: ContractAddress,
-        loan_value: u256,
-        collateral_value: u256
-    );
 
     fn get_transaction_history(
         self: @TContractState, user: ContractAddress, offset: u64, limit: u64

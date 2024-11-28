@@ -1043,36 +1043,7 @@ pub mod PeerProtocol {
         }
 
 
-        fn record_liquidation(
-            ref self: ContractState,
-            borrower: ContractAddress,
-            lender: ContractAddress,
-            loan_token: ContractAddress,
-            collateral_token: ContractAddress,
-            loan_value: u256,
-            collateral_value: u256
-        ) {
-            // Create liquidation transaction record for borrower
-            let borrower_transaction = Transaction {
-                transaction_type: TransactionType::WITHDRAWAL,
-                token: collateral_token,
-                amount: collateral_value,
-                timestamp: get_block_timestamp(),
-                tx_hash: get_tx_info().transaction_hash,
-            };
-            self._add_transaction(borrower, borrower_transaction);
-
-            // Create liquidation transaction record for lender
-            let lender_transaction = Transaction {
-                transaction_type: TransactionType::DEPOSIT,
-                token: collateral_token,
-                amount: collateral_value,
-                timestamp: get_block_timestamp(),
-                tx_hash: get_tx_info().transaction_hash,
-            };
-            self._add_transaction(lender, lender_transaction);
-            // Emit liquidation event
-        }
+        
     }
 
 
@@ -1231,6 +1202,37 @@ pub mod PeerProtocol {
                         tx_hash: tx_info.transaction_hash,
                     }
                 );
+        }
+
+        fn record_liquidation(
+            ref self: ContractState,
+            borrower: ContractAddress,
+            lender: ContractAddress,
+            loan_token: ContractAddress,
+            collateral_token: ContractAddress,
+            loan_value: u256,
+            collateral_value: u256
+        ) {
+            // Create liquidation transaction record for borrower
+            let borrower_transaction = Transaction {
+                transaction_type: TransactionType::WITHDRAWAL,
+                token: collateral_token,
+                amount: collateral_value,
+                timestamp: get_block_timestamp(),
+                tx_hash: get_tx_info().transaction_hash,
+            };
+            self._add_transaction(borrower, borrower_transaction);
+
+            // Create liquidation transaction record for lender
+            let lender_transaction = Transaction {
+                transaction_type: TransactionType::DEPOSIT,
+                token: collateral_token,
+                amount: collateral_value,
+                timestamp: get_block_timestamp(),
+                tx_hash: get_tx_info().transaction_hash,
+            };
+            self._add_transaction(lender, lender_transaction);
+            // Emit liquidation event
         }
     }
 }

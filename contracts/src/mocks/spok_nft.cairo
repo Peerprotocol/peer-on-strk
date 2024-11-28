@@ -38,7 +38,9 @@ mod SPOKNFT {
 
     #[abi(embed_v0)]
     impl CasOnStarkImpl of IPeerSPOKNFT<ContractState> {
-        fn mint(ref self: ContractState, proposal_id: u256, recipient: ContractAddress, token_id: u256) {
+        fn mint(
+            ref self: ContractState, proposal_id: u256, recipient: ContractAddress, token_id: u256
+        ) {
             self.erc721.mint(recipient, token_id);
         }
     }

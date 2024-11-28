@@ -33,7 +33,9 @@ pub trait IPeerProtocol<TContractState> {
         duration: u64
     );
 
-    fn get_locked_funds(self: @TContractState, user: ContractAddress, token: ContractAddress) -> u256;
+    fn get_locked_funds(
+        self: @TContractState, user: ContractAddress, token: ContractAddress
+    ) -> u256;
 
     fn get_counter_proposals(self: @TContractState, proposal_id: u256) -> Array<CounterProposal>;
 

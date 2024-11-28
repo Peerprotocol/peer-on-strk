@@ -427,8 +427,9 @@ fn test_create_lending_proposal() {
     peer_protocol.deposit(token_address, lending_amount);
     stop_cheat_caller_address(peer_protocol_address);
     assert!(lending_token.balance_of(lender) == mint_amount - lending_amount, "deposit failed");
-    assert!(lending_token.balance_of(peer_protocol_address) == lending_amount, "wrong contract balance");
-
+    assert!(
+        lending_token.balance_of(peer_protocol_address) == lending_amount, "wrong contract balance"
+    );
 
     // Create lending proposal
     start_cheat_caller_address(peer_protocol_address, lender);
@@ -500,8 +501,9 @@ fn test_cancel_proposal() {
     peer_protocol.deposit(token_address, lending_amount);
     stop_cheat_caller_address(peer_protocol_address);
     assert!(lending_token.balance_of(lender) == mint_amount - lending_amount, "deposit failed");
-    assert!(lending_token.balance_of(peer_protocol_address) == lending_amount, "wrong contract balance");
-
+    assert!(
+        lending_token.balance_of(peer_protocol_address) == lending_amount, "wrong contract balance"
+    );
 
     // Create lending proposal
     start_cheat_caller_address(peer_protocol_address, lender);
@@ -515,7 +517,6 @@ fn test_cancel_proposal() {
             interest_rate,
             duration
         );
-
 
     let lending_proposals = peer_protocol.get_lending_proposal_details();
     let lender_locked_funds = peer_protocol.get_locked_funds(lender, token_address);
@@ -651,7 +652,9 @@ fn test_create_counter_proposal() {
     peer_protocol.deposit(token_address, lending_amount);
     stop_cheat_caller_address(peer_protocol_address);
     assert!(lending_token.balance_of(lender) == mint_amount - lending_amount, "deposit failed");
-    assert!(lending_token.balance_of(peer_protocol_address) == lending_amount, "wrong contract balance");
+    assert!(
+        lending_token.balance_of(peer_protocol_address) == lending_amount, "wrong contract balance"
+    );
 
     // Create lending proposal
     start_cheat_caller_address(peer_protocol_address, lender);
@@ -682,7 +685,10 @@ fn test_create_counter_proposal() {
     peer_protocol.deposit(collateral_token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
     assert!(collateral_token.balance_of(borrower) == 0, "borrower deposit failed");
-    assert!(collateral_token.balance_of(peer_protocol_address) == mint_amount, "wrong collateral balance");
+    assert!(
+        collateral_token.balance_of(peer_protocol_address) == mint_amount,
+        "wrong collateral balance"
+    );
 
     // borrower creates counter proposal
     start_cheat_caller_address(peer_protocol_address, borrower);
@@ -758,7 +764,9 @@ fn test_get_counter_proposals() {
     peer_protocol.deposit(token_address, lending_amount);
     stop_cheat_caller_address(peer_protocol_address);
     assert!(lending_token.balance_of(lender) == mint_amount - lending_amount, "deposit failed");
-    assert!(lending_token.balance_of(peer_protocol_address) == lending_amount, "wrong contract balance");
+    assert!(
+        lending_token.balance_of(peer_protocol_address) == lending_amount, "wrong contract balance"
+    );
 
     // Create lending proposal
     start_cheat_caller_address(peer_protocol_address, lender);
@@ -789,7 +797,10 @@ fn test_get_counter_proposals() {
     peer_protocol.deposit(collateral_token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
     assert!(collateral_token.balance_of(borrower1) == 0, "borrower deposit failed");
-    assert!(collateral_token.balance_of(peer_protocol_address) == mint_amount, "wrong collateral balance");
+    assert!(
+        collateral_token.balance_of(peer_protocol_address) == mint_amount,
+        "wrong collateral balance"
+    );
 
     // Borrower2 Approve contract to spend collateral token : Needs to be done before deposits
     start_cheat_caller_address(collateral_token_address, borrower2);
@@ -801,7 +812,10 @@ fn test_get_counter_proposals() {
     peer_protocol.deposit(collateral_token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
     assert!(collateral_token.balance_of(borrower2) == 0, "borrower deposit failed");
-    assert!(collateral_token.balance_of(peer_protocol_address) == mint_amount * 2, "wrong collateral balance");
+    assert!(
+        collateral_token.balance_of(peer_protocol_address) == mint_amount * 2,
+        "wrong collateral balance"
+    );
 
     // borrower1 creates counter proposal
     start_cheat_caller_address(peer_protocol_address, borrower1);
@@ -945,8 +959,9 @@ fn test_get_lending_proposal_details() {
     peer_protocol.deposit(token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
     assert!(lending_token.balance_of(lender) == 0, "deposit failed");
-    assert!(lending_token.balance_of(peer_protocol_address) == mint_amount, "wrong contract balance");
-
+    assert!(
+        lending_token.balance_of(peer_protocol_address) == mint_amount, "wrong contract balance"
+    );
 
     // Create lending proposal
     start_cheat_caller_address(peer_protocol_address, lender);
@@ -966,17 +981,17 @@ fn test_get_lending_proposal_details() {
     let another_interest_rate: u64 = 3;
     let another_duration: u64 = 7;
     peer_protocol
-    .create_lending_proposal(
-        token_address,
-        collateral_token_address,
-        another_lending_amount,
-        required_collateral_value,
-        another_interest_rate,
-        another_duration
-    );
+        .create_lending_proposal(
+            token_address,
+            collateral_token_address,
+            another_lending_amount,
+            required_collateral_value,
+            another_interest_rate,
+            another_duration
+        );
 
     let lending_proposals = peer_protocol.get_lending_proposal_details();
-    
+
     assert!(lending_proposals.len() == 2, "Incorrect number of lending proposals");
     assert!(*lending_proposals.at(0).lender == lender, "Wrong lender");
     assert!(*lending_proposals.at(1).lender == lender, "Wrong lender");

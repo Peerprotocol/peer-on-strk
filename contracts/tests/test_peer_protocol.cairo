@@ -28,10 +28,17 @@ fn deploy_token(name: ByteArray) -> ContractAddress {
     contract_address
 }
 
+fn deploy_spok() -> ContractAddress {
+    let contract = declare("SPOKNFT").unwrap().contract_class();
+    let mut constructor_calldata = ArrayTrait::new();
+    let (contract_address, _) = contract.deploy(@constructor_calldata).unwrap();
+    contract_address
+}
+
 fn deploy_peer_protocol() -> ContractAddress {
     let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
     let protocol_fee_address: ContractAddress = starknet::contract_address_const::<0x129996789>();
-    let spok_nft: ContractAddress = starknet::contract_address_const::<0x100026789>();
+    let spok_nft: ContractAddress = deploy_spok();
 
     let mut constructor_calldata = ArrayTrait::new();
     constructor_calldata.append(owner.into());

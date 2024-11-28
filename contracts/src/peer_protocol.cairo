@@ -66,7 +66,8 @@ pub struct Proposal {
     accepted_at: u64,
     repayment_date: u64,
     is_repaid: bool,
-    num_proposal_counters: u256
+    num_proposal_counters: u256,
+    is_cancelled: bool
 }
 
 #[derive(Drop, Serde, Copy, starknet::Store)]
@@ -109,7 +110,9 @@ pub mod PeerProtocol {
     };
     use peer_protocol::interfaces::ipeer_protocol::IPeerProtocol;
     use peer_protocol::interfaces::ierc20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use peer_protocol::interfaces::ierc721::{IERC721Dispatcher, IERC721DispatcherTrait};
+    use peer_protocol::interfaces::ipeer_spok_nft::{
+        IPeerSPOKNFTDispatcher, IPeerSPOKNFTDispatcherTrait
+    };
 
     use starknet::{
         ContractAddress, get_block_timestamp, get_caller_address, get_contract_address,
@@ -147,7 +150,7 @@ pub mod PeerProtocol {
         protocol_fee_address: ContractAddress,
         spok_nft: ContractAddress,
         next_spok_id: u256,
-        locked_collateral: Map<(ContractAddress, ContractAddress), u256>, // (user, token) => amount
+        locked_funds: Map<(ContractAddress, ContractAddress), u256>, // (user, token) => amount
         liquidation_thresholds: Map<ContractAddress, LiquidationThreshold>,
         price_oracles: Map<ContractAddress, ContractAddress>
     }
@@ -170,7 +173,9 @@ pub mod PeerProtocol {
         ProposalAccepted: ProposalAccepted,
         ProposalCountered: ProposalCountered,
         ProposalRepaid: ProposalRepaid,
-        LendingProposalCreated: LendingProposalCreated
+        LendingProposalCreated: LendingProposalCreated,
+        ProposalCancelled: ProposalCancelled,
+        PositionLiquidated: PositionLiquidated
     }
 
     #[derive(Drop, starknet::Event)]
@@ -262,6 +267,18 @@ pub mod PeerProtocol {
         pub timestamp: u64
     }
 
+    #[derive(Drop, starknet::Event)]
+    pub struct ProposalCancelled {
+        pub caller: ContractAddress,
+        pub proposal_id: u256
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct PositionLiquidated {
+        pub caller: ContractAddress,
+        pub proposal_id: u256
+    }
+
     #[constructor]
     fn constructor(
         ref self: ContractState,
@@ -315,10 +332,16 @@ pub mod PeerProtocol {
         fn withdraw(ref self: ContractState, token_address: ContractAddress, amount: u256) {
             assert!(self.supported_tokens.entry(token_address).read(), "token not supported");
             assert!(amount > 0, "can't withdraw zero value");
+
             let caller = get_caller_address();
             let key = (caller, token_address);
+
             let current_balance = self.token_deposits.entry(key).read();
-            assert!(amount <= current_balance, "insufficient balance");
+            let locked_funds = self.locked_funds.entry(key).read();
+
+            let available_amount = current_balance - locked_funds;
+
+            assert!(amount <= available_amount, "insufficient balance");
 
             self.token_deposits.entry(key).write(current_balance - amount);
 
@@ -358,18 +381,28 @@ pub mod PeerProtocol {
                 .token_deposits
                 .entry((caller, accepted_collateral_token))
                 .read();
+            let borrower_locked_funds = self
+                .locked_funds
+                .entry((caller, accepted_collateral_token))
+                .read();
+            let available_collateral = borrower_collateral_balance - borrower_locked_funds;
+            let required_collateral_ratio = (required_collateral_value * COLLATERAL_RATIO_NUMERATOR)
+                / COLLATERAL_RATIO_DENOMINATOR;
+
             assert(
-                borrower_collateral_balance >= (required_collateral_value
-                    * COLLATERAL_RATIO_NUMERATOR)
-                    / COLLATERAL_RATIO_DENOMINATOR,
-                'insufficient collateral funds'
+                available_collateral >= required_collateral_ratio, 'insufficient collateral funds'
             );
 
             // Lock borrowers collateral
-            self
-                .locked_collateral
+            let prev_locked_funds = self
+                .locked_funds
                 .entry((caller, accepted_collateral_token))
-                .write(required_collateral_value);
+                .read();
+
+            self
+                .locked_funds
+                .entry((caller, accepted_collateral_token))
+                .write(prev_locked_funds + required_collateral_ratio);
 
             let proposal_id = self.proposals_count.read() + 1;
 
@@ -390,7 +423,8 @@ pub mod PeerProtocol {
                 accepted_at: 0,
                 repayment_date: 0,
                 is_repaid: false,
-                num_proposal_counters: 0
+                num_proposal_counters: 0,
+                is_cancelled: false
             };
 
             // Store the proposal
@@ -463,15 +497,27 @@ pub mod PeerProtocol {
             assert!(duration >= 7 && duration <= 15, "Duration out of bounds");
 
             let caller = get_caller_address();
-            let created_at = get_block_timestamp();
+            let lender_token_balance = self.token_deposits.entry((caller, token)).read();
+            let locked_funds = self.locked_funds.entry((caller, token)).read();
 
+            let available_lending_funds = lender_token_balance - locked_funds;
+
+            // Check to ensure that lender has deposited the token they want to lend after deducting
+            // the locked funds
+            assert!(available_lending_funds >= amount, "Insufficient token balance");
+
+            // Lock lender's funds before creating a lending proposal
+            let prev_locked_funds = self.locked_funds.entry((caller, token)).read();
+            self.locked_funds.entry((caller, token)).write(prev_locked_funds + amount);
+
+            let created_at = get_block_timestamp();
             let proposal_id = self.proposals_count.read() + 1;
 
-            // Create lendingproposal
+            // Create lending proposal
             let lending_proposal = Proposal {
                 id: proposal_id,
                 lender: caller,
-                borrower: contract_address_const::<0>(), // zero address for unaccepted proposal
+                borrower: self.zero_address(), // zero address for unaccepted proposal
                 proposal_type: ProposalType::LENDING,
                 token,
                 accepted_collateral_token,
@@ -484,7 +530,8 @@ pub mod PeerProtocol {
                 accepted_at: 0,
                 repayment_date: 0,
                 is_repaid: false,
-                num_proposal_counters: 0
+                num_proposal_counters: 0,
+                is_cancelled: false
             };
 
             // Store proposal
@@ -509,26 +556,32 @@ pub mod PeerProtocol {
         }
 
         fn get_lending_proposal_details(self: @ContractState) -> Array<Proposal> {
-            let mut proposals = array::ArrayTrait::new();
+            // Create an empty array to store borrow proposals
+            let mut lending_proposals: Array<Proposal> = ArrayTrait::new();
+
+            // Get the total number of proposals
             let proposals_count = self.proposals_count.read();
 
-            let mut proposal_id = 0;
+            // Iterate through all proposals
+            let mut i: u256 = 1;
             loop {
-                if proposal_id >= proposals_count {
+                // Break the loop if we've checked all proposals
+                if i > proposals_count {
                     break;
                 }
-
-                let proposal = self.proposals.entry(proposal_id).read();
+                // Read the proposal
+                let proposal = self.proposals.entry(i).read();
+                // Check if the proposal is a borrow proposal
                 if proposal.proposal_type == ProposalType::LENDING {
-                    proposals.append(proposal);
+                    // Add to the borrow proposals array
+                    lending_proposals.append(proposal);
                 }
 
-                proposal_id += 1;
+                i += 1;
             };
 
-            proposals
+            lending_proposals
         }
-
 
         fn get_transaction_history(
             self: @ContractState, user: ContractAddress, offset: u64, limit: u64
@@ -630,9 +683,51 @@ pub mod PeerProtocol {
             user_deposits.span()
         }
 
+        fn cancel_proposal(ref self: ContractState, proposal_id: u256) {
+            let caller = get_caller_address();
+            let proposal = self.proposals.entry(proposal_id).read();
+
+            assert(proposal.is_cancelled == false, 'proposal already cancelled');
+
+            match proposal.proposal_type {
+                ProposalType::BORROWING => {
+                    assert(caller == proposal.borrower, 'unauthorized caller');
+                    let borrower_locked_funds = self
+                        .locked_funds
+                        .entry((caller, proposal.accepted_collateral_token))
+                        .read();
+                    let locked_collateral_ratio = (proposal.required_collateral_value
+                        * COLLATERAL_RATIO_NUMERATOR)
+                        / COLLATERAL_RATIO_DENOMINATOR;
+                    self
+                        .locked_funds
+                        .entry((caller, proposal.accepted_collateral_token))
+                        .write(borrower_locked_funds - locked_collateral_ratio);
+                },
+                ProposalType::LENDING => {
+                    assert(caller == proposal.lender, 'unauthorized caller');
+                    let lender_locked_funds = self
+                        .locked_funds
+                        .entry((caller, proposal.token))
+                        .read();
+                    self
+                        .locked_funds
+                        .entry((caller, proposal.token))
+                        .write(lender_locked_funds - proposal.amount);
+                },
+            }
+
+            self.proposals.entry(proposal_id).is_cancelled.write(true);
+
+            self.emit(ProposalCancelled { caller, proposal_id });
+        }
+
         fn accept_proposal(ref self: ContractState, proposal_id: u256) {
             let caller = get_caller_address();
             let proposal = self.proposals.entry(proposal_id).read();
+
+            assert(proposal.is_accepted == false, 'proposal already accepted');
+            assert(proposal.is_cancelled == false, 'proposal is cancelled');
 
             // Calculate protocol fee
             let fee_amount = (proposal.amount * PROTOCOL_FEE_PERCENTAGE) / 100;
@@ -662,7 +757,7 @@ pub mod PeerProtocol {
                 );
         }
 
-        fn counter_proposal(
+        fn create_counter_proposal(
             ref self: ContractState,
             proposal_id: u256,
             amount: u256,
@@ -674,9 +769,40 @@ pub mod PeerProtocol {
             let created_at = get_block_timestamp();
             let proposal = self.proposals.entry(proposal_id).read();
 
+            assert(proposal.is_cancelled == false, 'proposal is cancelled');
+
             assert!(
                 proposal.proposal_type == ProposalType::LENDING, "Can only counter lending proposal"
             );
+
+            // Check if borrower has sufficient collateral * 1.3
+            let borrower_collateral_balance = self
+                .token_deposits
+                .entry((caller, proposal.accepted_collateral_token))
+                .read();
+            let borrower_locked_funds = self
+                .locked_funds
+                .entry((caller, proposal.accepted_collateral_token))
+                .read();
+
+            let available_collateral = borrower_collateral_balance - borrower_locked_funds;
+            let required_collateral_ratio = (required_collateral_value * COLLATERAL_RATIO_NUMERATOR)
+                / COLLATERAL_RATIO_DENOMINATOR;
+
+            assert(
+                available_collateral >= required_collateral_ratio, 'insufficient collateral funds'
+            );
+
+            // Lock borrowers collateral
+            let prev_locked_funds = self
+                .locked_funds
+                .entry((caller, proposal.accepted_collateral_token))
+                .read();
+
+            self
+                .locked_funds
+                .entry((caller, proposal.accepted_collateral_token))
+                .write(prev_locked_funds + required_collateral_ratio);
 
             let counter_proposal_id = proposal.num_proposal_counters + 1;
 
@@ -709,6 +835,12 @@ pub mod PeerProtocol {
                         proposal_id, creator: caller, amount, interest_rate, duration, created_at,
                     },
                 );
+        }
+
+        fn get_locked_funds(
+            self: @ContractState, user: ContractAddress, token: ContractAddress
+        ) -> u256 {
+            self.locked_funds.entry((user, token)).read()
         }
 
         fn get_counter_proposals(
@@ -794,14 +926,14 @@ pub mod PeerProtocol {
                 .transfer_from(caller, proposal.lender, amount);
 
             // Unlock borrowers collateral
-            let locked_collateral = self
-                .locked_collateral
+            let locked_funds = self
+                .locked_funds
                 .entry((caller, proposal.accepted_collateral_token))
                 .read();
             self
-                .locked_collateral
+                .locked_funds
                 .entry((caller, proposal.accepted_collateral_token))
-                .write(locked_collateral - proposal.required_collateral_value);
+                .write(locked_funds - proposal.required_collateral_value);
 
             // Record Transaction
             self.record_transaction(proposal.token, TransactionType::REPAY, amount, caller);
@@ -917,7 +1049,7 @@ pub mod PeerProtocol {
 
             // Update protocol state
             self
-                .locked_collateral
+                .locked_funds
                 .entry((proposal.borrower, proposal.accepted_collateral_token))
                 .write(0);
 
@@ -936,6 +1068,8 @@ pub mod PeerProtocol {
                     current_loan_value,
                     proposal.required_collateral_value
                 );
+
+            self.emit(PositionLiquidated { caller, proposal_id });
         }
 
         fn get_token_price(self: @ContractState, token: ContractAddress) -> u256 {
@@ -953,38 +1087,6 @@ pub mod PeerProtocol {
 
             let price: u256 = (output.price).try_into().unwrap();
             price
-        }
-
-
-        fn record_liquidation(
-            ref self: ContractState,
-            borrower: ContractAddress,
-            lender: ContractAddress,
-            loan_token: ContractAddress,
-            collateral_token: ContractAddress,
-            loan_value: u256,
-            collateral_value: u256
-        ) {
-            // Create liquidation transaction record for borrower
-            let borrower_transaction = Transaction {
-                transaction_type: TransactionType::WITHDRAWAL,
-                token: collateral_token,
-                amount: collateral_value,
-                timestamp: get_block_timestamp(),
-                tx_hash: get_tx_info().transaction_hash,
-            };
-            self._add_transaction(borrower, borrower_transaction);
-
-            // Create liquidation transaction record for lender
-            let lender_transaction = Transaction {
-                transaction_type: TransactionType::DEPOSIT,
-                token: collateral_token,
-                amount: collateral_value,
-                timestamp: get_block_timestamp(),
-                tx_hash: get_tx_info().transaction_hash,
-            };
-            self._add_transaction(lender, lender_transaction);
-            // Emit liquidation event
         }
     }
 
@@ -1024,7 +1126,7 @@ pub mod PeerProtocol {
                 .transfer(self.protocol_fee_address.read(), fee_amount);
 
             // Mint SPOK
-            // self.mint_spoks(proposal.borrower, lender);
+            self.mint_spoks(proposal.id, proposal.borrower, lender);
 
             // Record Transaction
             self.record_transaction(proposal.token, TransactionType::LEND, proposal.amount, lender);
@@ -1060,18 +1162,18 @@ pub mod PeerProtocol {
 
             // Lock borrowers collateral
             self
-                .locked_collateral
+                .locked_funds
                 .entry((borrower, proposal.accepted_collateral_token))
                 .write(required_collateral);
 
+            let proposal_token = IERC20Dispatcher { contract_address: proposal.token };
             // Transfer main amount from lender to borrower
-            IERC20Dispatcher { contract_address: proposal.token }.transfer(borrower, net_amount);
+            proposal_token.transfer(borrower, net_amount);
             // Transfer protocol fee to protocol fee address
-            IERC20Dispatcher { contract_address: proposal.token }
-                .transfer(self.protocol_fee_address.read(), fee_amount);
+            proposal_token.transfer(self.protocol_fee_address.read(), fee_amount);
 
             // Mint SPOK
-            self.mint_spoks(proposal.lender, borrower);
+            self.mint_spoks(proposal.id, proposal.lender, borrower);
 
             // Record Transaction
             self
@@ -1100,16 +1202,19 @@ pub mod PeerProtocol {
         }
 
         fn mint_spoks(
-            ref self: ContractState, creator: ContractAddress, acceptor: ContractAddress
+            ref self: ContractState,
+            proposal_id: u256,
+            creator: ContractAddress,
+            acceptor: ContractAddress
         ) {
-            let spok = IERC721Dispatcher { contract_address: self.spok_nft.read() };
+            let spok = IPeerSPOKNFTDispatcher { contract_address: self.spok_nft.read() };
 
             // Mint NFTs for both parties
             let creator_token_id = self.next_spok_id.read();
             let acceptor_token_id = creator_token_id + 1;
 
-            spok.mint(creator, creator_token_id);
-            spok.mint(acceptor, acceptor_token_id);
+            spok.mint(proposal_id, creator, creator_token_id);
+            spok.mint(proposal_id, acceptor, acceptor_token_id);
 
             self.next_spok_id.write(acceptor_token_id + 1);
         }
@@ -1144,6 +1249,36 @@ pub mod PeerProtocol {
                         tx_hash: tx_info.transaction_hash,
                     }
                 );
+        }
+
+        fn record_liquidation(
+            ref self: ContractState,
+            borrower: ContractAddress,
+            lender: ContractAddress,
+            loan_token: ContractAddress,
+            collateral_token: ContractAddress,
+            loan_value: u256,
+            collateral_value: u256
+        ) {
+            // Create liquidation transaction record for borrower
+            let borrower_transaction = Transaction {
+                transaction_type: TransactionType::WITHDRAWAL,
+                token: collateral_token,
+                amount: collateral_value,
+                timestamp: get_block_timestamp(),
+                tx_hash: get_tx_info().transaction_hash,
+            };
+            self._add_transaction(borrower, borrower_transaction);
+
+            // Create liquidation transaction record for lender
+            let lender_transaction = Transaction {
+                transaction_type: TransactionType::DEPOSIT,
+                token: collateral_token,
+                amount: collateral_value,
+                timestamp: get_block_timestamp(),
+                tx_hash: get_tx_info().transaction_hash,
+            };
+            self._add_transaction(lender, lender_transaction);
         }
     }
 }

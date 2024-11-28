@@ -31,7 +31,9 @@ async function main() {
     const myCallData = new CallData(sierraCode.abi);
     
     const constructor = myCallData.compile("constructor", {
-        owner: process.env.DEPLOYER_ADDRESS ?? ""
+        owner: process.env.DEPLOYER_ADDRESS ?? "",
+        protocol_fee_address: process.env.DEPLOYER_ADDRESS ?? "",
+        spok_nft: "0x006aee3cf411990167adb19944d89f775324aa88d718a96f085cd1a76b14fa21"
     });
 
     const deployResponse = await account0.declareAndDeploy({

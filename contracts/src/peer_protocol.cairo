@@ -775,6 +775,10 @@ pub mod PeerProtocol {
                 );
         }
 
+        fn get_locked_funds(self: @ContractState, user: ContractAddress, token: ContractAddress) -> u256 {
+            self.locked_funds.entry((user, token)).read()
+        }
+
         fn get_counter_proposals(
             self: @ContractState, proposal_id: u256
         ) -> Array<CounterProposal> {

@@ -172,7 +172,8 @@ pub mod PeerProtocol {
         ProposalCountered: ProposalCountered,
         ProposalRepaid: ProposalRepaid,
         LendingProposalCreated: LendingProposalCreated,
-        ProposalCancelled: ProposalCancelled
+        ProposalCancelled: ProposalCancelled,
+        PositionLiquidated: PositionLiquidated
     }
 
     #[derive(Drop, starknet::Event)]
@@ -266,6 +267,12 @@ pub mod PeerProtocol {
 
     #[derive(Drop, starknet::Event)]
     pub struct ProposalCancelled {
+        pub caller: ContractAddress,
+        pub proposal_id: u256
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct PositionLiquidated {
         pub caller: ContractAddress,
         pub proposal_id: u256
     }
@@ -1023,6 +1030,11 @@ pub mod PeerProtocol {
                     current_loan_value,
                     proposal.required_collateral_value
                 );
+            
+            self.emit(PositionLiquidated {
+                caller,
+                proposal_id
+            });
         }
 
         fn get_token_price(self: @ContractState, token: ContractAddress) -> u256 {

@@ -742,6 +742,25 @@ pub mod PeerProtocol {
                 proposal.proposal_type == ProposalType::LENDING, "Can only counter lending proposal"
             );
 
+
+            // Check if borrower has sufficient collateral * 1.3
+            let borrower_collateral_balance = self.token_deposits.entry((caller, proposal.accepted_collateral_token)).read();
+            let borrower_locked_funds = self.locked_funds.entry((caller, proposal.accepted_collateral_token)).read();
+
+            let available_collateral = borrower_collateral_balance - borrower_locked_funds;
+            let required_collateral_ratio = (required_collateral_value * COLLATERAL_RATIO_NUMERATOR) / COLLATERAL_RATIO_DENOMINATOR;
+
+            assert(available_collateral >= required_collateral_ratio, 'insufficient collateral funds');
+
+            // Lock borrowers collateral
+            let prev_locked_funds = self.locked_funds.entry((caller, proposal.accepted_collateral_token)).read();
+
+            self
+                .locked_funds
+                .entry((caller, proposal.accepted_collateral_token))
+                .write(prev_locked_funds + required_collateral_value);
+
+
             let counter_proposal_id = proposal.num_proposal_counters + 1;
 
             let counter_proposal = CounterProposal {

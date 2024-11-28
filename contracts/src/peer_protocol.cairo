@@ -1095,7 +1095,7 @@ pub mod PeerProtocol {
                 .transfer(self.protocol_fee_address.read(), fee_amount);
 
             // Mint SPOK
-            // self.mint_spoks(proposal.borrower, lender);
+            self.mint_spoks(proposal.id, proposal.borrower, lender);
 
             // Record Transaction
             self.record_transaction(proposal.token, TransactionType::LEND, proposal.amount, lender);
@@ -1142,7 +1142,7 @@ pub mod PeerProtocol {
             proposal_token.transfer(self.protocol_fee_address.read(), fee_amount);
 
             // Mint SPOK
-            self.mint_spoks(proposal.lender, borrower);
+            self.mint_spoks(proposal.id, proposal.lender, borrower);
 
             // Record Transaction
             self
@@ -1171,7 +1171,7 @@ pub mod PeerProtocol {
         }
 
         fn mint_spoks(
-            ref self: ContractState, creator: ContractAddress, acceptor: ContractAddress
+            ref self: ContractState, proposal_id: u256, creator: ContractAddress, acceptor: ContractAddress
         ) {
             let spok = IERC721Dispatcher { contract_address: self.spok_nft.read() };
 
@@ -1179,8 +1179,8 @@ pub mod PeerProtocol {
             let creator_token_id = self.next_spok_id.read();
             let acceptor_token_id = creator_token_id + 1;
 
-            spok.mint(creator, creator_token_id);
-            spok.mint(acceptor, acceptor_token_id);
+            spok.mint(proposal_id, creator, creator_token_id);
+            spok.mint(proposal_id, acceptor, acceptor_token_id);
 
             self.next_spok_id.write(acceptor_token_id + 1);
         }

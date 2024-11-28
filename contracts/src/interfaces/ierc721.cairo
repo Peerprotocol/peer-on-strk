@@ -27,5 +27,5 @@ pub trait IERC721<TContractState> {
     fn token_uri(self: @TContractState, token_id: u256) -> ByteArray;
 
     // NFT contract
-    fn mint(ref self: TContractState, recipient: ContractAddress, token_id: u256);
+    fn mint(ref self: TContractState, proposal_id: u256, recipient: ContractAddress, token_id: u256);
 }

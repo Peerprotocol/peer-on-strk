@@ -686,7 +686,7 @@ fn test_create_counter_proposal() {
     let counter_duration: u64 = 8;
 
     peer_protocol
-        .counter_proposal(
+        .create_counter_proposal(
             proposal_id,
             counter_amount,
             counter_required_collateral_value,
@@ -805,7 +805,7 @@ fn test_get_counter_proposals() {
     let counter_duration: u64 = 8;
 
     peer_protocol
-        .counter_proposal(
+        .create_counter_proposal(
             proposal_id,
             counter_amount,
             counter_required_collateral_value,
@@ -824,7 +824,7 @@ fn test_get_counter_proposals() {
     let counter_duration_2: u64 = 30;
 
     peer_protocol
-        .counter_proposal(
+        .create_counter_proposal(
             proposal_id,
             counter_amount_2,
             counter_required_collateral_value_2,

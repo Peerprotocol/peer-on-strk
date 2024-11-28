@@ -724,7 +724,7 @@ pub mod PeerProtocol {
                 );
         }
 
-        fn counter_proposal(
+        fn create_counter_proposal(
             ref self: ContractState,
             proposal_id: u256,
             amount: u256,

@@ -24,7 +24,7 @@ pub trait IPeerProtocol<TContractState> {
     ) -> u256;
     fn cancel_proposal(ref self: TContractState, proposal_id: u256);
     fn accept_proposal(ref self: TContractState, proposal_id: u256);
-    fn counter_proposal(
+    fn create_counter_proposal(
         ref self: TContractState,
         proposal_id: u256,
         amount: u256,

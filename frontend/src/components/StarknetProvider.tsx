@@ -43,8 +43,10 @@ export function StarknetProvider({ children }: StarknetProviderProps) {
     provider = lavaProvider({ apiKey });
   } else if (nodeProvider == "nethermind") {
     provider = nethermindProvider({ apiKey });
-  } else {
+  } else if (nodeProvider == "reddio"){
     provider = reddioProvider({ apiKey });
+  } else {
+    provider = process.env.NEXT_PUBLIC_PROVIDER;
   }
 
   return (

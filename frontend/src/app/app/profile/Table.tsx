@@ -262,6 +262,7 @@ const Table: React.FC = () => {
                   let tokenAddressHex = "";
                   try {
                     tokenAddressHex = toHex(row.token?.toString());
+                    console.log(currentRows);
                   } catch (error) {
                     if (error instanceof TypeError || error instanceof Error) {
                       console.error(

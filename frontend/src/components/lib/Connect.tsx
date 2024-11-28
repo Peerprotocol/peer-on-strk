@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { Connector, useConnect } from "@starknet-react/core";
+import { useConnect } from "@starknet-react/core";
 import GenericModal from "../internal/util/GenericModal";
 import { X } from "lucide-react";
 
@@ -16,7 +16,7 @@ const Wallet = ({
   name: string;
   alt: string;
   src: string;
-  connector: Connector;
+  connector: any;
 }) => {
   const { connect } = useConnect();
   const isSvg = src?.startsWith("<svg");
@@ -89,7 +89,7 @@ const ConnectModal = () => {
             <h4 className="text-text-grey mb-[1rem] font-semibold">Popular</h4>
 
             <div className="flex flex-col gap-4 py-8">
-              {connectors.map((connector, index) => (
+              {connectors.map((connector: any, index: any) => (
                 <Wallet
                   key={connector.id || index}
                   src={connector.icon.light!}

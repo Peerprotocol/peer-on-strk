@@ -456,6 +456,79 @@ fn test_create_lending_proposal() {
 }
 
 #[test]
+fn test_cancel_proposal() {
+    // Setup
+    let token_address = deploy_token("MockToken");
+    let collateral_token_address = deploy_token("MockToken1");
+    let peer_protocol_address = deploy_peer_protocol();
+
+    let lending_token = IERC20Dispatcher { contract_address: token_address };
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+
+    let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
+    let lender: ContractAddress = starknet::contract_address_const::<0x122226789>();
+
+    let mint_amount: u256 = 1000 * ONE_E18;
+    let lending_amount: u256 = 500 * ONE_E18;
+    let required_collateral_value: u256 = 300 * ONE_E18;
+    let interest_rate: u64 = 5;
+    let duration: u64 = 10;
+
+    // Add supported tokens
+    start_cheat_caller_address(peer_protocol_address, owner);
+    peer_protocol.add_supported_token(token_address);
+    peer_protocol.add_supported_token(collateral_token_address);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    lending_token.mint(lender, mint_amount);
+    assert!(lending_token.balance_of(lender) == mint_amount, "mint failed");
+
+    // Approve contract to spend lending token : Needs to be done before deposits
+    start_cheat_caller_address(token_address, lender);
+    lending_token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(token_address);
+
+    // Lender Deposit Token into Peer Protocol
+    start_cheat_caller_address(peer_protocol_address, lender);
+    peer_protocol.deposit(token_address, lending_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+    assert!(lending_token.balance_of(lender) == mint_amount - lending_amount, "deposit failed");
+    assert!(lending_token.balance_of(peer_protocol_address) == lending_amount, "wrong contract balance");
+
+
+    // Create lending proposal
+    start_cheat_caller_address(peer_protocol_address, lender);
+
+    peer_protocol
+        .create_lending_proposal(
+            token_address,
+            collateral_token_address,
+            lending_amount,
+            required_collateral_value,
+            interest_rate,
+            duration
+        );
+
+
+    let lending_proposals = peer_protocol.get_lending_proposal_details();
+    let lender_locked_funds = peer_protocol.get_locked_funds(lender, token_address);
+    assert!(lending_proposals.len() == 1, "wrong number of lending proposals");
+    assert!(*lending_proposals.at(0).is_cancelled == false, "Wrong value for is_cancelled");
+    assert!(lender_locked_funds == lending_amount, "Wrong locked fund value");
+
+    // Cancel Proposal
+    let proposal_id = *lending_proposals.at(0).id;
+    peer_protocol.cancel_proposal(proposal_id);
+
+    let updated_lending_proposal = peer_protocol.get_lending_proposal_details();
+    let updated_locked_funds = peer_protocol.get_locked_funds(lender, token_address);
+    assert!(*updated_lending_proposal.at(0).is_cancelled == true, "Cancellation failed");
+    assert!(updated_locked_funds == 0, "locked amount invalid");
+    
+    stop_cheat_caller_address(peer_protocol_address);
+}
+
+#[test]
 fn test_get_borrow_proposal_details() {
     let token_address = deploy_token("MockToken");
     let collateral_token_address = deploy_token("MockToken1");
@@ -923,7 +996,7 @@ fn test_repay_proposal() {
     start_cheat_caller_address(token_address, lender);
     token.approve(peer_protocol_address, borrow_amount);
     stop_cheat_caller_address(token_address);
-    
+
     start_cheat_caller_address(peer_protocol_address, lender);
     peer_protocol.deposit(token_address, borrow_amount);
     stop_cheat_caller_address(peer_protocol_address);

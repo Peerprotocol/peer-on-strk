@@ -3,9 +3,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { generateCodeChallenge, generateCodeVerifier } from "./callback/oauth-utils";
+import { useRouter } from "next/navigation";
 
 export default function WelcomePage() {
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter()
+
+  if (localStorage.getItem('twitter_user') !== undefined){
+    router.push('/app/quests/socials')
+  }
 
   const handleTwitterLogin = async () => {
     setIsLoading(true);

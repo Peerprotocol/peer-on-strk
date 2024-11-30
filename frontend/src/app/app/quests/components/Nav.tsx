@@ -2,21 +2,29 @@
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const Nav = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<string | null>(null); // State to store user data
+  const router = useRouter();
 
   useEffect(() => {
     // Retrieve user data from localStorage on the client side
     const storedUser = localStorage.getItem('twitter_user');
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      setUser(storedUser || 'Isaac');
     }
   }, []);
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('twitter_user');
+    setUser(null);
+    router.push('/app/quests')
   };
 
   return (
@@ -44,8 +52,8 @@ const Nav = () => {
       </div>
 
       {/* Display the username */}
-      <div className="relative text-white bg-black rounded-full px-4 py-2">
-        {user ? `Welcome, ${user}` : "@I_amprof"}
+      <div className="relative text-white bg-black rounded-full px-4 py-2" onClick={handleLogout}>
+        {user ? `Welcome, @${user}` : "Sign In"}
       </div>
 
       {/* Mobile nav toggle */}

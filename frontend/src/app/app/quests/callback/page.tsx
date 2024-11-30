@@ -39,7 +39,7 @@ export default function CallbackPage() {
       localStorage.removeItem('twitter_code_verifier');
 
       try {
-        const response = await fetch('/api/auth/twitter', {
+        const response = await fetch('/api/auth/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -57,7 +57,7 @@ export default function CallbackPage() {
 
         const data = await response.json();
         localStorage.setItem('twitter_token', data.access_token);
-        localStorage.setItem('twitter_user', data.user )
+        localStorage.setItem('twitter_user', data.user.username )
         router.push(`/app/quests/socials`);
       } catch (error) {
         console.error('Auth error:', error);

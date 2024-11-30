@@ -1,15 +1,56 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import MarketContent from "./marketContent";
-import { MainMarketProps, marketData } from "../../data/mainMarket";
-import { peerMarketData } from "../../data/peerMarketData";
-import DepositWithdraw from "./DepositWithdraw/DepositWithdraw";
 import { ChevronDown } from "lucide-react";
+import { PROTOCOL_ADDRESS, ETH_SEPOLIA, STRK_SEPOLIA } from "@/components/internal/helpers/constant";
+import ProtcolBorrow from "./ProtocolBorrow";
+
+interface TokenMarketData {
+  currentPrice: number;
+  priceChange24h: number;
+  totalSupply: number;
+  symbol: string;
+  address: string;
+}
+
+interface TokenInfo {
+  symbol: string;
+  address: string;
+  decimals: number;
+  coingeckoId?: string;
+}
+
+
+interface TokenMarketData {
+  currentPrice: number;
+  priceChange24h: number;
+  totalSupply: number;
+  symbol: string;
+  address: string;
+}
+
+const tokens: TokenInfo[] = [
+  {
+    symbol: "STRK",
+    address: STRK_SEPOLIA,
+    decimals: 18,
+    coingeckoId: "starknet"
+  },
+  {
+    symbol: "ETH",
+    address: ETH_SEPOLIA,
+    decimals: 18,
+    coingeckoId: "ethereum"
+  }
+];
+
 
 const Market = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedOption, setSelectedOption] = useState("Main Market");
   const [Protocol, setProtocol] = useState<"Protocol" | "P2P">("Protocol");
+  const [tokenData, setTokenData] = useState<TokenMarketData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -29,13 +70,13 @@ const Market = () => {
 
   const openModal = (
     type: "Deposit" | "Borrow",
-    data: Partial<MainMarketProps>
+    data: Partial<TokenMarketData>
   ) => {
     setModalType(type);
     setSelectedCoin({
-      asset: data.asset || "",
-      image: data.image || "",
-      balance: data.balance || 0,
+      asset: data.symbol || "",
+      image: data.symbol || "",
+      balance: data.currentPrice || 0,
     });
     setIsModalOpen(true);
   };
@@ -46,7 +87,7 @@ const Market = () => {
 
   const handleAction = (
     action: "Lend" | "Borrow",
-    data: Partial<MainMarketProps>
+    data: Partial<TokenMarketData>
   ) => {
     if (Protocol === "P2P") {
       if (action === "Lend") {
@@ -58,6 +99,44 @@ const Market = () => {
       openModal(action as "Deposit" | "Borrow", data);
     }
   };
+
+
+  useEffect(() => {
+    const fetchTokenData = async () => {
+      try {
+        const fetchedData = await Promise.all(
+          tokens.map(async (token) => {
+            if (!token.coingeckoId) return null;
+
+            const response = await fetch(
+              `https://api.coingecko.com/api/v3/coins/${token.coingeckoId}?localization=false&tickers=false&community_data=false&developer_data=false`
+            );
+
+            const data = await response.json();
+
+            return {
+              symbol: token.symbol,
+              address: token.address,
+              currentPrice: data.market_data.current_price.usd,
+              priceChange24h: data.market_data.price_change_percentage_24h,
+              totalSupply: data.market_data.total_supply
+            };
+          })
+        );
+
+        setTokenData(fetchedData.filter((data): data is TokenMarketData => data !== null));
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error fetching token data:", error);
+        setIsLoading(false);
+      }
+    };
+
+    fetchTokenData();
+    const interval = setInterval(fetchTokenData, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
 
   return (
     <div className="p-2 md:p-8">
@@ -114,20 +193,20 @@ const Market = () => {
       <div className="text-black border rounded-t-xl w-full overflow-x-auto">
         <div className="flex gap-12 justify-between pt-6 rounded-t-xl bg-smoke-white py-4 w-full px-4 overflow-auto">
           <p className="text-center font-semibold w-auto md:w-1/5">Asset</p>
-          <p className="text-center font-semibold w-auto md:w-1/5">Supply</p>
-          <p className="text-center font-semibold w-auto md:w-1/5">Borrow</p>
+          <p className="text-center font-semibold w-auto md:w-1/5"> Total Supply</p>
+          <p className="text-center font-semibold w-auto md:w-1/5">Price</p>
           <p className="text-center font-semibold w-auto md:w-1/5">Supply APY</p>
           <p className="text-center font-semibold w-auto md:w-1/5">Borrow APY</p>
         </div>
 
         <MarketContent
-          marketData={Protocol === "Protocol" ? marketData : peerMarketData}
+          tokenData={Protocol === "Protocol" ? tokenData : tokenData}
           onAction={handleAction}
         />
       </div>
 
       {isModalOpen && (
-        <DepositWithdraw
+        <ProtcolBorrow
           type={modalType}
           availableBalance={selectedCoin.balance}
           currencyIcon={selectedCoin.image}

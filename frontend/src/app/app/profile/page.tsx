@@ -8,6 +8,7 @@ import Table from './Table';
 import Footer from '../footer';
 import CryptoAnalyticsChart from './CryptoAnalyticsChart';
 import { useAccount } from '@starknet-react/core';
+import Liquidation from './liquidation';
 
 const Profile = () => {
   const { address } = useAccount();
@@ -28,6 +29,7 @@ const Profile = () => {
               <DepositWithdrawPeer />
             </div>
           </div>
+          <Liquidation />
           <CryptoAnalyticsChart/>
           <Table />
           <Footer/>

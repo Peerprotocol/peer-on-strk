@@ -2,16 +2,34 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useAccount, useContractWrite } from "@starknet-react/core";
+import { Plus, X } from "lucide-react";
 import Nav from "../Nav";
 import Sidebar from "../sidebar";
-import { LenderData } from "../../../data/LenderData";
-import { Plus } from "lucide-react";
+import { PROTOCOL_ADDRESS } from "@/components/internal/helpers/constant";
+import { useContractRead } from "@starknet-react/core";
+import protocolAbi from "../../../../public/abi/protocol.json";
+import { TokentoHex, toHex} from "@/components/internal/helpers";
+import { toast as toastify } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 
 // Constants
 const ITEMS_PER_PAGE = 7;
+const TOKEN_ADDRESSES = {
+  STRK: "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+  ETH: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+};
 
 // Types
 type ModalType = "create" | "counter";
+
+interface ProposalData {
+  quantity: string;
+  duration: string;
+  interestRate: number;
+  token: string;
+  collateral: string;
+}
 
 // Component for the header section
 const Header = () => (
@@ -28,7 +46,7 @@ const Header = () => (
       </Link>
       <div className="flex gap-2 pb-2">
         <p className="text-black text-xl md:text-2xl lg:text-4xl">
-          Lend Market
+          Lenders Market
         </p>
         <div className="flex gap-2 border rounded-3xl text-black border-gray-500 w-24 items-center justify-center">
           <Image
@@ -47,8 +65,9 @@ const Header = () => (
 
 // Component for the table header
 const TableHeader = () => (
-  <div className="grid grid-cols-6 pt-6 rounded-t-xl bg-smoke-white py-4 min-w-[800px]">
-    <div className="text-center font-semibold">Merchant</div>
+  <div className="grid grid-cols-7 pt-6 rounded-t-xl bg-smoke-white py-4 min-w-[800px]">
+    <div className="text-center font-semibold">Lender</div>
+    <div className="text-center font-semibold">Token</div>
     <div className="text-center font-semibold">Quantity</div>
     <div className="text-center font-semibold">Net Value</div>
     <div className="text-center font-semibold">Interest Rate</div>
@@ -57,50 +76,201 @@ const TableHeader = () => (
   </div>
 );
 
-// Component for table rows
 interface TableRowProps {
-  row: any;
   onCounter: () => void;
 }
 
-const TableRow = ({ row, onCounter }: TableRowProps) => (
-  <div className="grid grid-cols-6 border-t border-gray-300 min-w-[800px]">
-    <div className="flex items-center justify-center px-4 py-6">
-      <Image
-        src="/images/phantom-icon.svg"
-        height={20}
-        width={20}
-        alt="phantomicon"
-      />
-      <p className="font-medium ml-2">{row.merchants}</p>
+const TableRow = ({ onCounter }: TableRowProps) => {
+  const [loading, setLoading] = useState(false);
+  const { address } = useAccount();
+
+  const { data, isLoading: proposalsLoading } = useContractRead(
+    address
+      ? {
+          abi: protocolAbi,
+          address: PROTOCOL_ADDRESS,
+          functionName: "get_lending_proposal_details",
+          args: [],
+          watch: true,
+        }
+      : ({} as any)
+  );
+
+  // Ensure data is an array
+  const lendingProposals = Array.isArray(data) ? data : [];
+
+  const { write: lend, isLoading: isLendLoading } = useContractWrite({
+    calls: [
+      {
+        abi: protocolAbi,
+        contractAddress: PROTOCOL_ADDRESS,
+        entrypoint: "accept_proposal",
+        calldata: [], // This will be filled when calling
+      }
+    ],
+  });
+  
+  const handleLend = async (proposalId: any) => {
+    setLoading(true);
+    try {
+      const transaction = await lend({
+        calls: [{
+          abi: protocolAbi,
+          contractAddress: PROTOCOL_ADDRESS,
+          entrypoint: "accept_proposal",
+          calldata: [proposalId, "0"]
+        }]
+      });
+      
+      if (transaction?.transaction_hash) {
+        toastify.success('Proposal Accepted')
+        console.log("Transaction submitted:", transaction.transaction_hash);
+        
+        // Wait for transaction
+        await transaction.wait();
+        console.log("Transaction completed!");
+      }
+    } catch (error) {
+      console.error("Error borrowing:", error);
+      toastify.error('Failed. Try again!')
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const { write: cancel } = useContractWrite({
+    calls: [
+      {
+        abi: protocolAbi,
+        contractAddress: PROTOCOL_ADDRESS,
+        entrypoint: "cancel_proposal",
+        calldata: [], // This will be filled when calling
+      }
+    ],
+  });
+  
+  const cancelProposal = async (proposalId: any) => {
+    setLoading(true);
+    try {
+      const transaction = await cancel({
+        calls: [{
+          abi: protocolAbi,
+          contractAddress: PROTOCOL_ADDRESS,
+          entrypoint: "cancel_proposal",
+          calldata: [proposalId, "0"]
+        }]
+      });
+      
+      if (transaction?.transaction_hash) {
+        console.log("Transaction submitted:", transaction.transaction_hash);
+        toastify.success('Proposal Cancelled')
+        
+        // Wait for transaction
+        await transaction.wait();
+        console.log("Transaction completed!");
+      }
+    } catch (error) {
+      console.error("Error borrowing:", error);
+      toastify.error('Failed. Try again')
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getTokenName = (tokenAddress: string): string => {
+    const normalizedAddress = tokenAddress.toLowerCase();
+    for (const [name, address] of Object.entries(TOKEN_ADDRESSES)) {
+      if (address.toLowerCase() === normalizedAddress) {
+        return name;
+      }
+    }
+    return "Unknown";
+  };
+
+  return (
+    <div className="border-t border-gray-300 min-w-[800px] w-full">
+      {lendingProposals
+        .filter((item: any) => item.is_cancelled !== true && item.is_accepted !== true)
+        .map((item: any, index: number) => {
+          const tokenHex = toHex(item.token.toString());
+          const lenderHex = toHex(item.lender.toString());
+  
+          return (
+            <div key={index} className="grid grid-cols-7">        
+              {/* Merchant Column */}
+              <div className="flex items-center justify-center px-4 py-6">
+                <Image
+                  src="/images/phantom-icon.svg"
+                  height={20}
+                  width={20}
+                  alt="phantomicon"
+                  className="h-5 w-5"
+                />
+                <p className="font-medium ml-2">{`${lenderHex.slice(0, 5)}..`}</p>
+              </div>
+  
+              {/* Token Column */}
+              <div className="text-center px-4 py-6">
+                <p className="font-medium">{getTokenName(tokenHex)}</p>
+              </div>
+  
+              {/* Quantity Column */}
+              <div className="text-center px-4 py-6">
+                <p className="font-medium">{item.amount.toString()}</p>
+              </div>
+  
+              {/* Net Value Column */}
+              <div className="text-center px-4 py-6">
+                <p className="font-medium">
+                  {item.required_collateral_value.toString()}
+                </p>
+              </div>
+  
+              {/* Interest Rate Column */}
+              <div className="text-center px-4 py-6">
+                <p className="font-medium">{item.interest_rate.toString()}%</p>
+              </div>
+  
+              {/* Duration Column */}
+              <div className="text-center px-4 py-6">
+                <p className="font-medium">{item.duration.toString()} days</p>
+              </div>
+  
+              {/* Actions Column */}
+              <div className="flex gap-4 justify-center items-center py-6">
+                <button
+                  className={`px-4 py-2 text-sm rounded-full text-white ${
+                    loading || proposalsLoading
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-black hover:bg-opacity-90 transition"
+                  }`}
+                  onClick={() => handleLend(item.id.toString())}
+                  disabled={loading || proposalsLoading}
+                >
+                  {loading ? "..." : "Borrow"}
+                </button>
+  
+                <Image
+                  src="/images/edit.svg"
+                  alt="counter-proposal"
+                  width={20}
+                  height={20}
+                  className={`cursor-pointer ${
+                    loading || proposalsLoading
+                      ? "opacity-50"
+                      : "hover:opacity-80"
+                  }`}
+                  onClick={() => !loading && !proposalsLoading && onCounter()}
+                />
+  
+                <X onClick={() => cancelProposal(item.id.toString())} />
+              </div>
+            </div>
+          );
+        })}
     </div>
-    <div className="text-left mx-auto px-4 py-6">
-      <p className="font-medium">{row.quantity}</p>
-    </div>
-    <div className="text-center px-4 py-6">
-      <p className="font-medium">{row.netValue}</p>
-    </div>
-    <div className="text-center px-4 py-6">
-      <p className="font-medium">{row.interestRate}%</p>
-    </div>
-    <div className="text-center px-4 py-6">
-      <p className="font-medium">{row.duration} days</p>
-    </div>
-    <div className="flex gap-6 mx-auto">
-      <button className="px-2 text-sm rounded-full bg-[rgba(0,0,0,0.8)] my-5 text-white w-20 h-8">
-        Lend
-      </button>
-      <Image
-        src="/images/edit.svg"
-        alt="counter-proposal"
-        width={15}
-        height={20}
-        className="cursor-pointer"
-        onClick={onCounter}
-      />
-    </div>
-  </div>
-);
+  );
+};
 
 // Component for the proposal form in modal
 interface ProposalFormProps {
@@ -108,6 +278,8 @@ interface ProposalFormProps {
   interestRateInput: string;
   onInterestRateChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onManualInputChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  formData: ProposalData;
+  setFormData: (data: ProposalData) => void;
 }
 
 const ProposalForm = ({
@@ -115,58 +287,116 @@ const ProposalForm = ({
   interestRateInput,
   onInterestRateChange,
   onManualInputChange,
-}: ProposalFormProps) => (
-  <div className="space-y-4 px-10 py-6">
-    <div>
-      <label className="text-sm text-gray-500 pl-2">Quantity</label>
-      <div className="p-3 border rounded-xl border-gray-600">
-        <input
-          type="text"
-          className="w-full outline-none pl-8 text-black"
-          placeholder="0"
-        />
-      </div>
-    </div>
+  formData,
+  setFormData,
+}: ProposalFormProps) => {
+  const getTokenAddress = (tokenName: string) => {
+    const upperToken = tokenName.toUpperCase();
+    return (
+      TOKEN_ADDRESSES[upperToken as keyof typeof TOKEN_ADDRESSES] || tokenName
+    );
+  };
 
-    <div>
-      <label className="text-sm text-gray-500 pl-2">Duration (Days)</label>
-      <div className="p-3 border rounded-xl border-gray-600">
-        <input
-          type="text"
-          className="w-full outline-none pl-8 text-black"
-          placeholder="0"
-        />
-      </div>
-    </div>
+  // Modified onChange handlers
+  const handleTokenChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const tokenName = e.target.value;
+    const tokenAddress = getTokenAddress(tokenName);
+    setFormData({ ...formData, token: tokenAddress });
+  };
 
-    <div>
-      <label className="text-sm text-gray-500 pl-2">Interest Rate (%)</label>
-      <div className="flex flex-col items-center text-black">
-        <input
-          type="range"
-          min="0"
-          max="100"
-          value={interestRate}
-          onChange={onInterestRateChange}
-          className="w-full h-2 rounded-lg cursor-pointer appearance-none focus:outline-none"
-          style={{
-            background: `linear-gradient(to right, #1e1e1e ${interestRate}%, #e0e0e0 ${interestRate}%)`,
-          }}
-        />
-        <div className="flex justify-between w-full text-black">
-          <span className="text-black font-medium">{interestRate}%</span>
+  const handleCollateralChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const collateralName = e.target.value;
+    const collateralAddress = getTokenAddress(collateralName);
+    setFormData({ ...formData, collateral: collateralAddress });
+  };
+
+  return (
+    <div className="space-y-4 px-10 py-6">
+      <div>
+        <label className="text-sm text-gray-500 pl-2">Token to Lend</label>
+        <div className="p-3 border rounded-xl border-gray-600">
           <input
-            type="number"
-            value={interestRateInput}
-            onChange={onManualInputChange}
-            className="border border-gray-300 mt-2 rounded p-1 w-16 text-center focus:outline-none focus:ring-0 focus:border-gray-400"
-            placeholder="Rate"
+            type="text"
+            className="w-full outline-none pl-2 text-black"
+            placeholder="STARK"
+            value={formData.token}
+            onChange={handleTokenChange}
           />
         </div>
       </div>
+
+      <div>
+        <label className="text-sm text-gray-500 pl-2">Collateral</label>
+        <div className="p-3 border rounded-xl border-gray-600">
+          <input
+            type="text"
+            className="w-full outline-none pl-2 text-black"
+            placeholder="STARK"
+            value={formData.collateral}
+            onChange={handleCollateralChange}
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="text-sm text-gray-500 pl-2">Quantity</label>
+        <div className="p-3 border rounded-xl border-gray-600">
+          <input
+            type="text"
+            className="w-full outline-none pl-2 text-black"
+            placeholder="0"
+            value={formData.quantity}
+            onChange={(e) =>
+              setFormData({ ...formData, quantity: e.target.value })
+            }
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="text-sm text-gray-500 pl-2">Duration (Days)</label>
+        <div className="p-3 border rounded-xl border-gray-600">
+          <input
+            type="text"
+            className="w-full outline-none pl-2 text-black"
+            placeholder="0"
+            value={formData.duration}
+            onChange={(e) =>
+              setFormData({ ...formData, duration: e.target.value })
+            }
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="text-sm text-gray-500 pl-2">Interest Rate (%)</label>
+        <div className="flex flex-col items-center text-black">
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={interestRate}
+            onChange={onInterestRateChange}
+            className="w-full h-2 rounded-lg cursor-pointer appearance-none focus:outline-none"
+            style={{
+              background: `linear-gradient(to right, #1e1e1e ${interestRate}%, #e0e0e0 ${interestRate}%)`,
+            }}
+          />
+          <div className="flex justify-between w-full text-black">
+            <span className="text-black font-medium">{interestRate}%</span>
+            <input
+              type="text"
+              value={interestRateInput + "%"}
+              onChange={onManualInputChange}
+              className="border border-gray-300 mt-2 rounded p-1 w-16 text-center focus:outline-none focus:ring-0 focus:border-gray-400"
+              placeholder="Rate"
+            />
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // Modal Component
 interface ProposalModalProps {
@@ -188,6 +418,75 @@ const ProposalModal = ({
   onInterestRateChange,
   onManualInputChange,
 }: ProposalModalProps) => {
+  const { account } = useAccount();
+  const [formData, setFormData] = useState<ProposalData>({
+    token: "",
+    collateral: "",
+    quantity: "",
+    duration: "",
+    interestRate: 1,
+  });
+
+  const collateral_amount = Math.floor(Number(formData.quantity) * 1.3);
+
+  const { writeAsync: createLendingProposal, isLoading: isLendingLoading } =
+    useContractWrite({
+      calls: {
+        contractAddress: PROTOCOL_ADDRESS,
+        entrypoint: "create_lending_proposal",
+        calldata: [
+          `${formData.token}`,
+          `${formData.collateral}`,
+          `${formData.quantity}`,
+          "0",
+          `${collateral_amount}`,
+          "0",
+          `${formData.interestRate}`,
+          `${formData.duration}`,
+        ],
+      },
+    });
+
+  const { writeAsync: createBorrowProposal, isLoading: isBorrowLoading } =
+    useContractWrite({
+      calls: [
+        {
+          contractAddress: PROTOCOL_ADDRESS,
+          entrypoint: "create_borrow_proposal",
+          calldata: [
+            TokentoHex(formData.token.toString()),
+            TokentoHex(formData.collateral.toString()),
+            Number(formData.quantity),
+            Number(collateral_amount),
+            formData.interestRate,
+            formData.duration,
+          ],
+        },
+      ],
+    });
+
+  const handleSubmit = async () => {
+    try {
+      if (!account) {
+        throw new Error("Wallet not connected");
+      }
+
+      const isLendingProposal = type === "create";
+      const transaction = isLendingProposal
+        ? await createLendingProposal()
+        : await createBorrowProposal();
+      console.log(
+        `${isLendingProposal ? "Lending" : "Borrow"} proposal created:`,
+        transaction
+      );
+      toastify.success('Proposal Created')
+      onClose();
+    } catch (error) {
+      console.error("Error creating proposal:", error);
+      toastify.error('Failed. Try again!')
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -204,25 +503,26 @@ const ProposalModal = ({
           {type === "create" ? "Create a Proposal" : "Counter Proposal"}
         </h2>
 
-        {/* Form Section */}
         <ProposalForm
           interestRate={interestRate}
           interestRateInput={interestRateInput}
           onInterestRateChange={onInterestRateChange}
           onManualInputChange={onManualInputChange}
+          formData={formData}
+          setFormData={setFormData}
         />
 
         <div className="flex justify-center mt-6 mb-5">
           <button
             className="bg-[rgba(0,0,0,0.8)] text-white px-6 py-2 rounded-md text-sm sm:text-base"
-            onClick={onClose}
+            onClick={handleSubmit}
+            disabled={isLendingLoading || isBorrowLoading}
           >
-            Submit
+            {isLendingLoading || isBorrowLoading ? "Submitting..." : "Submit"}
           </button>
         </div>
 
-        {/* Footer Section */}
-        <div className="flex items-center gap-2  justify-center absolute bottom-4 left-1/2 transform -translate-x-1/2">
+        <div className="flex items-center gap-2 justify-center absolute bottom-4 left-1/2 transform -translate-x-1/2">
           <small className="text-gray-500 text-xs sm:text-sm">
             Powered By Peer Protocol
           </small>
@@ -245,19 +545,20 @@ const Pagination = ({
   totalPages,
   onPageChange,
 }: {
-  currentPage: any;
-  totalPages: any;
-  onPageChange: any;
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
 }) => (
   <div className="flex justify-end p-4">
     <div className="flex gap-2">
       {Array.from({ length: totalPages }, (_, index) => (
         <button
           key={index}
-          className={`px-4 py-2 ${currentPage === index + 1
+          className={`px-4 py-2 ${
+            currentPage === index + 1
               ? "bg-[rgba(0,0,0,0.8)] text-white"
               : "bg-[#F5F5F5] text-black border-black border"
-            } rounded-lg`}
+          } rounded-lg`}
           onClick={() => onPageChange(index + 1)}
         >
           {index + 1}
@@ -276,11 +577,7 @@ const Lender = () => {
   const [interestRate, setInterestRate] = useState(0);
   const [interestRateInput, setInterestRateInput] = useState("");
 
-  const totalPages = Math.ceil(LenderData.length / ITEMS_PER_PAGE);
-  const currentData = LenderData.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
+  const totalPages = Math.ceil(5 / ITEMS_PER_PAGE);
 
   const handleOpenModal = (type: ModalType) => {
     setModalType(type);
@@ -315,13 +612,7 @@ const Lender = () => {
           <div className="overflow-x-auto text-black border border-gray-300 mx-4 mb-4">
             <TableHeader />
             <div className="w-full">
-              {currentData.map((row, index) => (
-                <TableRow
-                  key={index}
-                  row={row}
-                  onCounter={() => handleOpenModal("counter")}
-                />
-              ))}
+              <TableRow onCounter={() => handleOpenModal("counter")} />
             </div>
           </div>
 

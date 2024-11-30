@@ -105,7 +105,7 @@ export function toHex(value: string) {
           const bnValue = new BN(value, 10);
           // Pad to 32 bytes (64 hex characters) for Ethereum compatibility
             const hex = bnValue.toString(16);
-            const paddedHex = hex.padStart(64, '0');
+            const paddedHex = hex.padStart(64, '');
             return `0x${paddedHex}`;
       } catch (error) {
           throw new Error(`Invalid numeric value: ${value}`);
@@ -113,6 +113,31 @@ export function toHex(value: string) {
     }
     return asciiToHex(value);
   }
+
+  export function TokentoHex(value: string) {
+    if (typeof value !== 'string') {
+      throw new TypeError('Input must be a string');
+    }
+    if (value.length === 0) return '';
+    // Strict hex format validation
+    if (/^0x[0-9a-fA-F]+$/.test(value)) {
+          return value;
+      }
+  
+    // Strict numeric validation
+    if (/^[0-9]+$/.test(value)) {
+        try {
+            const bnValue = new BN(value, 10);
+            // Pad to 32 bytes (64 hex characters) for Ethereum compatibility
+              const hex = bnValue.toString(16);
+              const paddedHex = hex.padStart(64, '0');
+              return `0x${paddedHex}`;
+        } catch (error) {
+            throw new Error(`Invalid numeric value: ${value}`);
+        }
+      }
+      return asciiToHex(value);
+    }
 
   let cachedPrices: any = null;
   let lastFetchTime = 0;
@@ -133,8 +158,8 @@ export function toHex(value: string) {
   
       // Update the cache with new data and timestamp
       cachedPrices = {
-        eth: data?.ethereum?.usd ?? 0,
-        strk: data?.starknet?.usd ?? 0,
+        eth: data?.ethereum?.usd ?? 3500,
+        strk: data?.starknet?.usd ?? 0.62,
       };
       lastFetchTime = now;
   
@@ -147,3 +172,31 @@ export function toHex(value: string) {
     }
   }
   
+  export function removeQuotesAndConvert(value: any) {
+    // Remove surrounding single or double quotes if present
+    const cleanedValue = value.trim().replace(/^['"]|['"]$/g, '');
+
+    // Check if it looks like a hex value (starts with 0x or contains only valid hex chars)
+    if (/^0x[0-9a-fA-F]+$/.test(cleanedValue)) {
+        return cleanedValue; // Return as-is, it's a valid hex string
+    }
+
+    // Try to convert to number (int or float)
+    if (!isNaN(cleanedValue)) {
+        return cleanedValue.includes('.') ? parseFloat(cleanedValue) : parseInt(cleanedValue, 10);
+    }
+
+    return cleanedValue; // Return original if not a number or hex
+}
+
+export function stringToFelt(str: any) {
+  const encoder = new TextEncoder(); // For encoding strings to bytes
+  const utf8Bytes = encoder.encode(str); // Encode string to UTF-8 bytes
+  let feltValue = BigInt(0);
+
+  for (let i = 0; i < utf8Bytes.length; i++) {
+    feltValue = feltValue * BigInt(256) + BigInt(utf8Bytes[i]); // Convert byte-by-byte
+  }
+
+  return feltValue.toString();
+}

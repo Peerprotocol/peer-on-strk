@@ -3,7 +3,7 @@ import { InfoIcon } from "lucide-react";
 import { memo, useEffect, useState } from "react";
 import { useAccount, useContractRead } from "@starknet-react/core";
 import { TotalAssetsOverviewDisplay, UserAssetOverview } from "@/types";
-import { formatCurrency, getCryptoPrices, toHex } from "@/components/internal/helpers";
+import { formatCurrency, getCryptoPrices, TokentoHex } from "@/components/internal/helpers";
 import { PROTOCOL_ADDRESS, ETH_SEPOLIA, STRK_SEPOLIA } from "@/components/internal/helpers/constant";
 import protocolAbi from "../../../../public/abi/protocol.json";
 import ProfilecardLoader from "../loaders/profilecardloader";
@@ -87,8 +87,7 @@ const Dashboard = () => {
         let tokenAddressHex = "";
         try {
           const address = currentValue.token_address?.toString();
-          console.log('address:', address);
-          tokenAddressHex = toHex(address);
+          tokenAddressHex = TokentoHex(address);
         } catch (error) {
           console.error('Error converting token address to hex:', error);
         }
@@ -132,7 +131,7 @@ const Dashboard = () => {
             <p className="text-[2.2rem] font-semibold text-black pb-8">
               {item.id
                 ? `$${(Number(totalAssetsOverview[item.id]) / 100).toFixed(2)}`
-                : '$0'}
+                : '$20'}
             </p>
             {item.info && (
               <InfoIcon 

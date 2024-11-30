@@ -12,7 +12,7 @@ import {
 import STRK from "../../../../public/images/starknet.png";
 import ETH from "../../../../public/images/ethereumlogo.svg";
 import {
-  toHex,
+  TokentoHex,
   formatCurrency,
   getCryptoPrices,
   formatDate1,
@@ -261,8 +261,7 @@ const Table: React.FC = () => {
                 currentRows.map((row, index: number) => {
                   let tokenAddressHex = "";
                   try {
-                    tokenAddressHex = toHex(row.token?.toString());
-                    console.log(currentRows);
+                    tokenAddressHex = TokentoHex(row.token?.toString());
                   } catch (error) {
                     if (error instanceof TypeError || error instanceof Error) {
                       console.error(
@@ -346,7 +345,7 @@ const Table: React.FC = () => {
                 currentRows.map((row, index: number) => {
                   let tokenAddressHex = "";
                   try {
-                    tokenAddressHex = toHex(row.token.toString());
+                    tokenAddressHex = TokentoHex(row.token.toString());
                   } catch (error) {
                     if (error instanceof TypeError || error instanceof Error) {
                       console.error(
@@ -452,7 +451,7 @@ const Table: React.FC = () => {
                 currentRows.map((row, index: number) => {
                   let tokenAddressHex = "";
                   try {
-                    tokenAddressHex = toHex(row.token.toString());
+                    tokenAddressHex = TokentoHex(row.token.toString());
                   } catch (error) {
                     if (error instanceof TypeError || error instanceof Error) {
                       console.error(

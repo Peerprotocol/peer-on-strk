@@ -20,11 +20,237 @@
   },
   {
     "type": "struct",
+    "name": "peer_protocol::peer_protocol::CounterProposal",
+    "members": [
+      {
+        "name": "id",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "proposal_id",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "creator",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "required_collateral_value",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "amount",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "interest_rate",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "duration",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "created_at",
+        "type": "core::integer::u64"
+      }
+    ]
+  },
+  {
+    "type": "enum",
+    "name": "peer_protocol::peer_protocol::ProposalType",
+    "variants": [
+      {
+        "name": "BORROWING",
+        "type": "()"
+      },
+      {
+        "name": "LENDING",
+        "type": "()"
+      }
+    ]
+  },
+  {
+    "type": "enum",
+    "name": "core::bool",
+    "variants": [
+      {
+        "name": "False",
+        "type": "()"
+      },
+      {
+        "name": "True",
+        "type": "()"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "peer_protocol::peer_protocol::Proposal",
+    "members": [
+      {
+        "name": "id",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "lender",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "borrower",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "proposal_type",
+        "type": "peer_protocol::peer_protocol::ProposalType"
+      },
+      {
+        "name": "token",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "accepted_collateral_token",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "required_collateral_value",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "amount",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "interest_rate",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "duration",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "created_at",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "is_accepted",
+        "type": "core::bool"
+      },
+      {
+        "name": "accepted_at",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "repayment_date",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "is_repaid",
+        "type": "core::bool"
+      },
+      {
+        "name": "num_proposal_counters",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "is_cancelled",
+        "type": "core::bool"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "peer_protocol::peer_protocol::BorrowedDetails",
+    "members": [
+      {
+        "name": "token_borrowed",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "repayment_time",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "interest_rate",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "amount_borrowed",
+        "type": "core::integer::u256"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "peer_protocol::peer_protocol::LiquidationInfo",
+    "members": [
+      {
+        "name": "proposal_id",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "borrower",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "collateral_token",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "loan_token",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "collateral_amount",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "loan_amount",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "current_ltv",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "can_be_liquidated",
+        "type": "core::bool"
+      }
+    ]
+  },
+  {
+    "type": "enum",
+    "name": "peer_protocol::peer_protocol::TransactionType",
+    "variants": [
+      {
+        "name": "DEPOSIT",
+        "type": "()"
+      },
+      {
+        "name": "WITHDRAWAL",
+        "type": "()"
+      },
+      {
+        "name": "LEND",
+        "type": "()"
+      },
+      {
+        "name": "BORROW",
+        "type": "()"
+      },
+      {
+        "name": "REPAY",
+        "type": "()"
+      }
+    ]
+  },
+  {
+    "type": "struct",
     "name": "peer_protocol::peer_protocol::Transaction",
     "members": [
       {
         "name": "transaction_type",
-        "type": "core::felt252"
+        "type": "peer_protocol::peer_protocol::TransactionType"
       },
       {
         "name": "token",
@@ -144,6 +370,260 @@
       },
       {
         "type": "function",
+        "name": "create_borrow_proposal",
+        "inputs": [
+          {
+            "name": "token",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "accepted_collateral_token",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "amount",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "required_collateral_value",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "interest_rate",
+            "type": "core::integer::u64"
+          },
+          {
+            "name": "duration",
+            "type": "core::integer::u64"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::integer::u256"
+          }
+        ],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "cancel_proposal",
+        "inputs": [
+          {
+            "name": "proposal_id",
+            "type": "core::integer::u256"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "accept_proposal",
+        "inputs": [
+          {
+            "name": "proposal_id",
+            "type": "core::integer::u256"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "create_counter_proposal",
+        "inputs": [
+          {
+            "name": "proposal_id",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "amount",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "required_collateral_value",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "interest_rate",
+            "type": "core::integer::u64"
+          },
+          {
+            "name": "duration",
+            "type": "core::integer::u64"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "get_locked_funds",
+        "inputs": [
+          {
+            "name": "user",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "token",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::integer::u256"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_counter_proposals",
+        "inputs": [
+          {
+            "name": "proposal_id",
+            "type": "core::integer::u256"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::array::Array::<peer_protocol::peer_protocol::CounterProposal>"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_borrow_proposal_details",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::array::Array::<peer_protocol::peer_protocol::Proposal>"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "repay_proposal",
+        "inputs": [
+          {
+            "name": "proposal_id",
+            "type": "core::integer::u256"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "get_borrowed_tokens",
+        "inputs": [
+          {
+            "name": "user",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::array::Array::<peer_protocol::peer_protocol::BorrowedDetails>"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "create_lending_proposal",
+        "inputs": [
+          {
+            "name": "token",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "accepted_collateral_token",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "amount",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "required_collateral_value",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "interest_rate",
+            "type": "core::integer::u64"
+          },
+          {
+            "name": "duration",
+            "type": "core::integer::u64"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::integer::u256"
+          }
+        ],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "get_lending_proposal_details",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::array::Array::<peer_protocol::peer_protocol::Proposal>"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "check_positions_for_liquidation",
+        "inputs": [
+          {
+            "name": "user",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::array::Array::<peer_protocol::peer_protocol::LiquidationInfo>"
+          }
+        ],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "liquidate_position",
+        "inputs": [
+          {
+            "name": "proposal_id",
+            "type": "core::integer::u256"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "get_token_price",
+        "inputs": [
+          {
+            "name": "token",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::integer::u256"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
         "name": "get_transaction_history",
         "inputs": [
           {
@@ -207,6 +687,14 @@
       {
         "name": "owner",
         "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "protocol_fee_address",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "spok_nft",
+        "type": "core::starknet::contract_address::ContractAddress"
       }
     ]
   },
@@ -267,20 +755,6 @@
     ]
   },
   {
-    "type": "enum",
-    "name": "peer_protocol::peer_protocol::TransactionType",
-    "variants": [
-      {
-        "name": "DEPOSIT",
-        "type": "()"
-      },
-      {
-        "name": "WITHDRAWAL",
-        "type": "()"
-      }
-    ]
-  },
-  {
     "type": "event",
     "name": "peer_protocol::peer_protocol::PeerProtocol::TransactionRecorded",
     "kind": "struct",
@@ -319,6 +793,215 @@
   },
   {
     "type": "event",
+    "name": "peer_protocol::peer_protocol::PeerProtocol::ProposalCreated",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "proposal_type",
+        "type": "peer_protocol::peer_protocol::ProposalType",
+        "kind": "data"
+      },
+      {
+        "name": "borrower",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "token",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "amount",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "interest_rate",
+        "type": "core::integer::u64",
+        "kind": "data"
+      },
+      {
+        "name": "duration",
+        "type": "core::integer::u64",
+        "kind": "data"
+      },
+      {
+        "name": "created_at",
+        "type": "core::integer::u64",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "peer_protocol::peer_protocol::PeerProtocol::ProposalAccepted",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "proposal_type",
+        "type": "peer_protocol::peer_protocol::ProposalType",
+        "kind": "data"
+      },
+      {
+        "name": "accepted_by",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "token",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "amount",
+        "type": "core::integer::u256",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "peer_protocol::peer_protocol::PeerProtocol::ProposalCountered",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "proposal_id",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "creator",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "amount",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "interest_rate",
+        "type": "core::integer::u64",
+        "kind": "data"
+      },
+      {
+        "name": "duration",
+        "type": "core::integer::u64",
+        "kind": "data"
+      },
+      {
+        "name": "created_at",
+        "type": "core::integer::u64",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "peer_protocol::peer_protocol::PeerProtocol::ProposalRepaid",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "proposal_type",
+        "type": "peer_protocol::peer_protocol::ProposalType",
+        "kind": "data"
+      },
+      {
+        "name": "repaid_by",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "token",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "amount",
+        "type": "core::integer::u256",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "peer_protocol::peer_protocol::PeerProtocol::LendingProposalCreated",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "proposal_type",
+        "type": "peer_protocol::peer_protocol::ProposalType",
+        "kind": "data"
+      },
+      {
+        "name": "lender",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "token",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "amount",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "interest_rate",
+        "type": "core::integer::u64",
+        "kind": "data"
+      },
+      {
+        "name": "duration",
+        "type": "core::integer::u64",
+        "kind": "data"
+      },
+      {
+        "name": "created_at",
+        "type": "core::integer::u64",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "peer_protocol::peer_protocol::PeerProtocol::ProposalCancelled",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "caller",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "proposal_id",
+        "type": "core::integer::u256",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "peer_protocol::peer_protocol::PeerProtocol::PositionLiquidated",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "caller",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "proposal_id",
+        "type": "core::integer::u256",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
     "name": "peer_protocol::peer_protocol::PeerProtocol::Event",
     "kind": "enum",
     "variants": [
@@ -340,6 +1023,41 @@
       {
         "name": "TransactionRecorded",
         "type": "peer_protocol::peer_protocol::PeerProtocol::TransactionRecorded",
+        "kind": "nested"
+      },
+      {
+        "name": "ProposalCreated",
+        "type": "peer_protocol::peer_protocol::PeerProtocol::ProposalCreated",
+        "kind": "nested"
+      },
+      {
+        "name": "ProposalAccepted",
+        "type": "peer_protocol::peer_protocol::PeerProtocol::ProposalAccepted",
+        "kind": "nested"
+      },
+      {
+        "name": "ProposalCountered",
+        "type": "peer_protocol::peer_protocol::PeerProtocol::ProposalCountered",
+        "kind": "nested"
+      },
+      {
+        "name": "ProposalRepaid",
+        "type": "peer_protocol::peer_protocol::PeerProtocol::ProposalRepaid",
+        "kind": "nested"
+      },
+      {
+        "name": "LendingProposalCreated",
+        "type": "peer_protocol::peer_protocol::PeerProtocol::LendingProposalCreated",
+        "kind": "nested"
+      },
+      {
+        "name": "ProposalCancelled",
+        "type": "peer_protocol::peer_protocol::PeerProtocol::ProposalCancelled",
+        "kind": "nested"
+      },
+      {
+        "name": "PositionLiquidated",
+        "type": "peer_protocol::peer_protocol::PeerProtocol::PositionLiquidated",
         "kind": "nested"
       }
     ]

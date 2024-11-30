@@ -11,7 +11,7 @@ interface DepositWithdrawProps {
   onSubmit: (amount: string) => void;
 }
 
-const DepositWithdraw: React.FC<DepositWithdrawProps> = ({
+const ProtcolBorrow: React.FC<DepositWithdrawProps> = ({
   type,
   availableBalance,
   currencyIcon,
@@ -44,7 +44,7 @@ const DepositWithdraw: React.FC<DepositWithdrawProps> = ({
         <div className="flex items-center justify-between w-full mb-4">
           <div className="flex items-center">
             <Image
-              src={currencyIcon}
+              src={`/icons/${currencyIcon.toLowerCase()}.svg`}
               alt={currencyName}
               width={24}
               height={24}
@@ -105,4 +105,4 @@ const DepositWithdraw: React.FC<DepositWithdrawProps> = ({
   );
 };
 
-export default DepositWithdraw;
+export default ProtcolBorrow;

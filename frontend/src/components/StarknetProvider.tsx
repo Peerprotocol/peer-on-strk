@@ -45,8 +45,6 @@ export function StarknetProvider({ children }: StarknetProviderProps) {
     provider = nethermindProvider({ apiKey });
   } else if (nodeProvider == "reddio"){
     provider = reddioProvider({ apiKey });
-  } else {
-    provider = process.env.NEXT_PUBLIC_PROVIDER;
   }
 
   return (

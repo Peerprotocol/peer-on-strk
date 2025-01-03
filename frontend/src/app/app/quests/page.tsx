@@ -1,17 +1,20 @@
 'use client'
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { generateCodeChallenge, generateCodeVerifier } from "./callback/oauth-utils";
 import { useRouter } from "next/navigation";
 
 export default function WelcomePage() {
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter()
+  const router = useRouter();
 
-  if (localStorage.getItem('twitter_user') !== undefined){
-    router.push('/app/quests/socials')
-  }
+  // Move the localStorage check into useEffect
+  useEffect(() => {
+    if (localStorage.getItem('twitter_user') !== undefined) {
+      router.push('/app/quests/socials');
+    }
+  }, []); // Empty dependency array means this runs once on mount
 
   const handleTwitterLogin = async () => {
     setIsLoading(true);

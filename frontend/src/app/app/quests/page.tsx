@@ -11,10 +11,10 @@ export default function WelcomePage() {
 
   // Move the localStorage check into useEffect
   useEffect(() => {
-    if (localStorage.getItem('twitter_user') !== undefined) {
+    if (localStorage.getItem('twitter_user') !== undefined && localStorage.getItem('twitter_user') !== null) {
       router.push('/app/quests/socials');
     }
-  }, []); // Empty dependency array means this runs once on mount
+  }, [router]); // Empty dependency array means this runs once on mount
 
   const handleTwitterLogin = async () => {
     setIsLoading(true);

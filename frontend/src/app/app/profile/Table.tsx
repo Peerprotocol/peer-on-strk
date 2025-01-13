@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { tableData } from "../../../data/TransactionHistory";
 import Image from "next/image";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useAccount, useContractRead } from "@starknet-react/core";

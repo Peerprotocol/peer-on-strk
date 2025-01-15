@@ -162,7 +162,11 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
         .filter((item: any) => item.is_cancelled !== true && item.is_accepted !== true)
         .map((item: any, index: number) => {
           const tokenHex = toHex(item.token.toString());
-          const lenderHex = toHex(item.lender.toString());
+           let lenderHex = toHex(item.lender.toString());
+
+          if(item.lender == address){
+              lenderHex = 'Me'
+          }
 
         return (
           <div key={index} className="grid grid-cols-7">
@@ -227,7 +231,9 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
                 }`}
                 onClick={() => !loading && !proposalsLoading && onCounterProposal()}
               />
+              {/* {item.lender == address && ( */}
               <X onClick={() => cancelProposal(item.id.toString())} />
+              {/* )} */}
             </div>
           </div>
         );

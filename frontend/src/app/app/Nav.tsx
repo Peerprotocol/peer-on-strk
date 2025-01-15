@@ -31,7 +31,7 @@ const Nav = () => {
   };
 
   useEffect(() => {
-    if (address === undefined) {
+    if (address === undefined || address === null) {
       setIsChainModalOpen(true);
     } else {
       setIsChainModalOpen(false);

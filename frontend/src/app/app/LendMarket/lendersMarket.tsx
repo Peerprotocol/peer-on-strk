@@ -111,6 +111,7 @@ const TableRow = ({ onCounter }: TableRowProps) => {
   });
   
   const handleLend = async (proposalId: any) => {
+    console.log('proposal id', proposalId);
     setLoading(true);
     try {
       const transaction = await lend({
@@ -118,7 +119,7 @@ const TableRow = ({ onCounter }: TableRowProps) => {
           abi: protocolAbi,
           contractAddress: PROTOCOL_ADDRESS,
           entrypoint: "accept_proposal",
-          calldata: [proposalId, "0"]
+          calldata: [0xb, 0x0]
         }]
       });
       

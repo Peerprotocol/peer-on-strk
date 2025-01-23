@@ -1104,3 +1104,32 @@ fn test_repay_proposal() {
     );
     spy.assert_emitted(@array![(peer_protocol_address, expected_event)]);
 }
+
+#[test]
+fn test_deploy_liquidity_pool() {
+    // Setup
+    let token_address = deploy_token("MockToken");
+    let collateral_token_address = deploy_token("MockToken1");
+    let peer_protocol_address = deploy_peer_protocol();
+
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+
+    let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
+
+    //add supported token
+    start_cheat_caller_address(peer_protocol_address, owner);
+    peer_protocol.add_supported_token(token_address);
+    peer_protocol.add_supported_token(collateral_token_address);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // deploy pool token
+    start_cheat_caller_address(peer_protocol_address, owner);
+    peer_protocol.deploy_liquidity_pool(token_address);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // get pool data and check
+    let pool_data = peer_protocol.get_liquidity_pool_data(token_address);
+    assert!(pool_data.pool_token != 0, "Pool token address is zero");
+    assert!(pool_data.is_active, "Pool is not deployed")
+
+}

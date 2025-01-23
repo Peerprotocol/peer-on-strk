@@ -140,12 +140,14 @@ pub mod PeerProtocol {
 
     component!(path: SRC5Component, storage: src5, event: SRC5Event);
     component!(path: AccessControlComponent, storage: accesscontrol, event: AccessControlEvent);
-    
+
 
     #[abi(embed_v0)]
-    impl AccessControlImpl = AccessControlComponent::AccessControlImpl<ContractState>;
+    impl AccessControlImpl =
+        AccessControlComponent::AccessControlImpl<ContractState>;
     #[abi(embed_v0)]
-    impl AccessControlCamelImpl = AccessControlComponent::AccessControlCamelImpl<ContractState>;
+    impl AccessControlCamelImpl =
+        AccessControlComponent::AccessControlCamelImpl<ContractState>;
     impl AccessControlInternalImpl = AccessControlComponent::InternalImpl<ContractState>;
 
     #[abi(embed_v0)]
@@ -192,7 +194,6 @@ pub mod PeerProtocol {
     const ADMIN_ROLE: felt252 = selector!("ADMIN");
     const MAINTAINER_ROLE: felt252 = selector!("MAINTAINER");
 
-    
 
     #[event]
     #[derive(Drop, starknet::Event)]
@@ -1137,15 +1138,14 @@ pub mod PeerProtocol {
         fn deploy_liquidity_pool(ref self: ContractState, token: ContractAddress) {
             let caller = get_caller_address();
             self._deploy_liquidity_pool(token, caller);
-            self.emit(
-                PoolCreated {
-                    created_by: caller,
-                    token: token,
-                    created_at: get_block_timestamp()
-                }
-            );
+            self
+                .emit(
+                    PoolCreated {
+                        created_by: caller, token: token, created_at: get_block_timestamp()
+                    }
+                );
         }
-        fn get_liquidity_pool_data(self: @ContractState, token: ContractAddress) -> PoolData{
+        fn get_liquidity_pool_data(self: @ContractState, token: ContractAddress) -> PoolData {
             self.pools.entry(token).read()
         }
     }
@@ -1341,7 +1341,9 @@ pub mod PeerProtocol {
             self._add_transaction(lender, lender_transaction);
         }
 
-        fn _deploy_liquidity_pool(ref self: ContractState, token: ContractAddress, caller: ContractAddress){
+        fn _deploy_liquidity_pool(
+            ref self: ContractState, token: ContractAddress, caller: ContractAddress
+        ) {
             // check whether caller is a maintainer or an owner
             assert!(
                 self.owner.read() == caller || self.accesscontrol.has_role(MAINTAINER_ROLE, caller),
@@ -1351,14 +1353,12 @@ pub mod PeerProtocol {
             let token_supported_check: bool = self.supported_tokens.entry(token).read();
             assert!(token_supported_check, "Token is not supported");
             // check whether pool does not exists
-            let pool_exist_check = (self.pools.entry(token).pool_token.read() == Zero::zero() &&
-                !self.pools.entry(token).is_active.read()
-            );
+            let pool_exist_check = (self.pools.entry(token).pool_token.read() == Zero::zero()
+                && !self.pools.entry(token).is_active.read());
             assert!(pool_exist_check, "Pool already exist");
             // activate pool
             self.pools.entry(token).pool_token.write(token);
             self.pools.entry(token).is_active.write(true);
-            
         }
     }
 }

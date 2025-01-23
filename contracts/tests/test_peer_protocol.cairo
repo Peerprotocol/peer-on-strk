@@ -1131,5 +1131,4 @@ fn test_deploy_liquidity_pool() {
     let pool_data = peer_protocol.get_liquidity_pool_data(token_address);
     assert!(pool_data.pool_token != 0, "Pool token address is zero");
     assert!(pool_data.is_active, "Pool is not deployed")
-
 }

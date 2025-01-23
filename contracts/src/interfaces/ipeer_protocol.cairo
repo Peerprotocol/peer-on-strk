@@ -72,6 +72,6 @@ pub trait IPeerProtocol<TContractState> {
     fn get_user_deposits(self: @TContractState, user: ContractAddress) -> Span<UserDeposit>;
 
     fn deploy_liquidity_pool(ref self: TContractState, token: ContractAddress);
-    
+
     fn get_liquidity_pool_data(self: @TContractState, token: ContractAddress) -> PoolData;
 }

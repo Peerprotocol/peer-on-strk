@@ -33,7 +33,7 @@ async function main() {
     const constructor = myCallData.compile("constructor", {
         owner: process.env.DEPLOYER_ADDRESS ?? "",
         protocol_fee_address: process.env.DEPLOYER_ADDRESS ?? "",
-        spok_nft: "0x687a30e52d79ff38ff205d97276935d56b21b5da0d092d4e4a0b485ff43f5b3"
+        spok_nft: "0x2666e13f08728049014ba3e1cdac5e072689bd5741d806028fd7a9f368e9ca2"
     });
 
     const deployResponse = await account0.declareAndDeploy({

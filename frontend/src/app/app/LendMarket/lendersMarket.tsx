@@ -12,6 +12,7 @@ import protocolAbi from "../../../../public/abi/protocol.json";
 import { TokentoHex, toHex} from "@/components/internal/helpers";
 import { toast as toastify } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
+import { CallData } from "starknet";
 
 // Constants
 const ITEMS_PER_PAGE = 7;
@@ -119,7 +120,7 @@ const TableRow = ({ onCounter }: TableRowProps) => {
           abi: protocolAbi,
           contractAddress: PROTOCOL_ADDRESS,
           entrypoint: "accept_proposal",
-          calldata: [0xb, 0x0]
+          calldata: CallData.compile([proposalId, 0])
         }]
       });
       

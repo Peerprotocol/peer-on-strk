@@ -923,7 +923,7 @@ pub mod PeerProtocol {
                 .balance_of(caller);
             assert(borrower_balance >= amount, 'insufficient borrower balance');
             IERC20Dispatcher { contract_address: proposal.token }
-                .transfer_from(caller, proposal.lender, amount);
+                .transfer_from(caller, proposal.lender, amount * ONE_E18);
 
             // Unlock borrowers collateral
             let locked_funds = self
@@ -1119,11 +1119,11 @@ pub mod PeerProtocol {
 
             // Transfer net amount to borrower
             IERC20Dispatcher { contract_address: proposal.token }
-                .transfer(proposal.borrower, net_amount);
+                .transfer(proposal.borrower, net_amount * ONE_E18);
 
             // Transfer protocol fee to protocol fee address
             IERC20Dispatcher { contract_address: proposal.token }
-                .transfer(self.protocol_fee_address.read(), fee_amount);
+                .transfer(self.protocol_fee_address.read(), fee_amount * ONE_E18);
 
             // Mint SPOK
             self.mint_spoks(proposal.id, proposal.borrower, lender);
@@ -1168,9 +1168,9 @@ pub mod PeerProtocol {
 
             let proposal_token = IERC20Dispatcher { contract_address: proposal.token };
             // Transfer main amount from lender to borrower
-            proposal_token.transfer(borrower, net_amount);
+            proposal_token.transfer(borrower, net_amount * ONE_E18);
             // Transfer protocol fee to protocol fee address
-            proposal_token.transfer(self.protocol_fee_address.read(), fee_amount);
+            proposal_token.transfer(self.protocol_fee_address.read(), fee_amount * ONE_E18);
 
             // Mint SPOK
             self.mint_spoks(proposal.id, proposal.lender, borrower);
@@ -1213,8 +1213,8 @@ pub mod PeerProtocol {
             let creator_token_id = self.next_spok_id.read();
             let acceptor_token_id = creator_token_id + 1;
 
-            spok.mint(proposal_id, creator, creator_token_id);
-            spok.mint(proposal_id, acceptor, acceptor_token_id);
+            spok.mint(creator, creator_token_id, proposal_id);
+            spok.mint(acceptor, acceptor_token_id, proposal_id,);
 
             self.next_spok_id.write(acceptor_token_id + 1);
         }

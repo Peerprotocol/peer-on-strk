@@ -1124,8 +1124,8 @@ fn test_deploy_liquidity_pool() {
 
     //add supported token
     start_cheat_caller_address(peer_protocol_address, owner);
-    peer_protocol.add_supported_token(token_address);
-    peer_protocol.add_supported_token(collateral_token_address);
+    peer_protocol.add_supported_token(token_address, 0);
+    peer_protocol.add_supported_token(collateral_token_address, 0);
     stop_cheat_caller_address(peer_protocol_address);
 
     // deploy pool token

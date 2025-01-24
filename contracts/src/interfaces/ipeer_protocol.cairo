@@ -11,7 +11,9 @@ use core::array::SpanTrait;
 #[starknet::interface]
 pub trait IPeerProtocol<TContractState> {
     fn deposit(ref self: TContractState, token_address: ContractAddress, amount: u256);
-    fn add_supported_token(ref self: TContractState, token_address: ContractAddress);
+    fn add_supported_token(
+        ref self: TContractState, token_address: ContractAddress, asset_id: felt252
+    );
     fn withdraw(ref self: TContractState, token_address: ContractAddress, amount: u256);
     fn create_borrow_proposal(
         ref self: TContractState,

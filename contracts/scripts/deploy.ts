@@ -8,7 +8,7 @@ async function main() {
         nodeUrl: process.env.RPC_ENDPOINT,
     });
 
-  // initialize existing predeployed account 0
+    // initialize existing predeployed account 0
     console.log("ACCOUNT_ADDRESS=", process.env.DEPLOYER_ADDRESS);
     const privateKey0 = process.env.DEPLOYER_PRIVATE_KEY ?? "";
     const accountAddress0: string = process.env.DEPLOYER_ADDRESS ?? "";
@@ -20,7 +20,7 @@ async function main() {
 
     try {
         ({ sierraCode, casmCode } = await getCompiledCode(
-        "peer_protocol_PeerProtocol"
+            "peer_protocol_PeerProtocol"
         ));
     } catch (error: any) {
         console.log("Failed to read contract files");
@@ -29,11 +29,12 @@ async function main() {
     }
 
     const myCallData = new CallData(sierraCode.abi);
-    
+
     const constructor = myCallData.compile("constructor", {
         owner: process.env.DEPLOYER_ADDRESS ?? "",
         protocol_fee_address: process.env.DEPLOYER_ADDRESS ?? "",
-        spok_nft: "0x687a30e52d79ff38ff205d97276935d56b21b5da0d092d4e4a0b485ff43f5b3"
+        spok_nft: "0x687a30e52d79ff38ff205d97276935d56b21b5da0d092d4e4a0b485ff43f5b3",
+        pragma_address: "0x2a85bd616f912537c50a49a4076db02c00b29b2cdc8a197ce92ed1837fa875b"
     });
 
     const deployResponse = await account0.declareAndDeploy({

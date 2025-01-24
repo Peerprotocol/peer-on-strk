@@ -178,11 +178,12 @@ pub mod PeerProtocol {
         next_spok_id: u256,
         locked_funds: Map<(ContractAddress, ContractAddress), u256>, // (user, token) => amount
         liquidation_thresholds: Map<ContractAddress, LiquidationThreshold>,
-        price_oracles: Map<ContractAddress, ContractAddress>,
+        price_oracles: Map<ContractAddress, felt252>, // Map of token and it's asset_id
         #[substorage(v0)]
         src5: SRC5Component::Storage,
         #[substorage(v0)]
-        accesscontrol: AccessControlComponent::Storage
+        accesscontrol: AccessControlComponent::Storage,
+        pragma_contract: ContractAddress
     }
 
     const MAX_U64: u64 = 18446744073709551615_u64;
@@ -329,7 +330,8 @@ pub mod PeerProtocol {
         ref self: ContractState,
         owner: ContractAddress,
         protocol_fee_address: ContractAddress,
-        spok_nft: ContractAddress
+        spok_nft: ContractAddress,
+        pragma_address: ContractAddress
     ) {
         assert!(owner != self.zero_address(), "zero address detected");
         self.owner.write(owner);
@@ -338,6 +340,7 @@ pub mod PeerProtocol {
         self.proposals_count.write(0);
         self.accesscontrol.initializer();
         self.accesscontrol._grant_role(ADMIN_ROLE, owner);
+        self.pragma_contract.write(pragma_address);
     }
 
     #[abi(embed_v0)]
@@ -362,7 +365,9 @@ pub mod PeerProtocol {
             self.emit(DepositSuccessful { user: caller, token: token_address, amount: amount });
         }
 
-        fn add_supported_token(ref self: ContractState, token_address: ContractAddress) {
+        fn add_supported_token(
+            ref self: ContractState, token_address: ContractAddress, asset_id: felt252
+        ) {
             let caller = get_caller_address();
 
             assert!(caller == self.owner.read(), "unauthorized caller");
@@ -372,6 +377,7 @@ pub mod PeerProtocol {
 
             self.supported_tokens.entry(token_address).write(true);
             self.supported_token_list.append().write(token_address);
+            self.price_oracles.entry(token_address).write(asset_id);
 
             self.emit(SupportedTokenAdded { token: token_address });
         }
@@ -1120,20 +1126,15 @@ pub mod PeerProtocol {
         }
 
         fn get_token_price(self: @ContractState, token: ContractAddress) -> u256 {
-            let oracle = self.price_oracles.entry(token).read();
-            assert(oracle != self.zero_address(), 'no oracle for token');
-            let asset_id = 0;
-
+            let asset_id = self.price_oracles.entry(token).read();
+            assert(asset_id != 0, 'invalid token');
+            let pragma_address = self.pragma_contract.read();
             // Create oracle dispatcher and get price
-            let oracle_dispatcher = IPragmaABIDispatcher {
-                contract_address: self.price_oracles.entry(token).read()
-            };
+            let oracle_dispatcher = IPragmaABIDispatcher { contract_address: pragma_address };
             let output: PragmaPricesResponse = oracle_dispatcher
                 .get_data_median(DataType::SpotEntry(asset_id));
             assert(output.price > 0, 'invalid price returned');
-
-            let price: u256 = (output.price).try_into().unwrap();
-            price
+            output.price.into()
         }
         fn deploy_liquidity_pool(ref self: ContractState, token: ContractAddress) {
             let caller = get_caller_address();

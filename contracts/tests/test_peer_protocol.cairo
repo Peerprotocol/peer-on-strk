@@ -41,11 +41,15 @@ fn deploy_peer_protocol() -> ContractAddress {
     let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
     let protocol_fee_address: ContractAddress = starknet::contract_address_const::<0x129996789>();
     let spok_nft: ContractAddress = deploy_spok();
+    let pragma_address_main: ContractAddress = starknet::contract_address_const::<
+        0x2a85bd616f912537c50a49a4076db02c00b29b2cdc8a197ce92ed1837fa875b
+    >(); // mainnet
 
     let mut constructor_calldata = ArrayTrait::new();
     constructor_calldata.append(owner.into());
     constructor_calldata.append(protocol_fee_address.into());
     constructor_calldata.append(spok_nft.into());
+    constructor_calldata.append(pragma_address_main.into());
 
     let contract = declare("PeerProtocol").unwrap().contract_class();
     let (contract_address, _) = contract.deploy(@constructor_calldata).unwrap();
@@ -95,7 +99,7 @@ fn test_deposit() {
 
     // Prank owner to add supported token in peer protocol
     start_cheat_caller_address(peer_protocol_address, owner);
-    peer_protocol.add_supported_token(token_address);
+    peer_protocol.add_supported_token(token_address, 0);
     stop_cheat_caller_address(peer_protocol_address);
 
     token.mint(caller, mint_amount);
@@ -143,7 +147,7 @@ fn test_withdraw() {
     let withdraw_amount: u256 = 50 * ONE_E18;
 
     start_cheat_caller_address(peer_protocol_address, owner);
-    peer_protocol.add_supported_token(token_address);
+    peer_protocol.add_supported_token(token_address, 0);
     stop_cheat_caller_address(peer_protocol_address);
 
     // Mint tokens
@@ -194,8 +198,8 @@ fn test_get_user_assets() {
 
     // Prank owner to add supported token in peer protocol
     start_cheat_caller_address(peer_protocol_address, owner);
-    peer_protocol.add_supported_token(token1_address);
-    peer_protocol.add_supported_token(token2_address);
+    peer_protocol.add_supported_token(token1_address, 0);
+    peer_protocol.add_supported_token(token2_address, 0);
     stop_cheat_caller_address(peer_protocol_address);
 
     token1.mint(caller, mint_amount);
@@ -258,9 +262,9 @@ fn test_get_user_deposits() {
 
     // Add supported tokens
     start_cheat_caller_address(peer_protocol_address, owner);
-    peer_protocol.add_supported_token(token1_address);
-    peer_protocol.add_supported_token(token2_address);
-    peer_protocol.add_supported_token(token3_address);
+    peer_protocol.add_supported_token(token1_address, 0);
+    peer_protocol.add_supported_token(token2_address, 0);
+    peer_protocol.add_supported_token(token3_address, 0);
     stop_cheat_caller_address(peer_protocol_address);
 
     // Mint tokens to user
@@ -342,8 +346,8 @@ fn test_create_borrow_proposal() {
 
     // Add supported token
     start_cheat_caller_address(peer_protocol_address, owner);
-    peer_protocol.add_supported_token(token_address);
-    peer_protocol.add_supported_token(collateral_token_address);
+    peer_protocol.add_supported_token(token_address, 0);
+    peer_protocol.add_supported_token(collateral_token_address, 0);
     stop_cheat_caller_address(peer_protocol_address);
 
     collateral_token.mint(borrower, mint_amount);
@@ -412,8 +416,8 @@ fn test_create_lending_proposal() {
 
     // Add supported tokens
     start_cheat_caller_address(peer_protocol_address, owner);
-    peer_protocol.add_supported_token(token_address);
-    peer_protocol.add_supported_token(collateral_token_address);
+    peer_protocol.add_supported_token(token_address, 0);
+    peer_protocol.add_supported_token(collateral_token_address, 0);
     stop_cheat_caller_address(peer_protocol_address);
 
     lending_token.mint(lender, mint_amount);
@@ -486,8 +490,8 @@ fn test_cancel_proposal() {
 
     // Add supported tokens
     start_cheat_caller_address(peer_protocol_address, owner);
-    peer_protocol.add_supported_token(token_address);
-    peer_protocol.add_supported_token(collateral_token_address);
+    peer_protocol.add_supported_token(token_address, 0);
+    peer_protocol.add_supported_token(collateral_token_address, 0);
     stop_cheat_caller_address(peer_protocol_address);
 
     lending_token.mint(lender, mint_amount);
@@ -558,8 +562,8 @@ fn test_get_borrow_proposal_details() {
 
     // Add supported tokens to peer protocol contract
     start_cheat_caller_address(peer_protocol_address, owner);
-    peer_protocol.add_supported_token(token_address);
-    peer_protocol.add_supported_token(collateral_token_address);
+    peer_protocol.add_supported_token(token_address, 0);
+    peer_protocol.add_supported_token(collateral_token_address, 0);
     stop_cheat_caller_address(peer_protocol_address);
 
     // Mint collateral token to borrower
@@ -637,8 +641,8 @@ fn test_create_counter_proposal() {
 
     // Add supported tokens
     start_cheat_caller_address(peer_protocol_address, owner);
-    peer_protocol.add_supported_token(token_address);
-    peer_protocol.add_supported_token(collateral_token_address);
+    peer_protocol.add_supported_token(token_address, 0);
+    peer_protocol.add_supported_token(collateral_token_address, 0);
     stop_cheat_caller_address(peer_protocol_address);
 
     lending_token.mint(lender, mint_amount);
@@ -749,8 +753,8 @@ fn test_get_counter_proposals() {
 
     // Add supported tokens
     start_cheat_caller_address(peer_protocol_address, owner);
-    peer_protocol.add_supported_token(token_address);
-    peer_protocol.add_supported_token(collateral_token_address);
+    peer_protocol.add_supported_token(token_address, 0);
+    peer_protocol.add_supported_token(collateral_token_address, 0);
     stop_cheat_caller_address(peer_protocol_address);
 
     lending_token.mint(lender, mint_amount);
@@ -886,8 +890,8 @@ fn test_create_borrow_proposal_should_panic_for_unsupported_token() {
 
     // Add supported token
     start_cheat_caller_address(peer_protocol_address, owner);
-    peer_protocol.add_supported_token(token_address);
-    peer_protocol.add_supported_token(collateral_token_address);
+    peer_protocol.add_supported_token(token_address, 0);
+    peer_protocol.add_supported_token(collateral_token_address, 0);
     stop_cheat_caller_address(peer_protocol_address);
 
     token.mint(borrower, mint_amount);
@@ -944,8 +948,8 @@ fn test_get_lending_proposal_details() {
 
     // Add supported tokens
     start_cheat_caller_address(peer_protocol_address, owner);
-    peer_protocol.add_supported_token(token_address);
-    peer_protocol.add_supported_token(collateral_token_address);
+    peer_protocol.add_supported_token(token_address, 0);
+    peer_protocol.add_supported_token(collateral_token_address, 0);
     stop_cheat_caller_address(peer_protocol_address);
 
     lending_token.mint(lender, mint_amount);
@@ -1025,8 +1029,8 @@ fn test_repay_proposal() {
 
     // Add supported token
     start_cheat_caller_address(peer_protocol_address, owner);
-    peer_protocol.add_supported_token(token_address);
-    peer_protocol.add_supported_token(collateral_token_address);
+    peer_protocol.add_supported_token(token_address, 0);
+    peer_protocol.add_supported_token(collateral_token_address, 0);
     stop_cheat_caller_address(peer_protocol_address);
 
     token.mint(borrower, mint_amount);
@@ -1133,4 +1137,22 @@ fn test_deploy_liquidity_pool() {
     let pool_data = peer_protocol.get_liquidity_pool_data(token_address);
     assert!(pool_data.pool_token != Zero::zero(), "Pool token address is zero");
     assert!(pool_data.is_active, "Pool is not deployed")
+}
+
+#[test]
+#[fork(url: "https://starknet-mainnet.public.blastapi.io/rpc/v0_7", block_tag: latest)]
+fn test_get_token_price_success() {
+    let peer_protocol_address = deploy_peer_protocol();
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+
+    let strk_token = starknet::contract_address_const::<'STARK_TOKEN'>();
+    let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
+    let asset_id = 'STRK/USD';
+
+    start_cheat_caller_address(peer_protocol_address, owner);
+    peer_protocol.add_supported_token(strk_token, asset_id);
+
+    let token_price = peer_protocol.get_token_price(strk_token);
+    println!("STRK price: {} USD", token_price);
+    assert_ge!(token_price, 0);
 }

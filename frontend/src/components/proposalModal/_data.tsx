@@ -7,8 +7,8 @@ const TOKEN_ADDRESSES = {
 
 let size = 24;
 export const tokenOptions = [
-  { label: <span className='flex items-center gap-2'><Image src="/icons/strk.svg" alt='Starknet' width={size} height={size} /> STRK</span>, value: "strk" },
-  { label: <span className='flex items-center gap-2'><Image src="/icons/eth.svg" alt='ETH' width={size} height={size} /> ETH</span>, value: "eth" },
+  { label: <span className='flex items-center gap-2'><Image src="/icons/strk.svg" alt='Starknet' width={size} height={size} /> STRK</span>, value: TOKEN_ADDRESSES.STRK },
+  { label: <span className='flex items-center gap-2'><Image src="/icons/eth.svg" alt='ETH' width={size} height={size} /> ETH</span>, value: TOKEN_ADDRESSES.ETH },
 ];
 
 // Interest rate options from 1% to 10%

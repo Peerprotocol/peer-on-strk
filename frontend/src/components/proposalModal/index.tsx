@@ -7,6 +7,7 @@ import { useContractWrite } from '@starknet-react/core';
 import { PROTOCOL_ADDRESS } from '../internal/helpers/constant';
 import { TokentoHex } from '../internal/helpers';
 import { toast as toastify } from 'react-toastify';
+import { CallData } from 'starknet';
 
 type ProposalModalProps = {
   show: boolean;
@@ -46,14 +47,16 @@ export default function NewProposalModal({
       {
         contractAddress: PROTOCOL_ADDRESS,
         entrypoint: type === 'create' ? 'create_lending_proposal' : 'create_borrow_proposal',
-        calldata: [
-          TokentoHex(formData.token),
-          TokentoHex(formData.collateral),
+        calldata: CallData.compile([
+          TokentoHex(formData.token || '0x0'),
+          TokentoHex(formData.collateral || '0x0'),
           formData.quantity || '0',
+          '0',
           collateralAmount.toString(),
-          formData.interestRate,
-          formData.duration,
-        ],
+          '0',
+          formData.interestRate || '0',
+          formData.duration || '0',
+        ]),
       },
     ],
   });

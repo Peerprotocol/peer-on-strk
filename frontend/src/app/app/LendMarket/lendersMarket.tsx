@@ -24,14 +24,6 @@ const TOKEN_ADDRESSES = {
 // Types
 type ModalType = "create" | "counter";
 
-interface ProposalData {
-  quantity: string;
-  duration: string;
-  interestRate: number;
-  token: string;
-  collateral: string;
-}
-
 // Component for the header section
 const Header = () => (
   <div className="flex p-4">

@@ -101,12 +101,19 @@ pub struct LiquidationInfo {
     can_be_liquidated: bool
 }
 
+#[derive(Drop, Serde, Copy, starknet::Store)]
+pub struct PoolData {
+    pool_token: ContractAddress,
+    is_active: bool,
+    total_liquidity: ContractAddress
+}
+
 #[starknet::contract]
 pub mod PeerProtocol {
     use starknet::event::EventEmitter;
     use super::{
         Transaction, TransactionType, UserDeposit, UserAssets, Proposal, ProposalType,
-        CounterProposal, BorrowedDetails
+        CounterProposal, BorrowedDetails, PoolData
     };
     use peer_protocol::interfaces::ipeer_protocol::IPeerProtocol;
     use peer_protocol::interfaces::ierc20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -124,9 +131,27 @@ pub mod PeerProtocol {
     };
     use core::array::ArrayTrait;
     use core::array::SpanTrait;
+    use core::num::traits::Zero;
     use super::{LiquidationThreshold, LiquidationInfo};
     use pragma_lib::abi::{IPragmaABIDispatcher, IPragmaABIDispatcherTrait};
     use pragma_lib::types::{DataType, PragmaPricesResponse};
+    use openzeppelin_access::accesscontrol::AccessControlComponent;
+    use openzeppelin_introspection::src5::SRC5Component;
+
+    component!(path: SRC5Component, storage: src5, event: SRC5Event);
+    component!(path: AccessControlComponent, storage: accesscontrol, event: AccessControlEvent);
+
+
+    #[abi(embed_v0)]
+    impl AccessControlImpl =
+        AccessControlComponent::AccessControlImpl<ContractState>;
+    #[abi(embed_v0)]
+    impl AccessControlCamelImpl =
+        AccessControlComponent::AccessControlCamelImpl<ContractState>;
+    impl AccessControlInternalImpl = AccessControlComponent::InternalImpl<ContractState>;
+
+    #[abi(embed_v0)]
+    impl SRC5Impl = SRC5Component::SRC5Impl<ContractState>;
 
     #[storage]
     struct Storage {
@@ -146,6 +171,7 @@ pub mod PeerProtocol {
         interests_earned: Map<(ContractAddress, ContractAddress), u256>,
         proposals: Map<u256, Proposal>, // Mapping from proposal ID to proposal details
         proposals_count: u256, // Counter for proposal IDs
+        pools: Map<ContractAddress, PoolData>, // erc20_token_address => pool_data
         counter_proposals: Map<(u256, u256), CounterProposal>,
         protocol_fee_address: ContractAddress,
         spok_nft: ContractAddress,
@@ -153,6 +179,10 @@ pub mod PeerProtocol {
         locked_funds: Map<(ContractAddress, ContractAddress), u256>, // (user, token) => amount
         liquidation_thresholds: Map<ContractAddress, LiquidationThreshold>,
         price_oracles: Map<ContractAddress, felt252>, // Map of token and it's asset_id
+        #[substorage(v0)]
+        src5: SRC5Component::Storage,
+        #[substorage(v0)]
+        accesscontrol: AccessControlComponent::Storage,
         pragma_contract: ContractAddress
     }
 
@@ -162,6 +192,9 @@ pub mod PeerProtocol {
     const PROTOCOL_FEE_PERCENTAGE: u256 = 1_u256; // 1%
     const ONE_E18: u256 = 1000000000000000000_u256;
     const SECONDS_IN_YEAR: u256 = 31536000_u256;
+    const ADMIN_ROLE: felt252 = selector!("ADMIN");
+    const MAINTAINER_ROLE: felt252 = selector!("MAINTAINER");
+
 
     #[event]
     #[derive(Drop, starknet::Event)]
@@ -176,7 +209,12 @@ pub mod PeerProtocol {
         ProposalRepaid: ProposalRepaid,
         LendingProposalCreated: LendingProposalCreated,
         ProposalCancelled: ProposalCancelled,
-        PositionLiquidated: PositionLiquidated
+        PositionLiquidated: PositionLiquidated,
+        PoolCreated: PoolCreated,
+        #[flat]
+        AccessControlEvent: AccessControlComponent::Event,
+        #[flat]
+        SRC5Event: SRC5Component::Event
     }
 
     #[derive(Drop, starknet::Event)]
@@ -280,6 +318,13 @@ pub mod PeerProtocol {
         pub proposal_id: u256
     }
 
+    #[derive(Drop, starknet::Event)]
+    pub struct PoolCreated {
+        pub created_by: ContractAddress,
+        pub token: ContractAddress,
+        pub created_at: u64
+    }
+
     #[constructor]
     fn constructor(
         ref self: ContractState,
@@ -293,6 +338,8 @@ pub mod PeerProtocol {
         self.protocol_fee_address.write(protocol_fee_address);
         self.spok_nft.write(spok_nft);
         self.proposals_count.write(0);
+        self.accesscontrol.initializer();
+        self.accesscontrol._grant_role(ADMIN_ROLE, owner);
         self.pragma_contract.write(pragma_address);
     }
 
@@ -1089,6 +1136,19 @@ pub mod PeerProtocol {
             assert(output.price > 0, 'invalid price returned');
             output.price.into()
         }
+        fn deploy_liquidity_pool(ref self: ContractState, token: ContractAddress) {
+            let caller = get_caller_address();
+            self._deploy_liquidity_pool(token, caller);
+            self
+                .emit(
+                    PoolCreated {
+                        created_by: caller, token: token, created_at: get_block_timestamp()
+                    }
+                );
+        }
+        fn get_liquidity_pool_data(self: @ContractState, token: ContractAddress) -> PoolData {
+            self.pools.entry(token).read()
+        }
     }
 
 
@@ -1280,6 +1340,26 @@ pub mod PeerProtocol {
                 tx_hash: get_tx_info().transaction_hash,
             };
             self._add_transaction(lender, lender_transaction);
+        }
+
+        fn _deploy_liquidity_pool(
+            ref self: ContractState, token: ContractAddress, caller: ContractAddress
+        ) {
+            // check whether caller is a maintainer or an owner
+            assert!(
+                self.owner.read() == caller || self.accesscontrol.has_role(MAINTAINER_ROLE, caller),
+                "Unauthorized Access"
+            );
+            // check whether token is supported
+            let token_supported_check: bool = self.supported_tokens.entry(token).read();
+            assert!(token_supported_check, "Token is not supported");
+            // check whether pool does not exists
+            let pool_exist_check = (self.pools.entry(token).pool_token.read() == Zero::zero()
+                && !self.pools.entry(token).is_active.read());
+            assert!(pool_exist_check, "Pool already exist");
+            // activate pool
+            self.pools.entry(token).pool_token.write(token);
+            self.pools.entry(token).is_active.write(true);
         }
     }
 }

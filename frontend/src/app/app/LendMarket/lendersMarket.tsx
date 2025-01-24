@@ -12,6 +12,7 @@ import protocolAbi from "../../../../public/abi/protocol.json";
 import { TokentoHex, toHex} from "@/components/internal/helpers";
 import { toast as toastify } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
+import NewProposalModal from "@/components/proposalModal";
 
 // Constants
 const ITEMS_PER_PAGE = 7;
@@ -642,7 +643,7 @@ const Lender = () => {
             onPageChange={setCurrentPage}
           />
 
-          <ProposalModal
+          {/* <ProposalModal
             isOpen={isModalOpen}
             type={modalType}
             onClose={() => setModalOpen(false)}
@@ -650,7 +651,9 @@ const Lender = () => {
             interestRateInput={interestRateInput}
             onInterestRateChange={handleInterestRateChange}
             onManualInputChange={handleManualInputChange}
-          />
+          /> */}
+
+          <NewProposalModal show={isModalOpen} onClose={() => setModalOpen(prev => !prev)} title="Title" />
         </div>
       </div>
     </main>

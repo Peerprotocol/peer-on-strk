@@ -9,9 +9,9 @@ import Sidebar from "../sidebar";
 import { PROTOCOL_ADDRESS } from "@/components/internal/helpers/constant";
 import { useContractRead } from "@starknet-react/core";
 import protocolAbi from "../../../../public/abi/protocol.json";
-import { toHex} from "@/components/internal/helpers";
-import { toast as toastify } from 'react-toastify'
-import 'react-toastify/dist/ReactToastify.css'
+import { toHex } from "@/components/internal/helpers";
+import { toast as toastify } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import NewProposalModal from "@/components/proposalModal";
 
 // Constants
@@ -22,7 +22,7 @@ const TOKEN_ADDRESSES = {
 };
 
 // Types
-type ModalType = "create" | "counter";
+type ModalType = "lend" | "counter" | "borrow";
 
 // Component for the header section
 const Header = () => (
@@ -99,34 +99,36 @@ const TableRow = ({ onCounter }: TableRowProps) => {
         contractAddress: PROTOCOL_ADDRESS,
         entrypoint: "accept_proposal",
         calldata: [], // This will be filled when calling
-      }
+      },
     ],
   });
-  
+
   const handleLend = async (proposalId: any) => {
-    console.log('proposal id', proposalId);
+    console.log("proposal id", proposalId);
     setLoading(true);
     try {
       const transaction = await lend({
-        calls: [{
-          abi: protocolAbi,
-          contractAddress: PROTOCOL_ADDRESS,
-          entrypoint: "accept_proposal",
-          calldata: [0xb, 0x0]
-        }]
+        calls: [
+          {
+            abi: protocolAbi,
+            contractAddress: PROTOCOL_ADDRESS,
+            entrypoint: "accept_proposal",
+            calldata: [0xb, 0x0],
+          },
+        ],
       });
-      
+
       if (transaction?.transaction_hash) {
-        toastify.success('Proposal Accepted')
+        toastify.success("Proposal Accepted");
         console.log("Transaction submitted:", transaction.transaction_hash);
-        
+
         // Wait for transaction
         await transaction.wait();
         console.log("Transaction completed!");
       }
     } catch (error) {
       console.error("Error borrowing:", error);
-      toastify.error('Failed. Try again!')
+      toastify.error("Failed. Try again!");
     } finally {
       setLoading(false);
     }
@@ -139,33 +141,35 @@ const TableRow = ({ onCounter }: TableRowProps) => {
         contractAddress: PROTOCOL_ADDRESS,
         entrypoint: "cancel_proposal",
         calldata: [], // This will be filled when calling
-      }
+      },
     ],
   });
-  
+
   const cancelProposal = async (proposalId: any) => {
     setLoading(true);
     try {
       const transaction = await cancel({
-        calls: [{
-          abi: protocolAbi,
-          contractAddress: PROTOCOL_ADDRESS,
-          entrypoint: "cancel_proposal",
-          calldata: [proposalId, "0"]
-        }]
+        calls: [
+          {
+            abi: protocolAbi,
+            contractAddress: PROTOCOL_ADDRESS,
+            entrypoint: "cancel_proposal",
+            calldata: [proposalId, "0"],
+          },
+        ],
       });
-      
+
       if (transaction?.transaction_hash) {
         console.log("Transaction submitted:", transaction.transaction_hash);
-        toastify.success('Proposal Cancelled')
-        
+        toastify.success("Proposal Cancelled");
+
         // Wait for transaction
         await transaction.wait();
         console.log("Transaction completed!");
       }
     } catch (error) {
       console.error("Error borrowing:", error);
-      toastify.error('Failed. Try again')
+      toastify.error("Failed. Try again");
     } finally {
       setLoading(false);
     }
@@ -184,17 +188,19 @@ const TableRow = ({ onCounter }: TableRowProps) => {
   return (
     <div className="border-t border-gray-300 min-w-[800px] w-full">
       {lendingProposals
-        .filter((item: any) => item.is_cancelled !== true && item.is_accepted !== true)
+        .filter(
+          (item: any) => item.is_cancelled !== true && item.is_accepted !== true
+        )
         .map((item: any, index: number) => {
           const tokenHex = toHex(item.token.toString());
           let lenderHex = toHex(item.lender.toString());
 
-          if(item.lender == address){
-              lenderHex = 'Me'
+          if (item.lender == address) {
+            lenderHex = "Me";
           }
-  
+
           return (
-            <div key={index} className="grid grid-cols-7">        
+            <div key={index} className="grid grid-cols-7">
               {/* Merchant Column */}
               <div className="flex items-center justify-center px-4 py-6">
                 <Image
@@ -204,36 +210,39 @@ const TableRow = ({ onCounter }: TableRowProps) => {
                   alt="phantomicon"
                   className="h-5 w-5"
                 />
-                <p className="font-medium ml-2">{`${lenderHex.slice(0, 5)}..`}</p>
+                <p className="font-medium ml-2">{`${lenderHex.slice(
+                  0,
+                  5
+                )}..`}</p>
               </div>
-  
+
               {/* Token Column */}
               <div className="text-center px-4 py-6">
                 <p className="font-medium">{getTokenName(tokenHex)}</p>
               </div>
-  
+
               {/* Quantity Column */}
               <div className="text-center px-4 py-6">
                 <p className="font-medium">{item.amount.toString()}</p>
               </div>
-  
+
               {/* Net Value Column */}
               <div className="text-center px-4 py-6">
                 <p className="font-medium">
                   {item.required_collateral_value.toString()}
                 </p>
               </div>
-  
+
               {/* Interest Rate Column */}
               <div className="text-center px-4 py-6">
                 <p className="font-medium">{item.interest_rate.toString()}%</p>
               </div>
-  
+
               {/* Duration Column */}
               <div className="text-center px-4 py-6">
                 <p className="font-medium">{item.duration.toString()} days</p>
               </div>
-  
+
               {/* Actions Column */}
               <div className="flex gap-4 justify-center items-center py-6">
                 <button
@@ -247,7 +256,7 @@ const TableRow = ({ onCounter }: TableRowProps) => {
                 >
                   {loading ? "..." : "Borrow"}
                 </button>
-  
+
                 <Image
                   src="/images/edit.svg"
                   alt="counter-proposal"
@@ -260,7 +269,7 @@ const TableRow = ({ onCounter }: TableRowProps) => {
                   }`}
                   onClick={() => !loading && !proposalsLoading && onCounter()}
                 />
-  
+
                 <X onClick={() => cancelProposal(item.id.toString())} />
               </div>
             </div>
@@ -269,7 +278,6 @@ const TableRow = ({ onCounter }: TableRowProps) => {
     </div>
   );
 };
-
 
 // Pagination Component
 const Pagination = ({
@@ -305,13 +313,18 @@ const Lender = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [isModalOpen, setModalOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const [modalType, setModalType] = useState<ModalType>("create");
+  const [modalType, setModalType] = useState<ModalType>("borrow");
+  const [title, setTitle] = useState("Create a Borrow Proposal");
 
   const totalPages = Math.ceil(5 / ITEMS_PER_PAGE);
 
   const handleOpenModal = (type: ModalType) => {
     setModalType(type);
     setModalOpen(true);
+
+    if (type === "counter") {
+      setTitle("Create a Counter Proposal");
+    }
   };
 
   return (
@@ -329,12 +342,12 @@ const Lender = () => {
           </div>
 
           <button
-            onClick={() => handleOpenModal("create")}
+            onClick={() => handleOpenModal("borrow")}
             className="relative flex items-center gap-2 px-6 py-3 rounded-3xl bg-[#F5F5F5] text-black border border-[rgba(0,0,0,0.8)] mx-auto font-light hover:bg-[rgba(0,0,0,0.8)] hover:text-white"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
           >
-            <p>Create a Proposal</p>
+            <p>Create a Borrow Proposal</p>
             <Plus
               size={22}
               strokeWidth={4}
@@ -349,17 +362,12 @@ const Lender = () => {
             onPageChange={setCurrentPage}
           />
 
-          {/* <ProposalModal
-            isOpen={isModalOpen}
+          <NewProposalModal
             type={modalType}
-            onClose={() => setModalOpen(false)}
-            interestRate={interestRate}
-            interestRateInput={interestRateInput}
-            onInterestRateChange={handleInterestRateChange}
-            onManualInputChange={handleManualInputChange}
-          /> */}
-
-          <NewProposalModal type={modalType} show={isModalOpen} onClose={() => setModalOpen(prev => !prev)} title="Create a Proposal" />
+            show={isModalOpen}
+            onClose={() => setModalOpen((prev) => !prev)}
+            title={title}
+          />
         </div>
       </div>
     </main>

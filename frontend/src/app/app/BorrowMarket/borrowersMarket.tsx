@@ -16,7 +16,7 @@ import { toast as toastify } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import NewProposalModal from "@/components/proposalModal";
 
-type ModalType = "create" | "counter";
+type ModalType = "borrow" | "counter" | 'lend';
 
 
 //Constants
@@ -271,7 +271,8 @@ const BorrowersMarket = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [isModalOpen, setModalOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const [modalType, setModalType] = useState<ModalType>("create");
+  const [modalType, setModalType] = useState<ModalType>("lend");
+  const [title, setTitle] = useState('Create a Lending Proposal');
 
   const totalPages = Math.ceil(5 / ITEMS_PER_PAGE);
 
@@ -279,6 +280,9 @@ const BorrowersMarket = () => {
   const openModal = (type: ModalType) => {
     setModalType(type);
     setModalOpen(true);
+    if (type === 'counter') {
+      setTitle('Create a Counter Proposal')
+    }
   };
 
   return (
@@ -308,12 +312,12 @@ const BorrowersMarket = () => {
             </div>
           </div>
           <button
-            onClick={() => openModal("create")}
+            onClick={() => openModal("lend")}
             className="relative flex items-center gap-2 px-6 py-3 rounded-3xl bg-[#F5F5F5] text-black border border-[rgba(0,0,0,0.8)] mx-auto font-light hover:bg-[rgba(0,0,0,0.8)] hover:text-white"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
           >
-            <p>Create a Proposal</p>
+            <p>Create a Lending Proposal</p>
             <Plus
               size={22}
               strokeWidth={3}
@@ -322,18 +326,7 @@ const BorrowersMarket = () => {
             />
           </button>
           <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
-          
-          {/* <ProposalModal
-            isOpen={isModalOpen}
-            onClose={closeModal}
-            ModalType={modalType}
-            interestRate={interestRate}
-            interestRateInput={interestRateInput}
-            onInterestRateChange={handleInterestRateChange}
-            onManualInputChange={handleManualInputChange}
-          /> */}
-
-          <NewProposalModal type={modalType} show={isModalOpen} onClose={() => setModalOpen(prev => !prev)} title="Create a Proposal" />
+          <NewProposalModal type={modalType} show={isModalOpen} onClose={() => setModalOpen(prev => !prev)} title={title} />
         </div>
       </div>
     </main>

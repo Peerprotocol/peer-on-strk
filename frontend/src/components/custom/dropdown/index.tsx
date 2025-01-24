@@ -6,17 +6,28 @@ type DropdownOption = {
   value: string | number;
 };
 
-interface DropdownProps {
+// Define overloads for DropdownProps
+interface BaseDropdownProps {
   options: DropdownOption[];
   placeholder?: string;
-  multiSelect?: boolean;
-  onValueChange: (selected: DropdownOption | DropdownOption[]) => void;
   className?: string;
 }
 
+interface SingleSelectDropdownProps extends BaseDropdownProps {
+  multiSelect?: false; // Explicitly false for single-select
+  onValueChange: (selected: DropdownOption) => void; // Single option
+}
+
+interface MultiSelectDropdownProps extends BaseDropdownProps {
+  multiSelect: true; // Explicitly true for multi-select
+  onValueChange: (selected: DropdownOption[]) => void; // Array of options
+}
+
+type DropdownProps = SingleSelectDropdownProps | MultiSelectDropdownProps;
+
 const Dropdown: React.FC<DropdownProps> = ({
   options,
-  placeholder = "Select an option",
+  placeholder = 'Select an option',
   multiSelect = false,
   onValueChange,
   className,
@@ -39,10 +50,10 @@ const Dropdown: React.FC<DropdownProps> = ({
         : [...selectedOptions, option];
 
       setSelectedOptions(newSelection);
-      onValueChange(newSelection);
+      (onValueChange as (selected: DropdownOption[]) => void)(newSelection);
     } else {
       setSelectedOptions([option]);
-      onValueChange(option);
+      (onValueChange as (selected: DropdownOption) => void)(option);
       setIsOpen(false);
     }
   };
@@ -58,15 +69,14 @@ const Dropdown: React.FC<DropdownProps> = ({
 
   const handleDropdownDisplay: MouseEventHandler<HTMLButtonElement> = (e) => {
     e.preventDefault();
-    setIsOpen(prev => !prev);
-  }
+    setIsOpen((prev) => !prev);
+  };
 
   const adjustDropdownPosition = () => {
     if (dropdownRef.current && dropdownMenuRef.current) {
       const dropdownRect = dropdownRef.current.getBoundingClientRect();
       const menuHeight = dropdownMenuRef.current.offsetHeight;
 
-      // Check if the dropdown fits below; if not, flip it above
       const isNearBottom =
         window.innerHeight - dropdownRect.bottom < menuHeight;
       setIsDropdownFlipped(isNearBottom);
@@ -74,14 +84,14 @@ const Dropdown: React.FC<DropdownProps> = ({
   };
 
   useEffect(() => {
-    document.addEventListener("mousedown", handleOutsideClick);
-    window.addEventListener("resize", adjustDropdownPosition);
-    window.addEventListener("scroll", adjustDropdownPosition);
+    document.addEventListener('mousedown', handleOutsideClick);
+    window.addEventListener('resize', adjustDropdownPosition);
+    window.addEventListener('scroll', adjustDropdownPosition);
 
     return () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
-      window.removeEventListener("resize", adjustDropdownPosition);
-      window.removeEventListener("scroll", adjustDropdownPosition);
+      document.removeEventListener('mousedown', handleOutsideClick);
+      window.removeEventListener('resize', adjustDropdownPosition);
+      window.removeEventListener('scroll', adjustDropdownPosition);
     };
   }, []);
 
@@ -95,11 +105,11 @@ const Dropdown: React.FC<DropdownProps> = ({
     <div ref={dropdownRef} className={`relative inline-block w-full ${className}`}>
       <button
         onClick={handleDropdownDisplay}
-        className={`w-full flex items-center gap-2 border border-black dark:border-gray-200 bg-transparent text-left px-4 py-2 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-black ${placeholder && "text-gray-400"}`}
+        className="w-full flex items-center gap-2 border border-black dark:border-gray-200 bg-transparent text-left px-4 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-black"
       >
         {multiSelect
           ? selectedOptions.length > 0
-            ? selectedOptions.map((opt) => opt.label).join(", ")
+            ? selectedOptions.map((opt) => opt.label).join(', ')
             : placeholder
           : selectedOptions[0]?.label || placeholder}
 
@@ -110,7 +120,7 @@ const Dropdown: React.FC<DropdownProps> = ({
         <div
           ref={dropdownMenuRef}
           className={`absolute z-10 mt-1 max-h-60 w-full overflow-x-auto rounded-md border border-gray-300 bg-white dark:bg-black shadow-lg ${
-            isDropdownFlipped ? "bottom-full mb-1" : "top-full mt-1"
+            isDropdownFlipped ? 'bottom-full mb-1' : 'top-full mt-1'
           }`}
         >
           {options.map((option) => (
@@ -119,8 +129,8 @@ const Dropdown: React.FC<DropdownProps> = ({
               onClick={() => handleOptionClick(option)}
               className={`px-4 py-2 cursor-pointer hover:bg-gray-200 dark:hover:bg-neutral-500/40 ${
                 selectedOptions.some((selected) => selected.value === option.value)
-                  ? "bg-gray-300 dark:bg-neutral-700"
-                  : ""
+                  ? 'bg-gray-300 dark:bg-neutral-700'
+                  : ''
               }`}
             >
               {option.label}
@@ -133,3 +143,4 @@ const Dropdown: React.FC<DropdownProps> = ({
 };
 
 export default Dropdown;
+

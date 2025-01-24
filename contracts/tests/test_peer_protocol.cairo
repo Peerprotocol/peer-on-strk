@@ -13,6 +13,8 @@ use peer_protocol::interfaces::ierc20::{IERC20Dispatcher, IERC20DispatcherTrait}
 
 use peer_protocol::peer_protocol::ProposalType;
 
+use core::num::traits::Zero;
+
 const ONE_E18: u256 = 1000000000000000000_u256;
 const COLLATERAL_RATIO_NUMERATOR: u256 = 13_u256;
 const COLLATERAL_RATIO_DENOMINATOR: u256 = 10_u256;
@@ -1129,6 +1131,6 @@ fn test_deploy_liquidity_pool() {
 
     // get pool data and check
     let pool_data = peer_protocol.get_liquidity_pool_data(token_address);
-    assert!(pool_data.pool_token != 0, "Pool token address is zero");
+    assert!(pool_data.pool_token != Zero::zero(), "Pool token address is zero");
     assert!(pool_data.is_active, "Pool is not deployed")
 }

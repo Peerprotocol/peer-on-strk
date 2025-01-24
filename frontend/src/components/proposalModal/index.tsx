@@ -125,7 +125,7 @@ export default function NewProposalModal({
         </div>
         <button
           type="submit"
-          className={`w-max mx-auto mt-6 px-8 py-3 rounded-xl ${isLoading ? 'bg-gray-500 cursor-not-allowed' : 'bg-black text-white'
+          className={`w-max mx-auto mt-6 px-8 py-3 rounded-xl ${isLoading ? 'bg-gray-500 cursor-not-allowed' : 'bg-black dark:bg-gray-200 text-white dark:text-neutral-900'
             }`}
           disabled={isLoading}
         >

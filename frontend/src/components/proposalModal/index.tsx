@@ -82,7 +82,7 @@ export default function NewProposalModal({
     <Modal show={show} onClose={onClose} title={title}>
       <form className="w-full flex flex-col gap-5 px-8 mb-4" onSubmit={handleSubmit}>
         <div>
-          <label className="text-md">Token to Lend</label>
+          <label className="text-md text-black">Token to Lend</label>
           <Dropdown
             options={tokenOptions}
             onValueChange={(option) => handleChange('token', option.value.toString())}
@@ -90,7 +90,7 @@ export default function NewProposalModal({
           />
         </div>
         <div>
-          <label className="text-md">Collateral</label>
+          <label className="text-md text-black">Collateral</label>
           <Dropdown
             options={collateralOptions}
             onValueChange={(option) => handleChange('collateral', option.value.toString())}
@@ -98,17 +98,17 @@ export default function NewProposalModal({
           />
         </div>
         <div>
-          <label>Quantity</label>
+          <label className='text-md text-black'>Quantity</label>
           <input
             type="text"
-            className="mt-2 w-full text-base border border-black dark:border-gray-200 bg-transparent px-4 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-black"
+            className="mt-2 w-full text-base text-black border border-black bg-transparent px-4 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-black"
             placeholder="0"
             value={formData.quantity}
             onChange={(e) => handleChange('quantity', e.target.value)}
           />
         </div>
         <div>
-          <label className="text-md">Duration (days)</label>
+          <label className="text-md text-black">Duration (days)</label>
           <Dropdown
             options={durationOptions}
             onValueChange={(option) => handleChange('duration', option.value.toString())}
@@ -116,7 +116,7 @@ export default function NewProposalModal({
           />
         </div>
         <div>
-          <label className="text-md">Interest Rate (%)</label>
+          <label className="text-md text-black">Interest Rate (%)</label>
           <Dropdown
             options={interestRateOptions}
             onValueChange={(option) => handleChange('interestRate', option.value.toString())}
@@ -125,7 +125,7 @@ export default function NewProposalModal({
         </div>
         <button
           type="submit"
-          className={`w-max mx-auto mt-6 px-8 py-3 rounded-xl ${isLoading ? 'bg-gray-500 cursor-not-allowed' : 'bg-black dark:bg-gray-200 text-white dark:text-neutral-900'
+          className={`w-max mx-auto mt-6 px-8 py-3 rounded-xl ${isLoading ? 'bg-gray-500' : 'bg-black text-white'
             }`}
           disabled={isLoading}
         >

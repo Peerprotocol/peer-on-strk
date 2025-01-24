@@ -105,7 +105,7 @@ const Dropdown: React.FC<DropdownProps> = ({
     <div ref={dropdownRef} className={`relative inline-block w-full ${className}`}>
       <button
         onClick={handleDropdownDisplay}
-        className="w-full flex items-center gap-2 border border-black dark:border-gray-200 bg-transparent text-left px-4 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-black"
+        className="w-full flex items-center gap-2 text-black border border-black bg-transparent text-left px-4 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-black"
       >
         {multiSelect
           ? selectedOptions.length > 0
@@ -113,13 +113,13 @@ const Dropdown: React.FC<DropdownProps> = ({
             : placeholder
           : selectedOptions[0]?.label || placeholder}
 
-        <ChevronDown className="ml-auto" />
+        <ChevronDown className="ml-auto text-black" />
       </button>
 
       {isOpen && (
         <div
           ref={dropdownMenuRef}
-          className={`absolute z-10 mt-1 max-h-60 w-full overflow-x-auto rounded-md border border-gray-300 bg-white dark:bg-black shadow-lg ${
+          className={`absolute z-10 mt-1 max-h-60 w-full overflow-x-auto rounded-md border border-gray-300 bg-white ${
             isDropdownFlipped ? 'bottom-full mb-1' : 'top-full mt-1'
           }`}
         >
@@ -127,9 +127,9 @@ const Dropdown: React.FC<DropdownProps> = ({
             <div
               key={option.value}
               onClick={() => handleOptionClick(option)}
-              className={`px-4 py-2 cursor-pointer hover:bg-gray-200 dark:hover:bg-neutral-500/40 ${
+              className={`px-4 py-2 cursor-pointer text-black hover:bg-gray-200 ${
                 selectedOptions.some((selected) => selected.value === option.value)
-                  ? 'bg-gray-300 dark:bg-neutral-700'
+                  ? 'bg-gray-300'
                   : ''
               }`}
             >

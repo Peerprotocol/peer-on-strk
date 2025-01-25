@@ -45,7 +45,6 @@ export default function NewProposalModal({
     interestRate: "",
   });
 
-  const collateralAmount = Math.floor(Number(formData.quantity || 0) * 1.3);
   const entrypoint =
     type === "lend"
       ? "create_lending_proposal"
@@ -64,8 +63,6 @@ export default function NewProposalModal({
           TokentoHex(formData.token || "0x0"),
           TokentoHex(formData.collateral || "0x0"),
           formData.quantity || "0",
-          "0",
-          collateralAmount.toString(),
           "0",
           formData.interestRate || "0",
           formData.duration || "0",
@@ -125,11 +122,11 @@ export default function NewProposalModal({
           />
         </div>
         <div>
-          <label className="text-md text-black">Quantity</label>
+          <label className="text-md text-black">Amount in $</label>
           <input
             type="text"
             className="mt-2 w-full text-base text-black border border-black bg-transparent px-4 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-black"
-            placeholder="0"
+            placeholder="$10"
             value={formData.quantity}
             onChange={(e) => handleChange("quantity", e.target.value)}
           />

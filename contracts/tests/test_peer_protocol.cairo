@@ -16,6 +16,7 @@ use peer_protocol::peer_protocol::ProposalType;
 use core::num::traits::Zero;
 
 const ONE_E18: u256 = 1000000000000000000_u256;
+const ONE_E8: u256 = 1000000000_u256;
 const COLLATERAL_RATIO_NUMERATOR: u256 = 13_u256;
 const COLLATERAL_RATIO_DENOMINATOR: u256 = 10_u256;
 
@@ -326,6 +327,7 @@ fn test_get_user_deposits_with_zero_address() {
 
 #[test]
 fn test_create_borrow_proposal() {
+    // Setup
     let token_address = deploy_token("MockToken");
     let collateral_token_address = deploy_token("MockToken1");
     let peer_protocol_address = deploy_peer_protocol();
@@ -337,19 +339,20 @@ fn test_create_borrow_proposal() {
     let borrower: ContractAddress = starknet::contract_address_const::<0x122226789>();
 
     let mint_amount: u256 = 1000 * ONE_E18;
-    let borrow_amount: u256 = 500 * ONE_E18;
+    let borrow_amount: u256 = 500 * ONE_E18; // Borrow amount in dollars
     let interest_rate: u64 = 5;
     let duration: u64 = 10;
-    let required_collateral_value = 300 * ONE_E18;
-    let collateral_value_with_ratio = (required_collateral_value * COLLATERAL_RATIO_NUMERATOR)
-        / COLLATERAL_RATIO_DENOMINATOR;
 
-    // Add supported token
+    // Mock token price (e.g., $100 per token)
+    let token_price = 100 * ONE_E8; // $100 in 8 decimal places
+
+    // Add supported tokens
     start_cheat_caller_address(peer_protocol_address, owner);
     peer_protocol.add_supported_token(token_address, 0);
     peer_protocol.add_supported_token(collateral_token_address, 0);
     stop_cheat_caller_address(peer_protocol_address);
 
+    // Mint collateral tokens to borrower
     collateral_token.mint(borrower, mint_amount);
 
     // Approve collateral token
@@ -357,24 +360,26 @@ fn test_create_borrow_proposal() {
     collateral_token.approve(peer_protocol_address, mint_amount);
     stop_cheat_caller_address(collateral_token_address);
 
-    // Borrower Deposit collateral
+    // Borrower deposits collateral
     start_cheat_caller_address(peer_protocol_address, borrower);
-    peer_protocol.deposit(collateral_token_address, collateral_value_with_ratio);
+    peer_protocol.deposit(collateral_token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
+
+    // Calculate required collateral value
+    let token_amount = (borrow_amount / token_price) * ONE_E18; // Amount of tokens to borrow
+    let required_collateral_value = ((borrow_amount / token_price) * COLLATERAL_RATIO_NUMERATOR) / COLLATERAL_RATIO_DENOMINATOR;
 
     // Borrower creates a borrow proposal
     start_cheat_caller_address(peer_protocol_address, borrower);
     let mut spy = spy_events();
 
-    peer_protocol
-        .create_borrow_proposal(
-            token_address,
-            collateral_token_address,
-            borrow_amount,
-            required_collateral_value,
-            interest_rate,
-            duration
-        );
+    peer_protocol.create_borrow_proposal(
+        token_address,
+        collateral_token_address,
+        borrow_amount, // Borrow amount in dollars
+        interest_rate,
+        duration,
+    );
 
     // Check emitted event
     let created_at = starknet::get_block_timestamp();
@@ -409,10 +414,12 @@ fn test_create_lending_proposal() {
     let lender: ContractAddress = starknet::contract_address_const::<0x122226789>();
 
     let mint_amount: u256 = 1000 * ONE_E18;
-    let lending_amount: u256 = 500 * ONE_E18;
-    let required_collateral_value: u256 = 300 * ONE_E18;
+    let lending_amount: u256 = 500 * ONE_E18; // Lending amount in dollars
     let interest_rate: u64 = 5;
     let duration: u64 = 10;
+
+    // Set token price (mock the token price)
+    let token_price = 100; // $100 per token
 
     // Add supported tokens
     start_cheat_caller_address(peer_protocol_address, owner);
@@ -420,36 +427,40 @@ fn test_create_lending_proposal() {
     peer_protocol.add_supported_token(collateral_token_address, 0);
     stop_cheat_caller_address(peer_protocol_address);
 
+    // Mint lending tokens to lender
     lending_token.mint(lender, mint_amount);
     assert!(lending_token.balance_of(lender) == mint_amount, "mint failed");
 
-    // Approve contract to spend lending token : Needs to be done before deposits
+    // Approve contract to spend lending token
     start_cheat_caller_address(token_address, lender);
     lending_token.approve(peer_protocol_address, mint_amount);
     stop_cheat_caller_address(token_address);
 
-    // Lender Deposit Token into Peer Protocol
+
+    // Calculate token amount and required collateral value
+    let token_amount = (lending_amount / token_price) * ONE_E18; // Amount of tokens to lend
+    let required_collateral_value = ((lending_amount / token_price) * COLLATERAL_RATIO_NUMERATOR) / COLLATERAL_RATIO_DENOMINATOR;
+
+    // Lender deposits tokens into Peer Protocol
     start_cheat_caller_address(peer_protocol_address, lender);
-    peer_protocol.deposit(token_address, lending_amount);
+    peer_protocol.deposit(token_address, token_amount);
     stop_cheat_caller_address(peer_protocol_address);
-    assert!(lending_token.balance_of(lender) == mint_amount - lending_amount, "deposit failed");
+    assert!(lending_token.balance_of(lender) == mint_amount - token_amount, "deposit failed");
     assert!(
-        lending_token.balance_of(peer_protocol_address) == lending_amount, "wrong contract balance"
+        lending_token.balance_of(peer_protocol_address) == token_amount, "wrong contract balance"
     );
 
     // Create lending proposal
     start_cheat_caller_address(peer_protocol_address, lender);
     let mut spy = spy_events();
 
-    peer_protocol
-        .create_lending_proposal(
-            token_address,
-            collateral_token_address,
-            lending_amount,
-            required_collateral_value,
-            interest_rate,
-            duration
-        );
+    peer_protocol.create_lending_proposal(
+        token_address,
+        collateral_token_address,
+        lending_amount, // Lending amount in dollars
+        interest_rate,
+        duration,
+    );
 
     // Check emitted event
     let created_at = starknet::get_block_timestamp();
@@ -484,7 +495,6 @@ fn test_cancel_proposal() {
 
     let mint_amount: u256 = 1000 * ONE_E18;
     let lending_amount: u256 = 500 * ONE_E18;
-    let required_collateral_value: u256 = 300 * ONE_E18;
     let interest_rate: u64 = 5;
     let duration: u64 = 10;
 
@@ -519,7 +529,6 @@ fn test_cancel_proposal() {
             token_address,
             collateral_token_address,
             lending_amount,
-            required_collateral_value,
             interest_rate,
             duration
         );
@@ -558,7 +567,6 @@ fn test_get_borrow_proposal_details() {
     let borrow_amount: u256 = 500 * ONE_E18;
     let interest_rate: u64 = 5;
     let duration: u64 = 10;
-    let required_collateral_value = 300 * ONE_E18;
 
     // Add supported tokens to peer protocol contract
     start_cheat_caller_address(peer_protocol_address, owner);
@@ -586,7 +594,6 @@ fn test_get_borrow_proposal_details() {
             token_address,
             collateral_token_address,
             borrow_amount,
-            required_collateral_value,
             interest_rate,
             duration
         );
@@ -600,7 +607,6 @@ fn test_get_borrow_proposal_details() {
             token_address,
             collateral_token_address,
             another_borrow_amount,
-            required_collateral_value,
             another_interest_rate,
             another_duration
         );
@@ -671,7 +677,6 @@ fn test_create_counter_proposal() {
             token_address,
             collateral_token_address,
             lending_amount,
-            required_collateral_value,
             interest_rate,
             duration
         );
@@ -782,7 +787,6 @@ fn test_get_counter_proposals() {
             token_address,
             collateral_token_address,
             lending_amount,
-            required_collateral_value,
             interest_rate,
             duration
         );
@@ -886,8 +890,7 @@ fn test_create_borrow_proposal_should_panic_for_unsupported_token() {
     let borrow_amount: u256 = 500 * ONE_E18;
     let interest_rate: u64 = 5;
     let duration: u64 = 10;
-    let required_collateral_value = 300 * ONE_E18;
-
+    let required_collateral_value: u256 = 300 * ONE_E18;
     // Add supported token
     start_cheat_caller_address(peer_protocol_address, owner);
     peer_protocol.add_supported_token(token_address, 0);
@@ -919,7 +922,6 @@ fn test_create_borrow_proposal_should_panic_for_unsupported_token() {
             unsupported_token_address,
             collateral_token_address,
             borrow_amount,
-            required_collateral_value,
             interest_rate,
             duration
         );
@@ -977,7 +979,6 @@ fn test_get_lending_proposal_details() {
             token_address,
             collateral_token_address,
             lending_amount,
-            required_collateral_value,
             interest_rate,
             duration
         );
@@ -991,7 +992,6 @@ fn test_get_lending_proposal_details() {
             token_address,
             collateral_token_address,
             another_lending_amount,
-            required_collateral_value,
             another_interest_rate,
             another_duration
         );
@@ -1059,7 +1059,6 @@ fn test_repay_proposal() {
             token_address,
             collateral_token_address,
             borrow_amount,
-            required_collateral_value,
             interest_rate,
             duration
         );

@@ -20,7 +20,6 @@ pub trait IPeerProtocol<TContractState> {
         token: ContractAddress,
         accepted_collateral_token: ContractAddress,
         amount: u256,
-        required_collateral_value: u256,
         interest_rate: u64,
         duration: u64
     ) -> u256;
@@ -52,7 +51,6 @@ pub trait IPeerProtocol<TContractState> {
         token: ContractAddress,
         accepted_collateral_token: ContractAddress,
         amount: u256,
-        required_collateral_value: u256,
         interest_rate: u64,
         duration: u64
     ) -> u256;

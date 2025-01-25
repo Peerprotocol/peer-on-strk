@@ -42,7 +42,7 @@ pub trait IPeerProtocol<TContractState> {
 
     fn get_borrow_proposal_details(self: @TContractState) -> Array<Proposal>;
 
-    fn repay_proposal(ref self: TContractState, proposal_id: u256);
+    fn repay_proposal(ref self: TContractState, proposal_id: u256, amount: u256);
 
     fn get_borrowed_tokens(self: @TContractState, user: ContractAddress) -> Array<BorrowedDetails>;
 

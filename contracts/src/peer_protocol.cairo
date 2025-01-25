@@ -58,8 +58,11 @@ pub struct Proposal {
     token: ContractAddress,
     accepted_collateral_token: ContractAddress,
     required_collateral_value: u256,
+    released_collateral: u256,
     //amount in dollars
     amount: u256,
+    //amount repaid in dollars
+    amount_repaid: u256,
     //number of tokens
     token_amount: u256,
     interest_rate: u64,
@@ -435,7 +438,9 @@ pub mod PeerProtocol {
             let mut token_price = self.get_token_price(token);
             token_price += token_price / ONE_E8;
             let token_amount = (amount / token_price) * ONE_E18;
-            let required_collateral_value: u256 = ((amount / token_price) * COLLATERAL_RATIO_NUMERATOR) / COLLATERAL_RATIO_DENOMINATOR;
+            let required_collateral_value: u256 = ((amount / token_price)
+                * COLLATERAL_RATIO_NUMERATOR)
+                / COLLATERAL_RATIO_DENOMINATOR;
 
             // Check if borrower has sufficient collateral * 1.3
             let borrower_collateral_balance = self
@@ -476,8 +481,10 @@ pub mod PeerProtocol {
                 token,
                 accepted_collateral_token,
                 required_collateral_value,
+                released_collateral: 0,
                 amount,
-                token_amount, 
+                amount_repaid: 0,
+                token_amount,
                 interest_rate,
                 duration,
                 created_at,
@@ -566,10 +573,11 @@ pub mod PeerProtocol {
             let mut token_price = self.get_token_price(token);
             token_price += token_price / ONE_E8;
 
-            let token_amount = ( amount / token_price) * ONE_E18;
+            let token_amount = (amount / token_price) * ONE_E18;
             // getting the required collateral value of the token from the dollar amount to be lent
-            let required_collateral_value: u256 = ((amount / token_price) * COLLATERAL_RATIO_NUMERATOR) / COLLATERAL_RATIO_DENOMINATOR;
-
+            let required_collateral_value: u256 = ((amount / token_price)
+                * COLLATERAL_RATIO_NUMERATOR)
+                / COLLATERAL_RATIO_DENOMINATOR;
 
             // Check to ensure that lender has deposited the token they want to lend after deducting
             // the locked funds
@@ -591,8 +599,11 @@ pub mod PeerProtocol {
                 token,
                 accepted_collateral_token,
                 required_collateral_value,
+                released_collateral: 0,
                 //amount in dollars
                 amount,
+                //amount repaid in dollars
+                amount_repaid: 0,
                 //amount of tokens to be lent
                 token_amount,
                 interest_rate,
@@ -969,16 +980,27 @@ pub mod PeerProtocol {
             borrowed_assets
         }
 
-        fn repay_proposal(ref self: ContractState, proposal_id: u256) {
+        fn repay_proposal(ref self: ContractState, proposal_id: u256, amount: u256) {
             let caller = get_caller_address();
             let proposal = self.proposals.entry(proposal_id).read();
             assert(caller == proposal.borrower, 'invalid borrower');
             let block_timestamp = get_block_timestamp();
             assert(block_timestamp <= proposal.repayment_date, 'repayment date overdue');
 
+            // Calculate repayment amount in USD
+            let token_price = self.get_token_price(proposal.token); // 1 Token = X USD
+            let mut repayment_amount_in_usd = amount * token_price / ONE_E8;
+
+            let mut repayment_amount = amount;
+
+            if repayment_amount_in_usd + proposal.amount_repaid >= proposal.amount {
+                repayment_amount_in_usd = proposal.amount - proposal.amount_repaid;
+                repayment_amount = repayment_amount_in_usd * ONE_E8 / token_price;
+            }
+
             // Calculate protocol fee
-            let fee_amount = (proposal.amount * PROTOCOL_FEE_PERCENTAGE) / 100;
-            let net_amount = proposal.amount - fee_amount;
+            let fee_amount = (repayment_amount * PROTOCOL_FEE_PERCENTAGE) / 100;
+            let net_amount = repayment_amount - fee_amount;
 
             // Calculate interests
             let loan_duration: u256 = (block_timestamp - proposal.accepted_at).into();
@@ -990,12 +1012,23 @@ pub mod PeerProtocol {
                 / ONE_E18;
 
             // Repay principal + interests
-            let amount = net_amount + interests_amount_over_duration;
+            let repayment_amount_with_interest = net_amount + interests_amount_over_duration;
             let borrower_balance = IERC20Dispatcher { contract_address: proposal.token }
                 .balance_of(caller);
-            assert(borrower_balance >= amount, 'insufficient borrower balance');
+            assert(
+                borrower_balance >= repayment_amount_with_interest, 'insufficient borrower balance'
+            );
             IERC20Dispatcher { contract_address: proposal.token }
-                .transfer_from(caller, proposal.lender, amount);
+                .transfer_from(caller, proposal.lender, repayment_amount_with_interest);
+
+            // Calculate collateral release amount
+            let collateral = proposal.required_collateral_value;
+            let repayment_percentage = (proposal.amount_repaid + repayment_amount_in_usd)
+                * ONE_E8
+                / proposal.amount;
+            let total_collateral_release_amount = collateral * repayment_percentage / ONE_E8;
+            let collateral_release_amount = total_collateral_release_amount
+                - proposal.released_collateral;
 
             // Unlock borrowers collateral
             let locked_funds = self
@@ -1005,7 +1038,7 @@ pub mod PeerProtocol {
             self
                 .locked_funds
                 .entry((caller, proposal.accepted_collateral_token))
-                .write(locked_funds - proposal.required_collateral_value);
+                .write(locked_funds - collateral_release_amount);
 
             // Record Transaction
             self.record_transaction(proposal.token, TransactionType::REPAY, amount, caller);
@@ -1022,18 +1055,24 @@ pub mod PeerProtocol {
 
             // Update Proposal
             let mut updated_proposal = proposal;
-            updated_proposal.is_repaid = true;
+            updated_proposal.is_repaid = repayment_amount_in_usd
+                + proposal.amount_repaid == proposal.amount;
+            updated_proposal.amount_repaid = proposal.amount_repaid + repayment_amount_in_usd;
+            updated_proposal.released_collateral = proposal.released_collateral
+                + collateral_release_amount;
             self.proposals.entry(proposal.id).write(updated_proposal);
 
-            self
-                .emit(
-                    ProposalRepaid {
-                        proposal_type: proposal.proposal_type,
-                        repaid_by: caller,
-                        token: proposal.token,
-                        amount
-                    }
-                );
+            if updated_proposal.is_repaid {
+                self
+                    .emit(
+                        ProposalRepaid {
+                            proposal_type: proposal.proposal_type,
+                            repaid_by: caller,
+                            token: proposal.token,
+                            amount
+                        }
+                    );
+            }
         }
 
         fn check_positions_for_liquidation(

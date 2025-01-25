@@ -1041,7 +1041,7 @@ pub mod PeerProtocol {
                 .write(locked_funds - collateral_release_amount);
 
             // Record Transaction
-            self.record_transaction(proposal.token, TransactionType::REPAY, amount, caller);
+            self.record_transaction(proposal.token, TransactionType::REPAY, repayment_amount, caller);
 
             // Record interests earned
             let interests_earned = self
@@ -1069,7 +1069,7 @@ pub mod PeerProtocol {
                             proposal_type: proposal.proposal_type,
                             repaid_by: caller,
                             token: proposal.token,
-                            amount
+                            amount: repayment_amount
                         }
                     );
             }

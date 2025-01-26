@@ -24,7 +24,7 @@ const data = [
 
 const ReserveChart = () => {
   const [mode, setMode] = useState<"Borrow" | "Supply">("Borrow");
-  const [period, setPeriod] = useState("15D");
+  const [period, setPeriod] = useState(15);
 
   const [lineVisibility, setLineVisibility] = useState<{
     "Borrow TVL": boolean;
@@ -38,7 +38,11 @@ const ReserveChart = () => {
     setMode(mode === "Borrow" ? "Supply" : "Borrow");
   };
 
-  const handlePeriodChange = (newPeriod: string) => {
+  const handlePeriodChange = (newPeriod: number) => {
+    if (period >= 365) {
+      setPeriod(15);
+      return;
+    }
     setPeriod(newPeriod);
   };
 
@@ -107,9 +111,9 @@ const ReserveChart = () => {
           <span className="mr-2">Period:</span>
           <button
             className="inline-flex py-2 px-2 rounded-3xl border border-black w-fit items-center gap-1 text-black font-normal text-sm lg:text-[15px]"
-            onClick={() => handlePeriodChange("15D")}
+            onClick={() => handlePeriodChange(period * 2)}
           >
-            Period {period}
+            Period {period}D
             <ChevronDownIcon />
           </button>
         </div>

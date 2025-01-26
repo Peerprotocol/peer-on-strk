@@ -93,7 +93,7 @@ const Dashboard: React.FC<TokenInfo> = ({ tokenReserved }) => {
   };
 
   const MetricCard = ({ label, value }: { label: string; value: string }) => (
-    <div className="relative flex flex-col justify-center bg-smoke-white w-[290px] h-[150px] rounded-2xl pl-4 lg:pl-6">
+    <div className="relative flex flex-col justify-center bg-black/10 w-[290px] h-[150px] rounded-2xl pl-4 lg:pl-6">
       <p className="text-gray-500 text-xs">{label}</p>
       <p className="text-black font-normal text-2xl md:text-4xl pt-2 animate-fadeInBottom">
         {value}
@@ -123,7 +123,7 @@ const Dashboard: React.FC<TokenInfo> = ({ tokenReserved }) => {
           {tokenReserved.symbol}
         </span>
       </div>
-      <div className="flex flex-col md:flex-row gap-4 lg:gap-8 max-w-[1093px] md:justify-between">
+      <div className="flex flex-col md:flex-row gap-4 lg:gap-8 w-full border md:justify-between">
         <div className="bg-white border rounded-[20px] max-w-[650px] h-[412px] grid grid-cols-2 gap-3 py-5 px-5">
           {coinMetricsData.map((metric, index) => (
             <MetricCard key={index} label={metric.label} value={metric.value} />
@@ -205,7 +205,7 @@ const Dashboard: React.FC<TokenInfo> = ({ tokenReserved }) => {
         </div>
       </div>
       <br />
-      <section className="bg-white max-w-[1093px] rounded-[20px] p-5 flex flex-col gap-4 lg:gap-8">
+      <section className="bg-white w-full border rounded-[20px] p-5 flex flex-col gap-4 lg:gap-8">
         <ReserveChart />
         <hr />
         <h4 className="font-semibold text-base lg:text-xl text-black">Borrow Info</h4>

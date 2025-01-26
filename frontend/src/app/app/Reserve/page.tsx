@@ -11,7 +11,7 @@ export default function Home() {
           <Sidebar />
           <div className="flex-1 flex flex-col h-full max-h-screen overflow-auto">
             <Nav/>
-            <main className="flex-1 p-4 lg:p-14">
+            <main className="flex-1 p-4 lg:pl-14">
               <Dashboard tokenReserved={reserveDashboardData[2]}/>
             </main>
           </div>

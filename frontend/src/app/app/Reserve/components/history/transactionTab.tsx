@@ -16,9 +16,9 @@ const TransactionHistory = () => {
           },
       ];
   return (
-    <div className="overflow-x-auto animate-fadeInBottom">
+    <div className="overflow-x-auto">
       <table className="min-w-full divide-y-2 divide-gray-200 bg-white text-[10px]">
-        <thead className="bg-black/5 h-[39px] rounded-t-[5px] font-medium text-left">
+        <thead className="bg-black/10 h-[39px] rounded-t-[5px] font-medium text-left">
           <tr>
             <th className="whitespace-nowrap px-4 py-2 font-medium text-gray-900">
               Transaction Type

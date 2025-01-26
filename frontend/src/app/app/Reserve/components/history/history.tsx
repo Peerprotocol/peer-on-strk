@@ -17,7 +17,7 @@ const History = () => {
   }
 
   return (
-    <section className="max-w-[1093px] h-[210px] text-black">
+    <section className="w-full h-[210px] text-black">
       <div className="flex gap-2 mb-4 lg:mb-6">
         <p
           className={`inline-flex py-2 px-3 rounded-[10px] items-center gap-1 font-medium text-xs cursor-pointer ${

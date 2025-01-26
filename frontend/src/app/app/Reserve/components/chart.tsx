@@ -49,7 +49,7 @@ const ReserveChart = () => {
     }));
   };
 
-  const CheckmarkIcon = ({ backgroundColor }: { backgroundColor?: string }) => {
+  const CheckmarkIcon = ({ backgroundColor, border }: { backgroundColor?: string, border?: string }) => {
     return (
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -59,7 +59,7 @@ const ReserveChart = () => {
         strokeWidth={2}
         strokeLinecap="round"
         strokeLinejoin="round"
-        style={{ backgroundColor, width: 20, height: 20, borderRadius: "5px" }}
+        style={{ backgroundColor, width: 20, height: 20, borderRadius: "5px", border }}
       >
         <path d="M20 6 9 17l-5-5" />
       </svg>
@@ -76,12 +76,16 @@ const ReserveChart = () => {
         {payload.map((entry, index) => (
           <li
             key={`item-${index}`}
-            className="w-fit text-black inline-flex items-center text-xs gap-2"
+            className="w-fit text-black inline-flex items-center text-xs gap-2 cursor-pointer"
             onClick={() =>
               toggleLineVisibility(entry.value as "Borrow TVL" | "Borrow APY")
             }
           >
-            <CheckmarkIcon backgroundColor={entry.color} />
+            {lineVisibility[entry.value as "Borrow TVL" | "Borrow APY"] ? (
+              <CheckmarkIcon backgroundColor={entry.color} />
+            ) : (
+              <CheckmarkIcon border="1px solid #E5E7EB"/>
+            )}
             {entry.value}
           </li>
         ))}

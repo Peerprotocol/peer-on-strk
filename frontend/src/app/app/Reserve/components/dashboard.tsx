@@ -2,6 +2,7 @@ import { ChevronDownIcon, CogIcon } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 import Dropdown from "./dropdown";
+import ReserveChart from "./chart";
 
 interface TokenInfo {
   tokenReserved: {
@@ -40,6 +41,32 @@ const Dashboard: React.FC<TokenInfo> = ({ tokenReserved }) => {
   const options = [
     { label: "Supply", value: "supply" },
     { label: "Borrow", value: "borrow" },
+  ];
+
+  const borrowInfo = [
+    {
+      label: "Total Supplied",
+      value: "20.43M",
+    },
+    {
+      label: "Borrow APY",
+      value: "30%",
+    },
+    {
+      label: "Borrow Cap",
+      value: "53.02%",
+    },
+  ];
+
+  const liquiditationInfo = [
+    {
+      label: "Max LTV",
+      value: "10.00%",
+    },
+    {
+      label: "Liquidation LTV",
+      value: "30.34%",
+    },
   ];
 
   const [selectedProtocol, setSelectedProtocol] = useState(options[0].label);
@@ -176,6 +203,24 @@ const Dashboard: React.FC<TokenInfo> = ({ tokenReserved }) => {
           </p>
         </div>
       </div>
+      <br />
+      <section className="bg-white max-w-[1064px] rounded-[20px] p-5 flex flex-col gap-4 lg:gap-8">
+        <ReserveChart />
+        <hr />
+        <h4 className="font-semibold text-base lg:text-xl text-black">Borrow Info</h4>
+        <div className="bg-white max-w-4xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1">
+          {borrowInfo.map((metric, index) => (
+            <MetricCard key={index} label={metric.label} value={metric.value} />
+          ))}
+        </div>
+        <hr />
+        <h4 className="font-semibold text-base lg:text-xl text-black">Liquidation Info</h4>
+        <div className="bg-white max-w-4xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {liquiditationInfo.map((metric, index) => (
+            <MetricCard key={index} label={metric.label} value={metric.value} />
+          ))}
+        </div>
+      </section>
     </>
   );
 };

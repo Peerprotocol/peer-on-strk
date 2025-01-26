@@ -17,8 +17,8 @@ const TransactionHistory = () => {
       ];
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-full divide-y-2 divide-gray-200 bg-white text-[10px]">
-        <thead className="bg-black/10 h-[39px] rounded-t-[5px] font-medium text-left">
+      <table className="min-w-full bg-white text-[10px]">
+        <thead className="bg-black/10 h-[39px] rounded-t-[5px] font-medium text-left border border-gray-500">
           <tr>
             <th className="whitespace-nowrap px-4 py-2 font-medium text-gray-900">
               Transaction Type
@@ -34,7 +34,7 @@ const TransactionHistory = () => {
             </th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-200 bg-white/5 text-xs">
+        <tbody className="divide-y divide-gray-200 bg-white/5 text-xs border border-gray-500">
           {data.map((item, index) => (
             <tr key={index}>
               <td className="whitespace-nowrap px-4 py-2 font-medium text-gray-900">

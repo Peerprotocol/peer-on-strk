@@ -5,19 +5,21 @@ const PositionOverview = () => {
       price: 0.0000004,
       interest: 0.3,
       position: "Open",
+      type: "Lend",
     },
     {
       value: 200.34,
       price: 0.0000004,
       interest: 0.3,
       position: "Closed",
+      type: "Borrow",
     },
   ];
 
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-full divide-y-2 divide-gray-200 bg-white text-xs">
-        <thead className="bg-black/10 h-[39px] rounded-t-[5px] font-medium text-left">
+      <table className="min-w-full bg-white text-xs">
+        <thead className="bg-black/10 h-[39px] rounded-t-[5px] font-medium text-left border border-gray-500">
           <tr>
             <th className="whitespace-nowrap px-4 py-2 font-medium text-gray-900">
               Value
@@ -31,10 +33,13 @@ const PositionOverview = () => {
             <th className="whitespace-nowrap px-4 py-2 font-medium text-gray-900">
               Position
             </th>
+            <th className="whitespace-nowrap px-4 py-2 font-medium text-gray-900">
+              Type
+            </th>
             <th className="px-4 py-2"></th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-200 bg-white/5">
+        <tbody className="divide-y divide-gray-200 bg-white/5 border border-gray-500">
           {data.map((item, index) => (
             <tr key={index}>
               <td className="whitespace-nowrap px-4 py-2 flex flex-col font-medium text-gray-900">
@@ -48,14 +53,18 @@ const PositionOverview = () => {
               </td>
               <td
                 className={`whitespace-nowrap px-4 py-2 ${
-                  item.position === "Open" ? "text-green-500" : "text-black/50"
+                  item.position === "Open" ? "text-green-500" : "text-red-500"
                 }`}
               >
                 {item.position}
               </td>
+              <td className="whitespace-nowrap px-4 py-2 text-gray-700">
+                {item.type}
+              </td>
               <td className="whitespace-nowrap px-4 py-2">
                 <PositionControls
                   position={item.position as "Open" | "Closed"}
+                  type={item.type as "Lend" | "Borrow"}
                   onWithdraw={() => alert("Withdraw")}
                   onRepay={() => alert("Repay")}
                 />
@@ -72,12 +81,14 @@ export default PositionOverview;
 
 interface PositionControlsProps {
   position: "Open" | "Closed";
+  type: "Lend" | "Borrow";
   onWithdraw: () => void;
   onRepay: () => void;
 }
 
 const PositionControls: React.FC<PositionControlsProps> = ({
   position,
+  type,
   onWithdraw,
   onRepay,
 }) => {
@@ -97,8 +108,13 @@ const PositionControls: React.FC<PositionControlsProps> = ({
   );
   return (
     <div className="flex justify-end">
-      {position === "Open" && <Button label="Withdraw" onClick={onWithdraw} />}
-      {position === "Closed" && <Button label="Repay" onClick={onRepay} />}
+      {position === "Open" && type === "Lend" ? (
+        <Button label="Withdraw" onClick={onWithdraw} />
+      ) : position === "Closed" && type === "Borrow" ? (
+        <span>--</span>
+      ) : (
+        <Button label="Repay" onClick={onRepay} />
+      )}
     </div>
   );
 };

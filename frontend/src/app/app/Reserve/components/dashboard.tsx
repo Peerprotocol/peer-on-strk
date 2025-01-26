@@ -93,7 +93,7 @@ const Dashboard: React.FC<TokenInfo> = ({ tokenReserved }) => {
   };
 
   const MetricCard = ({ label, value }: { label: string; value: string }) => (
-    <div className="relative flex flex-col justify-center bg-black/10 w-[290px] h-[150px] rounded-2xl pl-4 lg:pl-6">
+    <div className="relative flex flex-col justify-center bg-[#F5F5F5] w-full h-[150px] rounded-2xl pl-4 lg:pl-6">
       <p className="text-gray-500 text-xs">{label}</p>
       <p className="text-black font-normal text-2xl md:text-4xl pt-2 animate-fadeInBottom">
         {value}
@@ -124,7 +124,7 @@ const Dashboard: React.FC<TokenInfo> = ({ tokenReserved }) => {
         </span>
       </div>
       <div className="flex flex-col md:flex-row gap-4 lg:gap-8 w-full md:justify-between">
-        <div className="bg-white border rounded-[20px] max-w-[650px] h-[412px] grid grid-cols-2 gap-3 py-5 px-5">
+        <div className="bg-white border rounded-[20px] w-full md:w-[650px] lg:w-[90%] grid grid-cols-2 place-content-center place-items-center gap-3 md:gap-6 lg:gap-8 py-5 px-5">
           {coinMetricsData.map((metric, index) => (
             <MetricCard key={index} label={metric.label} value={metric.value} />
           ))}
@@ -208,14 +208,18 @@ const Dashboard: React.FC<TokenInfo> = ({ tokenReserved }) => {
       <section className="bg-white w-full border rounded-[20px] p-5 flex flex-col gap-4 lg:gap-8">
         <ReserveChart />
         <hr />
-        <h4 className="font-semibold text-base lg:text-xl text-black">Borrow Info</h4>
-        <div className="bg-white max-w-4xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1">
+        <h4 className="font-semibold text-base lg:text-xl text-black">
+          Borrow Info
+        </h4>
+        <div className="bg-white max-w-4xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {borrowInfo.map((metric, index) => (
             <MetricCard key={index} label={metric.label} value={metric.value} />
           ))}
         </div>
         <hr />
-        <h4 className="font-semibold text-base lg:text-xl text-black">Liquidation Info</h4>
+        <h4 className="font-semibold text-base lg:text-xl text-black">
+          Liquidation Info
+        </h4>
         <div className="bg-white max-w-4xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {liquiditationInfo.map((metric, index) => (
             <MetricCard key={index} label={metric.label} value={metric.value} />

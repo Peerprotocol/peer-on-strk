@@ -3,6 +3,7 @@ import Image from "next/image";
 import { useState } from "react";
 import Dropdown from "./dropdown";
 import ReserveChart from "./chart";
+import History from "./history/history";
 
 interface TokenInfo {
   tokenReserved: {
@@ -221,6 +222,8 @@ const Dashboard: React.FC<TokenInfo> = ({ tokenReserved }) => {
           ))}
         </div>
       </section>
+      <br />
+      <History />
     </>
   );
 };

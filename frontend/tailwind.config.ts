@@ -16,10 +16,15 @@ const config: Config = {
           '0%, 100%': { transform: 'rotate(0deg)' },
           '25%': { transform: 'rotate(-60deg)' },
           '75%': { transform: 'rotate(60deg)' },
+        },
+        fadeInBottom: {
+          '0%': { opacity: '0', transform: 'translateY(20px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         }
       },
       animation: {
         shake: 'shake 1s ease-in-out infinite',
+        fadeInBottom: 'fadeInBottom 1s ease-in-out',
       },
       fontFamily: {
         redhat: ['Red Hat Display', 'sans-serif'],

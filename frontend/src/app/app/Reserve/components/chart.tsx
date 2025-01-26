@@ -23,8 +23,16 @@ const data = [
 ];
 
 const ReserveChart = () => {
-  const [mode, setMode] = useState("Borrow");
+  const [mode, setMode] = useState<"Borrow" | "Supply">("Borrow");
   const [period, setPeriod] = useState("15D");
+
+  const [lineVisibility, setLineVisibility] = useState<{
+    "Borrow TVL": boolean;
+    "Borrow APY": boolean;
+  }>({
+    "Borrow TVL": true,
+    "Borrow APY": true,
+  });
 
   const handleModeChange = () => {
     setMode(mode === "Borrow" ? "Supply" : "Borrow");
@@ -32,6 +40,13 @@ const ReserveChart = () => {
 
   const handlePeriodChange = (newPeriod: string) => {
     setPeriod(newPeriod);
+  };
+
+  const toggleLineVisibility = (lineKey: "Borrow TVL" | "Borrow APY") => {
+    setLineVisibility((prev) => ({
+      ...prev,
+      [lineKey]: !prev[lineKey],
+    }));
   };
 
   const CheckmarkIcon = ({ backgroundColor }: { backgroundColor?: string }) => {
@@ -59,7 +74,13 @@ const ReserveChart = () => {
     return (
       <ul className="flex items-center justify-evenly mt-6">
         {payload.map((entry, index) => (
-          <li key={`item-${index}`} className="w-fit text-black inline-flex items-center text-xs gap-2">
+          <li
+            key={`item-${index}`}
+            className="w-fit text-black inline-flex items-center text-xs gap-2"
+            onClick={() =>
+              toggleLineVisibility(entry.value as "Borrow TVL" | "Borrow APY")
+            }
+          >
             <CheckmarkIcon backgroundColor={entry.color} />
             {entry.value}
           </li>
@@ -133,24 +154,28 @@ const ReserveChart = () => {
               ],
             })}
           />
-          <Line
-            yAxisId="left"
-            type="monotone"
-            dataKey={`${mode} TVL`}
-            stroke="#4CAF50"
-            strokeWidth={2}
-            legendType="square"
-            dot={false}
-          />
-          <Line
-            yAxisId="right"
-            type="monotone"
-            dataKey={`${mode} APY`}
-            stroke="#F44336"
-            strokeWidth={2}
-            legendType="square"
-            dot={false}
-          />
+          {lineVisibility[`${mode} TVL` as "Borrow TVL" | "Borrow APY"] && (
+            <Line
+              yAxisId="left"
+              type="monotone"
+              dataKey={`${mode} TVL`}
+              stroke="#4CAF50"
+              strokeWidth={2}
+              legendType="square"
+              dot={false}
+            />
+          )}
+          {lineVisibility[`${mode} APY` as "Borrow TVL" | "Borrow APY"] && (
+            <Line
+              yAxisId="right"
+              type="monotone"
+              dataKey={`${mode} APY`}
+              stroke="#F44336"
+              strokeWidth={2}
+              legendType="square"
+              dot={false}
+            />
+          )}
         </LineChart>
       </ResponsiveContainer>
     </div>

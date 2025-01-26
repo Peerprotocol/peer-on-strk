@@ -122,7 +122,7 @@ const Dashboard: React.FC<TokenInfo> = ({ tokenReserved }) => {
           {tokenReserved.symbol}
         </span>
       </div>
-      <div className="flex flex-col md:flex-row gap-4 lg:gap-8">
+      <div className="flex flex-col md:flex-row gap-4 lg:gap-8 max-w-[1093px] md:justify-between">
         <div className="bg-white border rounded-[20px] max-w-[650px] h-[412px] grid grid-cols-2 gap-3 py-5 px-5">
           {coinMetricsData.map((metric, index) => (
             <MetricCard key={index} label={metric.label} value={metric.value} />
@@ -204,7 +204,7 @@ const Dashboard: React.FC<TokenInfo> = ({ tokenReserved }) => {
         </div>
       </div>
       <br />
-      <section className="bg-white max-w-[1064px] rounded-[20px] p-5 flex flex-col gap-4 lg:gap-8">
+      <section className="bg-white max-w-[1093px] rounded-[20px] p-5 flex flex-col gap-4 lg:gap-8">
         <ReserveChart />
         <hr />
         <h4 className="font-semibold text-base lg:text-xl text-black">Borrow Info</h4>

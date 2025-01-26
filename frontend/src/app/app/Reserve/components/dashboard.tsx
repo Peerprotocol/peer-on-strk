@@ -123,7 +123,7 @@ const Dashboard: React.FC<TokenInfo> = ({ tokenReserved }) => {
           {tokenReserved.symbol}
         </span>
       </div>
-      <div className="flex flex-col md:flex-row gap-4 lg:gap-8 w-full border md:justify-between">
+      <div className="flex flex-col md:flex-row gap-4 lg:gap-8 w-full md:justify-between">
         <div className="bg-white border rounded-[20px] max-w-[650px] h-[412px] grid grid-cols-2 gap-3 py-5 px-5">
           {coinMetricsData.map((metric, index) => (
             <MetricCard key={index} label={metric.label} value={metric.value} />

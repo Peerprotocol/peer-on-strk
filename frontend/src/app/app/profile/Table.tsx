@@ -100,7 +100,6 @@ const Table: React.FC = () => {
       : ({} as any)
   );
 
-
   // Filter data based on the active tab
   const getDataForActiveTab = () => {
     switch (activeTab) {
@@ -427,19 +426,21 @@ const Table: React.FC = () => {
           <table className="w-full border-collapse">
             <thead>
               <tr className="border bg-smoke-white">
-                <th className="p-4 text-left border-b font-semibold">Token</th>
-                <th className="p-4 text-left border-b font-semibold">
+                <th className=" px-2 py-4 text-left border-b font-semibold">
+                  Asset
+                </th>
+                <th className="  text-left border-b font-semibold">
                   Expected Repayment Time
                 </th>
-                <th className="p-4 text-left border-b font-semibold">Intrest Rate</th>
-                <th className="p-4 text-left border-b font-semibold">
-                  Amount Borrowed
+                <th className="  text-left border-b font-semibold">
+                  Intrest Rate
                 </th>
-                <th className="p-4 text-left border-b font-semibold"></th>
+                <th className=" text-left border-b font-semibold">Amount</th>
+                <th className=" text-left border-b font-semibold"></th>
               </tr>
             </thead>
             <tbody>
-              {isLoadingTokens || isFetchingTokens ? (
+              {/* {isLoadingTokens || isFetchingTokens ? (
                 <tr>
                   <td colSpan={5} className="p-4 text-center">
                     <AssetsLoader />
@@ -522,7 +523,30 @@ const Table: React.FC = () => {
                     No transaction history available
                   </td>
                 </tr>
-              )}
+              )} */}
+              {new Array(5).fill(null).map((_, index) => (
+                <tr className="border-2 border-gray-200">
+                  <td className="flex items-center gap-1 py-2 pt-4 pl-2 ">
+                    <Image
+                      src={"/images/usdc.png"}
+                      alt="usdc"
+                      height={18}
+                      width={18}
+                    />{" "}
+                    <span className="text-base font-bold">USDC</span>{" "}
+                  </td>
+                  <td className="py-2 font-medium text-base">
+                    Sep 23, 7D 03:30:45
+                  </td>
+                  <td className="py-2 font-medium text-base">3%</td>
+                  <td className="py-2 font-medium text-base">200 USDC</td>
+                  <td className="py-2">
+                    <button className="h-9 w-24 text-white rounded-3xl flex justify-center items-center bg-black/70">
+                      Repay
+                    </button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

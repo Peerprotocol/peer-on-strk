@@ -423,19 +423,19 @@ const Table: React.FC = () => {
 
       {activeTab === "Position Overview" && (
         <div className="overflow-x-auto text-black my-6">
-          <table className="w-full border-collapse">
+          <table className="min-w-full border-collapse">
             <thead>
               <tr className="border bg-smoke-white">
                 <th className=" px-2 py-4 text-left border-b font-semibold">
                   Asset
                 </th>
-                <th className="  text-left border-b font-semibold">
-                  Expected Repayment Time
+                <th className="  text-left border-b font-semibold "> <p className='mx-10'>  Expected Repayment Time</p>
+                
                 </th>
                 <th className="  text-left border-b font-semibold">
                   Intrest Rate
                 </th>
-                <th className=" text-left border-b font-semibold">Amount</th>
+                <th className=" text-left border-b font-semibold "> <p className="mx-10">Amount</p></th>
                 <th className=" text-left border-b font-semibold"></th>
               </tr>
             </thead>
@@ -525,7 +525,7 @@ const Table: React.FC = () => {
                 </tr>
               )} */}
               {new Array(5).fill(null).map((_, index) => (
-                <tr className="border-2 border-gray-200">
+                <tr key={index} className="border-2 border-gray-200">
                   <td className="flex items-center gap-1 py-2 pt-4 pl-2 ">
                     <Image
                       src={"/images/usdc.png"}
@@ -535,12 +535,12 @@ const Table: React.FC = () => {
                     />{" "}
                     <span className="text-base font-bold">USDC</span>{" "}
                   </td>
-                  <td className="py-2 font-medium text-base">
-                    Sep 23, 7D 03:30:45
+                  <td className="py-2 font-medium text-base"><p className="mx-10 xl:mx-0 min-w-[200px]"> Sep 23, 7D 03:30:45</p>
+                   
                   </td>
                   <td className="py-2 font-medium text-base">3%</td>
-                  <td className="py-2 font-medium text-base">200 USDC</td>
-                  <td className="py-2">
+                  <td className="py-2 font-medium text-base"> <p className='mx-10 xl:mx-0 min-w-[100px]'>200 USDC</p></td>
+                  <td className="py-2 pr-2">
                     <button className="h-9 w-24 text-white rounded-3xl flex justify-center items-center bg-black/70">
                       Repay
                     </button>

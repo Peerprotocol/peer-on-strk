@@ -59,20 +59,43 @@ export default function DepositWithdrawPeer() {
     watch: true,
   })
 
+  const { data: userAssets } = useContractRead({
+    address: PROTOCOL_ADDRESS,
+    abi: protocolAbi,
+    functionName: "get_user_assets",
+    args: [address!],
+    watch: true,
+  })
+
   const getBalance = useCallback(() => {
-    if (selectedToken.symbol === "STRK") {
-      // @ts-ignore
-      return Number(formatCurrency(strk?.balance?.low.toString()))
+    if (selectedOption === "Deposit") {
+      if (selectedToken.symbol === "STRK") {
+        return strk ? Number(formatCurrency(strk.balance?.low.toString())) : 0;
+      } else {
+        return eth ? Number(formatCurrency(eth.balance?.low.toString())) : 0;
+      }
     } else {
+      if (!userAssets || !userAssets.length) return 0;
+
+      const selectedTokenBigInt = BigInt(selectedToken.address);
+
+      const asset = userAssets.find((asset: any) =>
+        BigInt(asset.token_address) === selectedTokenBigInt
+      );
+
+      if (!asset) return 0;
+
       // @ts-ignore
-      return Number(formatCurrency(eth?.balance.low.toString()))
+      return Number(formatCurrency(asset.available_balance.toString()));
+
     }
-  }, [eth, strk, selectedToken.symbol])
+  }, [selectedOption, selectedToken, eth, strk, userAssets]);
 
   const handlePercentageClick = (percentage: number) => {
     const balance = getBalance()
-    const newAmount = (balance * percentage / 100).toString()
-    setAmount(newAmount)
+    const newAmount = (balance * percentage) / 100;
+    const roundedAmount = newAmount.toFixed(3)
+    setAmount(roundedAmount.toString())
   }
 
   const tokens: TokenInfo[] = [

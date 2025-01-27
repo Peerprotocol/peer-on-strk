@@ -326,7 +326,7 @@ fn test_get_user_deposits_with_zero_address() {
 }
 
 #[test]
-#[fork(url: "https://starknet-mainnet.public.blastapi.io/rpc/v0_7", block_tag: latest)]
+#[fork(url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7", block_tag: latest)]
 fn test_create_borrow_proposal() {
     // Setup
     let token_address = deploy_token("MockToken");
@@ -402,7 +402,7 @@ fn test_create_borrow_proposal() {
 }
 
 #[test]
-#[fork(url: "https://starknet-mainnet.public.blastapi.io/rpc/v0_7", block_tag: latest)]
+#[fork(url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7", block_tag: latest)]
 fn test_create_lending_proposal() {
     // Setup
     let token_address = deploy_token("MockToken");
@@ -483,7 +483,7 @@ fn test_create_lending_proposal() {
 }
 
 #[test]
-#[fork(url: "https://starknet-mainnet.public.blastapi.io/rpc/v0_7", block_tag: latest)]
+#[fork(url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7", block_tag: latest)]
 fn test_cancel_proposal() {
     // Setup
     let token_address = deploy_token("MockToken");
@@ -555,7 +555,7 @@ fn test_cancel_proposal() {
 }
 
 #[test]
-#[fork(url: "https://starknet-mainnet.public.blastapi.io/rpc/v0_7", block_tag: latest)]
+#[fork(url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7", block_tag: latest)]
 fn test_get_borrow_proposal_details() {
     let token_address = deploy_token("MockToken");
     let collateral_token_address = deploy_token("MockToken1");
@@ -629,7 +629,7 @@ fn test_get_borrow_proposal_details() {
 
 
 #[test]
-#[fork(url: "https://starknet-mainnet.public.blastapi.io/rpc/v0_7", block_tag: latest)]
+#[fork(url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7", block_tag: latest)]
 fn test_create_counter_proposal() {
     // Setup
     let token_address = deploy_token("MockToken");
@@ -740,7 +740,7 @@ fn test_create_counter_proposal() {
 
 
 #[test]
-#[fork(url: "https://starknet-mainnet.public.blastapi.io/rpc/v0_7", block_tag: latest)]
+#[fork(url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7", block_tag: latest)]
 fn test_get_counter_proposals() {
     // Setup
     let token_address = deploy_token("MockToken");
@@ -936,7 +936,7 @@ fn test_create_borrow_proposal_should_panic_for_unsupported_token() {
 }
 
 #[test]
-#[fork(url: "https://starknet-mainnet.public.blastapi.io/rpc/v0_7", block_tag: latest)]
+#[fork(url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7", block_tag: latest)]
 fn test_get_lending_proposal_details() {
     // Setup
     let token_address = deploy_token("MockToken");
@@ -1013,7 +1013,7 @@ fn test_get_lending_proposal_details() {
 }
 
 #[test]
-#[fork(url: "https://starknet-mainnet.public.blastapi.io/rpc/v0_7", block_tag: latest)]
+#[fork(url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7", block_tag: latest)]
 fn test_repay_proposal() {
     let token_address = deploy_token("MockToken");
     let collateral_token_address = deploy_token("MockToken1");
@@ -1147,7 +1147,7 @@ fn test_deploy_liquidity_pool() {
 }
 
 #[test]
-#[fork(url: "https://starknet-mainnet.public.blastapi.io/rpc/v0_7", block_tag: latest)]
+#[fork(url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7", block_tag: latest)]
 fn test_get_token_price_success() {
     let peer_protocol_address = deploy_peer_protocol();
     let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };

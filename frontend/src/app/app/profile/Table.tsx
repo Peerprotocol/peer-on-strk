@@ -429,13 +429,13 @@ const Table: React.FC = () => {
                 <th className=" px-2 py-4 text-left border-b font-semibold">
                   Asset
                 </th>
-                <th className="  text-left border-b font-semibold "> <p className='mx-10'>  Expected Repayment Time</p>
+                <th className="  text-left border-b font-semibold "> <p className='mx-10 xl:mx-0'>  Expected Repayment Time</p>
                 
                 </th>
                 <th className="  text-left border-b font-semibold">
                   Intrest Rate
                 </th>
-                <th className=" text-left border-b font-semibold "> <p className="mx-10">Amount</p></th>
+                <th className=" text-left border-b font-semibold "> <p className="mx-10 xl:mx-0">Amount</p></th>
                 <th className=" text-left border-b font-semibold"></th>
               </tr>
             </thead>

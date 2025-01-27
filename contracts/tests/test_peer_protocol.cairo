@@ -3,6 +3,7 @@ use snforge_std::{
     declare, ContractClassTrait, DeclareResultTrait, DeclareResult, start_cheat_caller_address,
     stop_cheat_caller_address, start_cheat_block_timestamp, spy_events, EventSpyAssertionsTrait
 };
+use snforge_std::cheat_codes::mock_call;
 
 use peer_protocol::interfaces::ipeer_protocol::{
     IPeerProtocolDispatcher, IPeerProtocolDispatcherTrait
@@ -326,7 +327,10 @@ fn test_get_user_deposits_with_zero_address() {
 }
 
 #[test]
-#[fork(url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7", block_tag: latest)]
+#[fork(
+    url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7",
+    block_tag: latest
+)]
 fn test_create_borrow_proposal() {
     // Setup
     let token_address = deploy_token("MockToken");
@@ -368,19 +372,21 @@ fn test_create_borrow_proposal() {
 
     // Calculate required collateral value
     let token_amount = (borrow_amount / token_price) * ONE_E18; // Amount of tokens to borrow
-    let required_collateral_value = ((borrow_amount / token_price) * COLLATERAL_RATIO_NUMERATOR) / COLLATERAL_RATIO_DENOMINATOR;
+    let required_collateral_value = ((borrow_amount / token_price) * COLLATERAL_RATIO_NUMERATOR)
+        / COLLATERAL_RATIO_DENOMINATOR;
 
     // Borrower creates a borrow proposal
     start_cheat_caller_address(peer_protocol_address, borrower);
     let mut spy = spy_events();
 
-    peer_protocol.create_borrow_proposal(
-        token_address,
-        collateral_token_address,
-        borrow_amount, // Borrow amount in dollars
-        interest_rate,
-        duration,
-    );
+    peer_protocol
+        .create_borrow_proposal(
+            token_address,
+            collateral_token_address,
+            borrow_amount, // Borrow amount in dollars
+            interest_rate,
+            duration,
+        );
 
     // Check emitted event
     let created_at = starknet::get_block_timestamp();
@@ -402,7 +408,10 @@ fn test_create_borrow_proposal() {
 }
 
 #[test]
-#[fork(url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7", block_tag: latest)]
+#[fork(
+    url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7",
+    block_tag: latest
+)]
 fn test_create_lending_proposal() {
     // Setup
     let token_address = deploy_token("MockToken");
@@ -438,10 +447,10 @@ fn test_create_lending_proposal() {
     lending_token.approve(peer_protocol_address, mint_amount);
     stop_cheat_caller_address(token_address);
 
-
     // Calculate token amount and required collateral value
     let token_amount = lending_amount;
-    let required_collateral_value = (lending_amount * COLLATERAL_RATIO_NUMERATOR) / COLLATERAL_RATIO_DENOMINATOR;
+    let required_collateral_value = (lending_amount * COLLATERAL_RATIO_NUMERATOR)
+        / COLLATERAL_RATIO_DENOMINATOR;
 
     // Lender deposits tokens into Peer Protocol
     start_cheat_caller_address(peer_protocol_address, lender);
@@ -456,13 +465,14 @@ fn test_create_lending_proposal() {
     start_cheat_caller_address(peer_protocol_address, lender);
     let mut spy = spy_events();
 
-    peer_protocol.create_lending_proposal(
-        token_address,
-        collateral_token_address,
-        lending_amount, // Lending amount in dollars
-        interest_rate,
-        duration,
-    );
+    peer_protocol
+        .create_lending_proposal(
+            token_address,
+            collateral_token_address,
+            lending_amount, // Lending amount in dollars
+            interest_rate,
+            duration,
+        );
 
     // Check emitted event
     let created_at = starknet::get_block_timestamp();
@@ -483,7 +493,10 @@ fn test_create_lending_proposal() {
 }
 
 #[test]
-#[fork(url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7", block_tag: latest)]
+#[fork(
+    url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7",
+    block_tag: latest
+)]
 fn test_cancel_proposal() {
     // Setup
     let token_address = deploy_token("MockToken");
@@ -529,11 +542,7 @@ fn test_cancel_proposal() {
 
     peer_protocol
         .create_lending_proposal(
-            token_address,
-            collateral_token_address,
-            lending_amount,
-            interest_rate,
-            duration
+            token_address, collateral_token_address, lending_amount, interest_rate, duration
         );
 
     let lending_proposals = peer_protocol.get_lending_proposal_details();
@@ -555,7 +564,10 @@ fn test_cancel_proposal() {
 }
 
 #[test]
-#[fork(url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7", block_tag: latest)]
+#[fork(
+    url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7",
+    block_tag: latest
+)]
 fn test_get_borrow_proposal_details() {
     let token_address = deploy_token("MockToken");
     let collateral_token_address = deploy_token("MockToken1");
@@ -595,11 +607,7 @@ fn test_get_borrow_proposal_details() {
     start_cheat_caller_address(peer_protocol_address, borrower);
     peer_protocol
         .create_borrow_proposal(
-            token_address,
-            collateral_token_address,
-            borrow_amount,
-            interest_rate,
-            duration
+            token_address, collateral_token_address, borrow_amount, interest_rate, duration
         );
 
     // Create another borrow proposal with different parameters
@@ -629,7 +637,10 @@ fn test_get_borrow_proposal_details() {
 
 
 #[test]
-#[fork(url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7", block_tag: latest)]
+#[fork(
+    url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7",
+    block_tag: latest
+)]
 fn test_create_counter_proposal() {
     // Setup
     let token_address = deploy_token("MockToken");
@@ -679,11 +690,7 @@ fn test_create_counter_proposal() {
 
     let proposal_id = peer_protocol
         .create_lending_proposal(
-            token_address,
-            collateral_token_address,
-            lending_amount,
-            interest_rate,
-            duration
+            token_address, collateral_token_address, lending_amount, interest_rate, duration
         );
 
     stop_cheat_caller_address(peer_protocol_address);
@@ -740,7 +747,10 @@ fn test_create_counter_proposal() {
 
 
 #[test]
-#[fork(url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7", block_tag: latest)]
+#[fork(
+    url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7",
+    block_tag: latest
+)]
 fn test_get_counter_proposals() {
     // Setup
     let token_address = deploy_token("MockToken");
@@ -790,11 +800,7 @@ fn test_get_counter_proposals() {
 
     let proposal_id = peer_protocol
         .create_lending_proposal(
-            token_address,
-            collateral_token_address,
-            lending_amount,
-            interest_rate,
-            duration
+            token_address, collateral_token_address, lending_amount, interest_rate, duration
         );
 
     stop_cheat_caller_address(peer_protocol_address);
@@ -936,7 +942,10 @@ fn test_create_borrow_proposal_should_panic_for_unsupported_token() {
 }
 
 #[test]
-#[fork(url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7", block_tag: latest)]
+#[fork(
+    url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7",
+    block_tag: latest
+)]
 fn test_get_lending_proposal_details() {
     // Setup
     let token_address = deploy_token("MockToken");
@@ -983,11 +992,7 @@ fn test_get_lending_proposal_details() {
 
     peer_protocol
         .create_lending_proposal(
-            token_address,
-            collateral_token_address,
-            lending_amount,
-            interest_rate,
-            duration
+            token_address, collateral_token_address, lending_amount, interest_rate, duration
         );
 
     // Create another lending proposal with different parameters
@@ -1013,7 +1018,10 @@ fn test_get_lending_proposal_details() {
 }
 
 #[test]
-#[fork(url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7", block_tag: latest)]
+#[fork(
+    url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7",
+    block_tag: latest
+)]
 fn test_repay_proposal() {
     let token_address = deploy_token("MockToken");
     let collateral_token_address = deploy_token("MockToken1");
@@ -1064,11 +1072,7 @@ fn test_repay_proposal() {
     start_cheat_caller_address(peer_protocol_address, borrower);
     let proposal_id = peer_protocol
         .create_borrow_proposal(
-            token_address,
-            collateral_token_address,
-            borrow_amount,
-            interest_rate,
-            duration
+            token_address, collateral_token_address, borrow_amount, interest_rate, duration
         );
     stop_cheat_caller_address(peer_protocol_address);
 
@@ -1137,7 +1141,7 @@ fn test_deploy_liquidity_pool() {
 
     // deploy pool token
     start_cheat_caller_address(peer_protocol_address, owner);
-    peer_protocol.deploy_liquidity_pool(token_address);
+    peer_protocol.deploy_liquidity_pool(token_address, Option::None, Option::None);
     stop_cheat_caller_address(peer_protocol_address);
 
     // get pool data and check
@@ -1147,7 +1151,10 @@ fn test_deploy_liquidity_pool() {
 }
 
 #[test]
-#[fork(url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7", block_tag: latest)]
+#[fork(
+    url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7",
+    block_tag: latest
+)]
 fn test_get_token_price_success() {
     let peer_protocol_address = deploy_peer_protocol();
     let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
@@ -1159,7 +1166,11 @@ fn test_get_token_price_success() {
     start_cheat_caller_address(peer_protocol_address, owner);
     peer_protocol.add_supported_token(strk_token, asset_id);
 
-    let token_price = peer_protocol.get_token_price(strk_token);
+    let (token_price, _) = peer_protocol.get_token_price(strk_token);
     println!("STRK price: {} USD", token_price);
     assert_ge!(token_price, 0);
+
+    let pragma_address_main: ContractAddress = starknet::contract_address_const::<
+        0x2a85bd616f912537c50a49a4076db02c00b29b2cdc8a197ce92ed1837fa875b
+    >();
 }

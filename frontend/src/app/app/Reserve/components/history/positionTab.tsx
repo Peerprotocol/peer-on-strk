@@ -1,3 +1,7 @@
+"use client";
+import { useState } from "react";
+import RepayModal from "../RepayModal";
+
 const PositionOverview = () => {
   const data = [
     {
@@ -92,6 +96,7 @@ const PositionControls: React.FC<PositionControlsProps> = ({
   onWithdraw,
   onRepay,
 }) => {
+  const [isRepayModalOpen, setIsRepayModalOpen] = useState(false);
   const Button = ({
     label,
     onClick,
@@ -107,14 +112,22 @@ const PositionControls: React.FC<PositionControlsProps> = ({
     </button>
   );
   return (
-    <div className="flex justify-end">
-      {position === "Open" && type === "Lend" ? (
-        <Button label="Withdraw" onClick={onWithdraw} />
-      ) : position === "Closed" && type === "Borrow" ? (
-        <span>--</span>
-      ) : (
-        <Button label="Repay" onClick={onRepay} />
-      )}
-    </div>
+    <>
+      <div className="flex justify-end">
+        {position === "Open" && type === "Lend" ? (
+          <Button label="Withdraw" onClick={onWithdraw} />
+        ) : position === "Closed" && type === "Borrow" ? (
+          <span>--</span>
+        ) : (
+          <Button label="Repay" onClick={() => setIsRepayModalOpen(true)} />
+        )}
+      </div>
+      <RepayModal
+        isOpen={isRepayModalOpen}
+        onClose={() => setIsRepayModalOpen(false)}
+        amountBorrowed={500} // Replace with actual borrowed amount
+        onRepay={onRepay}
+      />
+    </>
   );
 };

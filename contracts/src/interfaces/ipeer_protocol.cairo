@@ -61,7 +61,7 @@ pub trait IPeerProtocol<TContractState> {
         ref self: TContractState, user: ContractAddress
     ) -> Array<LiquidationInfo>;
     fn liquidate_position(ref self: TContractState, proposal_id: u256);
-    fn get_token_price(self: @TContractState, token: ContractAddress) -> u256;
+    fn get_token_price(self: @TContractState, token: ContractAddress) -> (u256, u32);
 
     fn get_transaction_history(
         self: @TContractState, user: ContractAddress, offset: u64, limit: u64
@@ -71,7 +71,12 @@ pub trait IPeerProtocol<TContractState> {
 
     fn get_user_deposits(self: @TContractState, user: ContractAddress) -> Span<UserDeposit>;
 
-    fn deploy_liquidity_pool(ref self: TContractState, token: ContractAddress);
+    fn deploy_liquidity_pool(
+        ref self: TContractState,
+        token: ContractAddress,
+        opt_threshold_percentage: Option<u256>,
+        opt_minimum_liquidation_amount: Option<u256>
+    );
 
     fn get_liquidity_pool_data(self: @TContractState, token: ContractAddress) -> PoolData;
 }

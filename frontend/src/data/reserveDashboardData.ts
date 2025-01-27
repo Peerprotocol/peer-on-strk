@@ -1,0 +1,38 @@
+export const reserveDashboardData = [
+    {
+        id: 1,
+        icon: "/icons/strk.svg",
+        symbol: "STRK",
+        address: "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+        decimals: 18,
+        balance: 50,
+        availableLiquidity: "0",
+        supply: "0",
+        utilization: "0",
+        totalBorrowed: "0",
+    },
+    {
+        id: 2,
+        icon: "/icons/eth.svg",
+        symbol: "ETH",
+        address: "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+        decimals: 18,
+        balance: 0.01,
+        availableLiquidity: "0",
+        supply: "0",
+        utilization: "0",
+        totalBorrowed: "0",
+    },
+    {
+        id: 3,
+        icon: "/images/usdc.png",
+        symbol: "USDC",
+        address: "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+        decimals: 18,
+        balance: 20.6374,
+        availableLiquidity: "20.43M",
+        supply: "20.43M",
+        utilization: "53.02%",
+        totalBorrowed: "500.23B",
+    }
+]

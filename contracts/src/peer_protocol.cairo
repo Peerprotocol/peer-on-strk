@@ -1405,16 +1405,20 @@ pub mod PeerProtocol {
         }
 
         fn _verify_liquidation(ref self: ContractState, proposal: @Proposal) -> (u256, bool, u256) {
-            assert(self.pools.entry(proposal.token).is_active.read(), 'Pool Error');
-            assert(self.pools.entry(proposal.accepted_collateral_token).is_active.read(), 'Pool Error');
+            assert(self.pools.entry(*proposal.token).is_active.read(), 'Pool Error');
+            assert(
+                self.pools.entry(*proposal.accepted_collateral_token).is_active.read(), 'Pool Error'
+            );
 
-            let (loan_token_price, loan_decimals) = self.get_token_price(proposal.token);
+            let (loan_token_price, loan_decimals) = self.get_token_price(*proposal.token);
             let (collateral_token_price, collateral_decimals) = self
-                .get_token_price(proposal.accepted_collateral_token);
+                .get_token_price(*proposal.accepted_collateral_token);
 
             // Calculate current loan value
-            let current_loan_value = proposal.amount * loan_token_price / fast_power(10_u32, loan_decimals).into();
-            let current_collateral_value = proposal.required_collateral_value
+            let current_loan_value = *proposal.amount
+                * loan_token_price
+                / fast_power(10_u32, loan_decimals).into();
+            let current_collateral_value = *proposal.required_collateral_value
                 * collateral_token_price
                 / fast_power(10_u32, collateral_decimals).into();
 
@@ -1422,7 +1426,7 @@ pub mod PeerProtocol {
             let current_ltv = (current_loan_value * 100) / current_collateral_value;
 
             // Get liquidation threshold for this token
-            let opt_threshold = self.liquidation_thresholds.entry(proposal.token).read();
+            let opt_threshold = self.liquidation_thresholds.entry(*proposal.token).read();
 
             let mut can_liquidate = false;
             if let Option::Some(threshold) = opt_threshold {

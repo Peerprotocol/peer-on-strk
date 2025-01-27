@@ -38,7 +38,7 @@ cd peer-on-strk
 
 2. Install dependencies
 ```bash
-npm install
+npm install --legacy-peer-deps
 ```
 
 3. Create an ENV file and duplicate the contents of the env.example file

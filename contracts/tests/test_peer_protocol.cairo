@@ -343,7 +343,7 @@ fn test_create_borrow_proposal() {
     let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
     let borrower: ContractAddress = starknet::contract_address_const::<0x122226789>();
 
-    let mint_amount: u256 = 2000 * ONE_E18;
+    let mint_amount: u256 = 3000 * ONE_E18;
     let borrow_amount: u256 = 500; // Borrow amount in dollars
     let interest_rate: u64 = 5;
     let duration: u64 = 10;
@@ -416,7 +416,7 @@ fn test_create_lending_proposal() {
     let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
     let lender: ContractAddress = starknet::contract_address_const::<0x122226789>();
 
-    let mint_amount: u256 = 2000 * ONE_E18;
+    let mint_amount: u256 = 3000 * ONE_E18;
     let lending_amount: u256 = 500; // Lending amount in dollars
     let interest_rate: u64 = 5;
     let duration: u64 = 10;
@@ -493,7 +493,7 @@ fn test_cancel_proposal() {
     let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
     let lender: ContractAddress = starknet::contract_address_const::<0x122226789>();
 
-    let mint_amount: u256 = 2000 * ONE_E18;
+    let mint_amount: u256 = 3000 * ONE_E18;
     let lending_amount: u256 = 500;
     let interest_rate: u64 = 5;
     let duration: u64 = 10;
@@ -565,7 +565,7 @@ fn test_get_borrow_proposal_details() {
     let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
     let borrower: ContractAddress = starknet::contract_address_const::<0x122226789>();
 
-    let mint_amount: u256 = 3000 * ONE_E18;
+    let mint_amount: u256 = 4000 * ONE_E18;
     let borrow_amount: u256 = 500;
     let interest_rate: u64 = 5;
     let duration: u64 = 10;
@@ -641,7 +641,7 @@ fn test_create_counter_proposal() {
     let lender: ContractAddress = starknet::contract_address_const::<0x122226789>();
     let borrower: ContractAddress = starknet::contract_address_const::<0x122226737>();
 
-    let mint_amount: u256 = 2000 * ONE_E18;
+    let mint_amount: u256 = 3000 * ONE_E18;
     let lending_amount: u256 = 500;
     let interest_rate: u64 = 5;
     let duration: u64 = 10;
@@ -1017,7 +1017,7 @@ fn test_repay_proposal() {
     let borrower = starknet::contract_address_const::<0x122226789>();
     let lender = starknet::contract_address_const::<0x123336789>();
 
-    let mint_amount: u256 = 2000 * ONE_E18;
+    let mint_amount: u256 = 3000 * ONE_E18;
     let borrow_amount: u256 = 500;
     let interest_rate: u64 = 5;
     let duration: u64 = 10;
@@ -1030,7 +1030,7 @@ fn test_repay_proposal() {
 
     token.mint(borrower, mint_amount);
     collateral_token.mint(borrower, mint_amount);
-    token.mint(lender, borrow_amount);
+    token.mint(lender, mint_amount);
 
     // Approve token
     start_cheat_caller_address(token_address, borrower);
@@ -1057,11 +1057,11 @@ fn test_repay_proposal() {
 
     // Lender deposits token
     start_cheat_caller_address(token_address, lender);
-    token.approve(peer_protocol_address, borrow_amount);
+    token.approve(peer_protocol_address, mint_amount);
     stop_cheat_caller_address(token_address);
 
     start_cheat_caller_address(peer_protocol_address, lender);
-    peer_protocol.deposit(token_address, borrow_amount);
+    peer_protocol.deposit(token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
 
     // Lender accepts the borrow proposal
@@ -1189,6 +1189,7 @@ fn test_get_token_price_success() {
 
     let (token_price, _) = peer_protocol.get_token_price(strk_token);
     assert_ge!(token_price, 0);
+    println!("Token price: {}", token_price);
 
     let _pragma_address_main: ContractAddress = starknet::contract_address_const::<
         0x2a85bd616f912537c50a49a4076db02c00b29b2cdc8a197ce92ed1837fa875b

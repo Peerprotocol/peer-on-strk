@@ -814,8 +814,13 @@ pub mod PeerProtocol {
             assert(proposal.is_cancelled == false, 'proposal is cancelled');
 
             // Calculate protocol fee
-            let fee_amount = (proposal.amount * PROTOCOL_FEE_PERCENTAGE) / 100;
-            let net_amount = proposal.amount - fee_amount;
+            let (token_price, _) = self.get_token_price(proposal.token);
+            // let (collateral_token_price, _) =
+            // self.get_token_price(proposal.accepted_collateral_token);
+
+            let token_amount = (proposal.amount * ONE_E18 * ONE_E8) / token_price;
+            let fee_amount = token_amount * PROTOCOL_FEE_PERCENTAGE / 100;
+            let net_amount = token_amount - fee_amount;
 
             match proposal.proposal_type {
                 ProposalType::BORROWING => {
@@ -1224,7 +1229,7 @@ pub mod PeerProtocol {
         ) {
             // Check if acceptor (lender) has sufficient funds
             let lender_balance = self.token_deposits.entry((lender, proposal.token)).read();
-            assert(lender_balance >= proposal.amount, 'insufficient lender balance');
+            assert(lender_balance >= net_amount + fee_amount, 'insufficient lender balance');
 
             // Transfer net amount to borrower
             IERC20Dispatcher { contract_address: proposal.token }
@@ -1238,7 +1243,7 @@ pub mod PeerProtocol {
             self.mint_spoks(proposal.id, proposal.borrower, lender);
 
             // Record Transaction
-            self.record_transaction(proposal.token, TransactionType::LEND, proposal.amount, lender);
+            self.record_transaction(proposal.token, TransactionType::LEND, net_amount + fee_amount, lender);
 
             // Update Proposal
             let mut updated_proposal = proposal;
@@ -1260,9 +1265,7 @@ pub mod PeerProtocol {
             fee_amount: u256
         ) {
             // Check if acceptor (borrower) has sufficient collateral with 1.3x ratio
-            let required_collateral = (proposal.required_collateral_value
-                * COLLATERAL_RATIO_NUMERATOR)
-                / COLLATERAL_RATIO_DENOMINATOR;
+            let required_collateral = proposal.required_collateral_value;
             let borrower_collateral_balance = self
                 .token_deposits
                 .entry((borrower, proposal.accepted_collateral_token))
@@ -1287,7 +1290,7 @@ pub mod PeerProtocol {
             // Record Transaction
             self
                 .record_transaction(
-                    proposal.token, TransactionType::BORROW, proposal.amount, borrower
+                    proposal.token, TransactionType::BORROW, net_amount + fee_amount, borrower
                 );
 
             // Update Proposal

@@ -17,7 +17,7 @@ use peer_protocol::peer_protocol::ProposalType;
 use core::num::traits::Zero;
 
 const ONE_E18: u256 = 1000000000000000000_u256;
-const ONE_E8: u256 = 1000000000_u256;
+const ONE_E8: u256 = 100000000_u256;
 const COLLATERAL_RATIO_NUMERATOR: u256 = 13_u256;
 const COLLATERAL_RATIO_DENOMINATOR: u256 = 10_u256;
 
@@ -343,13 +343,10 @@ fn test_create_borrow_proposal() {
     let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
     let borrower: ContractAddress = starknet::contract_address_const::<0x122226789>();
 
-    let mint_amount: u256 = 1000 * ONE_E18;
-    let borrow_amount: u256 = 500 * ONE_E18; // Borrow amount in dollars
+    let mint_amount: u256 = 3000 * ONE_E18;
+    let borrow_amount: u256 = 500; // Borrow amount in dollars
     let interest_rate: u64 = 5;
     let duration: u64 = 10;
-
-    // Mock token price (e.g., $100 per token)
-    let token_price = 100 * ONE_E8; // $100 in 8 decimal places
 
     // Add supported tokens
     start_cheat_caller_address(peer_protocol_address, owner);
@@ -370,15 +367,10 @@ fn test_create_borrow_proposal() {
     peer_protocol.deposit(collateral_token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
 
-    // Calculate required collateral value
-    let token_amount = (borrow_amount / token_price) * ONE_E18; // Amount of tokens to borrow
-    let required_collateral_value = ((borrow_amount / token_price) * COLLATERAL_RATIO_NUMERATOR)
-        / COLLATERAL_RATIO_DENOMINATOR;
-
     // Borrower creates a borrow proposal
     start_cheat_caller_address(peer_protocol_address, borrower);
-    let mut spy = spy_events();
 
+    let mut spy = spy_events();
     peer_protocol
         .create_borrow_proposal(
             token_address,
@@ -424,13 +416,10 @@ fn test_create_lending_proposal() {
     let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
     let lender: ContractAddress = starknet::contract_address_const::<0x122226789>();
 
-    let mint_amount: u256 = 1000 * ONE_E18;
-    let lending_amount: u256 = 500 * ONE_E18; // Lending amount in dollars
+    let mint_amount: u256 = 3000 * ONE_E18;
+    let lending_amount: u256 = 500; // Lending amount in dollars
     let interest_rate: u64 = 5;
     let duration: u64 = 10;
-
-    // Set token price (mock the token price)
-    let token_price = 100; // $100 per token
 
     // Add supported tokens
     start_cheat_caller_address(peer_protocol_address, owner);
@@ -447,18 +436,13 @@ fn test_create_lending_proposal() {
     lending_token.approve(peer_protocol_address, mint_amount);
     stop_cheat_caller_address(token_address);
 
-    // Calculate token amount and required collateral value
-    let token_amount = lending_amount;
-    let required_collateral_value = (lending_amount * COLLATERAL_RATIO_NUMERATOR)
-        / COLLATERAL_RATIO_DENOMINATOR;
-
     // Lender deposits tokens into Peer Protocol
     start_cheat_caller_address(peer_protocol_address, lender);
-    peer_protocol.deposit(token_address, token_amount);
+    peer_protocol.deposit(token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
-    assert!(lending_token.balance_of(lender) == mint_amount - token_amount, "deposit failed");
+    assert!(lending_token.balance_of(lender) == mint_amount - mint_amount, "deposit failed");
     assert!(
-        lending_token.balance_of(peer_protocol_address) == token_amount, "wrong contract balance"
+        lending_token.balance_of(peer_protocol_address) == mint_amount, "wrong contract balance"
     );
 
     // Create lending proposal
@@ -509,8 +493,8 @@ fn test_cancel_proposal() {
     let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
     let lender: ContractAddress = starknet::contract_address_const::<0x122226789>();
 
-    let mint_amount: u256 = 1000 * ONE_E18;
-    let lending_amount: u256 = 500 * ONE_E18;
+    let mint_amount: u256 = 3000 * ONE_E18;
+    let lending_amount: u256 = 500;
     let interest_rate: u64 = 5;
     let duration: u64 = 10;
 
@@ -530,11 +514,11 @@ fn test_cancel_proposal() {
 
     // Lender Deposit Token into Peer Protocol
     start_cheat_caller_address(peer_protocol_address, lender);
-    peer_protocol.deposit(token_address, lending_amount);
+    peer_protocol.deposit(token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
-    assert!(lending_token.balance_of(lender) == mint_amount - lending_amount, "deposit failed");
+    assert!(lending_token.balance_of(lender) == mint_amount - mint_amount, "deposit failed");
     assert!(
-        lending_token.balance_of(peer_protocol_address) == lending_amount, "wrong contract balance"
+        lending_token.balance_of(peer_protocol_address) == mint_amount, "wrong contract balance"
     );
 
     // Create lending proposal
@@ -549,7 +533,9 @@ fn test_cancel_proposal() {
     let lender_locked_funds = peer_protocol.get_locked_funds(lender, token_address);
     assert!(lending_proposals.len() == 1, "wrong number of lending proposals");
     assert!(*lending_proposals.at(0).is_cancelled == false, "Wrong value for is_cancelled");
-    assert!(lender_locked_funds == lending_amount, "Wrong locked fund value");
+    let (token_price, _) = peer_protocol.get_token_price(token_address);
+    let lending_amount_tokens = (lending_amount * ONE_E18 * ONE_E8) / token_price;
+    assert!(lender_locked_funds == lending_amount_tokens, "Wrong locked fund value");
 
     // Cancel Proposal
     let proposal_id = *lending_proposals.at(0).id;
@@ -579,8 +565,8 @@ fn test_get_borrow_proposal_details() {
     let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
     let borrower: ContractAddress = starknet::contract_address_const::<0x122226789>();
 
-    let mint_amount: u256 = 1000 * ONE_E18;
-    let borrow_amount: u256 = 500 * ONE_E18;
+    let mint_amount: u256 = 4000 * ONE_E18;
+    let borrow_amount: u256 = 500;
     let interest_rate: u64 = 5;
     let duration: u64 = 10;
 
@@ -611,7 +597,7 @@ fn test_get_borrow_proposal_details() {
         );
 
     // Create another borrow proposal with different parameters
-    let another_borrow_amount = 250 * ONE_E18;
+    let another_borrow_amount = 250;
     let another_interest_rate: u64 = 3;
     let another_duration: u64 = 7;
     peer_protocol
@@ -655,9 +641,8 @@ fn test_create_counter_proposal() {
     let lender: ContractAddress = starknet::contract_address_const::<0x122226789>();
     let borrower: ContractAddress = starknet::contract_address_const::<0x122226737>();
 
-    let mint_amount: u256 = 1000 * ONE_E18;
-    let lending_amount: u256 = 500 * ONE_E18;
-    let required_collateral_value: u256 = 300 * ONE_E18;
+    let mint_amount: u256 = 3000 * ONE_E18;
+    let lending_amount: u256 = 500;
     let interest_rate: u64 = 5;
     let duration: u64 = 10;
 
@@ -677,11 +662,11 @@ fn test_create_counter_proposal() {
 
     // Lender Deposit Token into Peer Protocol
     start_cheat_caller_address(peer_protocol_address, lender);
-    peer_protocol.deposit(token_address, lending_amount);
+    peer_protocol.deposit(token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
-    assert!(lending_token.balance_of(lender) == mint_amount - lending_amount, "deposit failed");
+    assert!(lending_token.balance_of(lender) == mint_amount - mint_amount, "deposit failed");
     assert!(
-        lending_token.balance_of(peer_protocol_address) == lending_amount, "wrong contract balance"
+        lending_token.balance_of(peer_protocol_address) == mint_amount, "wrong contract balance"
     );
 
     // Create lending proposal
@@ -766,9 +751,8 @@ fn test_get_counter_proposals() {
     let borrower1: ContractAddress = starknet::contract_address_const::<0x122226737>();
     let borrower2: ContractAddress = starknet::contract_address_const::<0x122225637>();
 
-    let mint_amount: u256 = 1000 * ONE_E18;
-    let lending_amount: u256 = 500 * ONE_E18;
-    let required_collateral_value: u256 = 300 * ONE_E18;
+    let mint_amount: u256 = 5000 * ONE_E18;
+    let lending_amount: u256 = 500;
     let interest_rate: u64 = 5;
     let duration: u64 = 10;
 
@@ -788,11 +772,11 @@ fn test_get_counter_proposals() {
 
     // Lender Deposit Token into Peer Protocol
     start_cheat_caller_address(peer_protocol_address, lender);
-    peer_protocol.deposit(token_address, lending_amount);
+    peer_protocol.deposit(token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
-    assert!(lending_token.balance_of(lender) == mint_amount - lending_amount, "deposit failed");
+    assert!(lending_token.balance_of(lender) == mint_amount - mint_amount, "deposit failed");
     assert!(
-        lending_token.balance_of(peer_protocol_address) == lending_amount, "wrong contract balance"
+        lending_token.balance_of(peer_protocol_address) == mint_amount, "wrong contract balance"
     );
 
     // Create lending proposal
@@ -902,7 +886,6 @@ fn test_create_borrow_proposal_should_panic_for_unsupported_token() {
     let borrow_amount: u256 = 500 * ONE_E18;
     let interest_rate: u64 = 5;
     let duration: u64 = 10;
-    let required_collateral_value: u256 = 300 * ONE_E18;
     // Add supported token
     start_cheat_caller_address(peer_protocol_address, owner);
     peer_protocol.add_supported_token(token_address, 0);
@@ -958,9 +941,8 @@ fn test_get_lending_proposal_details() {
     let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
     let lender: ContractAddress = starknet::contract_address_const::<0x122226789>();
 
-    let mint_amount: u256 = 1000 * ONE_E18;
-    let lending_amount: u256 = 500 * ONE_E18;
-    let required_collateral_value: u256 = 300 * ONE_E18;
+    let mint_amount: u256 = 3000 * ONE_E18;
+    let lending_amount: u256 = 500;
     let interest_rate: u64 = 5;
     let duration: u64 = 10;
 
@@ -996,7 +978,7 @@ fn test_get_lending_proposal_details() {
         );
 
     // Create another lending proposal with different parameters
-    let another_lending_amount: u256 = 250 * ONE_E18;
+    let another_lending_amount: u256 = 250;
     let another_interest_rate: u64 = 3;
     let another_duration: u64 = 7;
     peer_protocol
@@ -1035,13 +1017,10 @@ fn test_repay_proposal() {
     let borrower = starknet::contract_address_const::<0x122226789>();
     let lender = starknet::contract_address_const::<0x123336789>();
 
-    let mint_amount: u256 = 1000 * ONE_E18;
-    let borrow_amount: u256 = 500 * ONE_E18;
+    let mint_amount: u256 = 3000 * ONE_E18;
+    let borrow_amount: u256 = 500;
     let interest_rate: u64 = 5;
     let duration: u64 = 10;
-    let required_collateral_value = 300 * ONE_E18;
-    let collateral_value_with_ratio = (required_collateral_value * COLLATERAL_RATIO_NUMERATOR)
-        / COLLATERAL_RATIO_DENOMINATOR;
 
     // Add supported token
     start_cheat_caller_address(peer_protocol_address, owner);
@@ -1051,7 +1030,7 @@ fn test_repay_proposal() {
 
     token.mint(borrower, mint_amount);
     collateral_token.mint(borrower, mint_amount);
-    token.mint(lender, borrow_amount);
+    token.mint(lender, mint_amount);
 
     // Approve token
     start_cheat_caller_address(token_address, borrower);
@@ -1065,7 +1044,7 @@ fn test_repay_proposal() {
 
     // Borrower Deposit collateral
     start_cheat_caller_address(peer_protocol_address, borrower);
-    peer_protocol.deposit(collateral_token_address, collateral_value_with_ratio);
+    peer_protocol.deposit(collateral_token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
 
     // Borrower creates a borrow proposal
@@ -1078,11 +1057,11 @@ fn test_repay_proposal() {
 
     // Lender deposits token
     start_cheat_caller_address(token_address, lender);
-    token.approve(peer_protocol_address, borrow_amount);
+    token.approve(peer_protocol_address, mint_amount);
     stop_cheat_caller_address(token_address);
 
     start_cheat_caller_address(peer_protocol_address, lender);
-    peer_protocol.deposit(token_address, borrow_amount);
+    peer_protocol.deposit(token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
 
     // Lender accepts the borrow proposal
@@ -1090,33 +1069,75 @@ fn test_repay_proposal() {
     peer_protocol.accept_proposal(proposal_id);
     stop_cheat_caller_address(peer_protocol_address);
 
-    let balance_before_repay = token.balance_of(borrower);
+    let token_balance_before_first_installment = token.balance_of(borrower);
+    let collateral_before_first_installment = peer_protocol
+        .get_locked_funds(borrower, collateral_token_address);
 
     // Borrower repays loan
     start_cheat_caller_address(peer_protocol_address, borrower);
     start_cheat_block_timestamp(peer_protocol_address, get_block_timestamp() + duration * 86400);
     let mut spy = spy_events();
-    peer_protocol.repay_proposal(proposal_id);
+    let first_installment_amount = 250;
+    peer_protocol.repay_proposal(proposal_id, first_installment_amount);
     stop_cheat_caller_address(peer_protocol_address);
 
-    // Get lender assets
+    let proposals = peer_protocol.get_borrow_proposal_details();
+    let proposal_after_first_installment = proposals.at(0);
+    let amount_repaid = *proposal_after_first_installment.amount_repaid;
+
+    let (token_price, _) = peer_protocol.get_token_price(token_address);
+
+    let amount_repaid_in_tokens = (amount_repaid * ONE_E18 * ONE_E8) / token_price;
+    let fee_amount_in_tokens = (amount_repaid_in_tokens * PeerProtocol::PROTOCOL_FEE_PERCENTAGE)
+        / 100;
+    let net_amount_in_tokens = amount_repaid_in_tokens - fee_amount_in_tokens;
+
+    let loan_duration: u256 = (get_block_timestamp()
+        + (duration * 86400)
+        - *proposal_after_first_installment.accepted_at)
+        .into();
+    let interest_rate: u256 = (*proposal_after_first_installment.interest_rate).into();
+    let interests_amount_over_year = (net_amount_in_tokens * interest_rate) / 100;
+    let interests_duration = loan_duration * ONE_E18 / PeerProtocol::SECONDS_IN_YEAR;
+    let interests_amount_over_duration = interests_amount_over_year * interests_duration / ONE_E18;
+
+    // // Get lender assets
     let user_assets = peer_protocol.get_user_assets(lender);
     let interest_earned = *user_assets[0].interest_earned;
-    let fee_amount = (borrow_amount * PeerProtocol::PROTOCOL_FEE_PERCENTAGE) / 100;
-    let net_amount = borrow_amount - fee_amount;
-    let repaid_amount = net_amount + interest_earned;
 
     // Check borrower balance after repayment
-    let balance_after_repay = token.balance_of(borrower);
-    assert_eq!(balance_after_repay, balance_before_repay - repaid_amount);
+    let token_balance_after_first_installment = token.balance_of(borrower);
+    let first_installment_amount: u256 = 250;
+    assert_eq!(
+        token_balance_before_first_installment - token_balance_after_first_installment,
+        net_amount_in_tokens + interests_amount_over_duration
+    );
+    assert_eq!(*proposal_after_first_installment.amount_repaid, first_installment_amount);
+    assert_eq!(interests_amount_over_duration, interest_earned);
+
+    // Check collateral release
+    let collateral_release_amount = *proposal_after_first_installment.released_collateral;
+    let collateral_after_first_installment = peer_protocol
+        .get_locked_funds(borrower, collateral_token_address);
+    assert_eq!(
+        collateral_after_first_installment,
+        collateral_before_first_installment - collateral_release_amount
+    );
+
+    start_cheat_caller_address(peer_protocol_address, borrower);
+    start_cheat_block_timestamp(peer_protocol_address, get_block_timestamp() + duration * 86400);
+    let second_installment_amount = 250;
+    peer_protocol.repay_proposal(proposal_id, second_installment_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+    let proposals = peer_protocol.get_borrow_proposal_details();
+    let proposal_after_second_installment = proposals.at(0);
 
     // Check emitted event
     let expected_event = PeerProtocol::Event::ProposalRepaid(
         PeerProtocol::ProposalRepaid {
             proposal_type: ProposalType::BORROWING,
             repaid_by: borrower,
-            token: token_address,
-            amount: repaid_amount
+            amount: *proposal_after_second_installment.amount,
         }
     );
     spy.assert_emitted(@array![(peer_protocol_address, expected_event)]);
@@ -1167,10 +1188,10 @@ fn test_get_token_price_success() {
     peer_protocol.add_supported_token(strk_token, asset_id);
 
     let (token_price, _) = peer_protocol.get_token_price(strk_token);
-    println!("STRK price: {} USD", token_price);
     assert_ge!(token_price, 0);
+    println!("Token price: {}", token_price);
 
-    let pragma_address_main: ContractAddress = starknet::contract_address_const::<
+    let _pragma_address_main: ContractAddress = starknet::contract_address_const::<
         0x2a85bd616f912537c50a49a4076db02c00b29b2cdc8a197ce92ed1837fa875b
     >();
 }

@@ -13,7 +13,7 @@ import Liquidation from './liquidation';
 const Profile = () => {
   const { address } = useAccount();
   return (
-    <main className="bg-[#F5F5F5] min-h-screen">
+    <main className="bg-[#D9D9D9] min-h-screen">
       <div className="flex">
         <Sidebar />
         <div className="w-full md:flex-1 flex flex-col">

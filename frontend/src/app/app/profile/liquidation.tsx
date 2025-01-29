@@ -3,25 +3,25 @@ import React, { useEffect, useState } from "react";
 import { PROTOCOL_ADDRESS, ETH_SEPOLIA, STRK_SEPOLIA } from "@/components/internal/helpers/constant";
 import { useAccount, useContractRead } from "@starknet-react/core";
 import protocolAbi from "../../../../public/abi/protocol.json";
-import { getCryptoPrices} from "@/components/internal/helpers";
+import { getCryptoPrices } from "@/components/internal/helpers";
 
 interface TokenInfo {
-  symbol: string;
-  address: string;
-  decimals: number;
+    symbol: string;
+    address: string;
+    decimals: number;
 }
 
 const tokens: TokenInfo[] = [
-  {
-    symbol: "STRK",
-    address: STRK_SEPOLIA,
-    decimals: 18
-  },
-  {
-    symbol: "ETH",
-    address: ETH_SEPOLIA,
-    decimals: 18
-  }
+    {
+        symbol: "STRK",
+        address: STRK_SEPOLIA,
+        decimals: 18
+    },
+    {
+        symbol: "ETH",
+        address: ETH_SEPOLIA,
+        decimals: 18
+    }
 ];
 
 interface TokenBalance {
@@ -127,23 +127,23 @@ const Liquidation = () => {
 
     const isContractLoading = strkContract.loading || ethContract.loading;
 
-    const Loader = () =>{
-        return(
+    const Loader = () => {
+        return (
             <div
-            className="border border-gray-200 p-6 rounded-xl mt-4 bg-smoke-white relative flex flex-col justify-center w-full lg:w-[calc(51%-1rem)] 3xl:w-[48%]"
-          >
-            <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-4"></div>
-            
-            <div className="h-10 w-40 bg-gray-200 rounded animate-pulse mb-8"></div>
-            
-            <div className="absolute top-2 right-3 w-5 h-5 bg-gray-200 rounded-full animate-pulse"></div>
-          </div>
+                className="border border-gray-200 p-6 rounded-xl mt-4 bg-smoke-white relative flex flex-col justify-center w-full lg:w-[calc(51%-1rem)] 3xl:w-[48%]"
+            >
+                <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-4"></div>
+
+                <div className="h-10 w-40 bg-gray-200 rounded animate-pulse mb-8"></div>
+
+                <div className="absolute top-2 right-3 w-5 h-5 bg-gray-200 rounded-full animate-pulse"></div>
+            </div>
         )
     }
 
     return (
         <div className="border border-gray-200 rounded-[1rem] flex flex-col md:flex-row justify-between gap-6 md:p-6 p-2 bg-white w-[95%] mx-auto mb-8">
-            <div className="border border-gray-200 p-6 rounded-xl bg-smoke-white relative flex flex-col justify-center w-full lg:w-[calc(48%-1rem)] h-[160px]">
+            <div className="border border-gray-200 p-6 rounded-xl bg-[#D9D9D9] relative flex flex-col justify-center w-full lg:w-[calc(48%-1rem)] h-[160px]">
                 {(isLoading || isContractLoading || isLoadingPrices) ? (
                     <Loader />
                 ) : (
@@ -152,7 +152,7 @@ const Liquidation = () => {
                         <p className="text-[2.2rem] font-semibold text-black">
                             ${totalBalance}
                         </p>
-                        
+
                         <div className="mt-4 space-y-2">
                             {balances.map((token) => (
                                 <div key={token.symbol} className="flex justify-between items-center text-sm">
@@ -172,12 +172,12 @@ const Liquidation = () => {
                 )}
             </div>
 
-            <div className="border border-gray-200 p-6 rounded-xl bg-smoke-white relative flex flex-row items-center justify-between gap-8 w-full lg:w-[calc(53%-1rem)] min-h-[160px]">
+            <div className="border border-gray-200 p-6 rounded-xl bg-[#D9D9D9] relative flex flex-row items-center justify-between gap-8 w-full lg:w-[calc(53%-1rem)] min-h-[160px]">
                 <div className="flex flex-col items-start w-1/3 place-self-start text-left">
-                <p className="text-sm text-gray-400">Liquidation Check</p>
-                        <p className="text-[2.2rem] font-semibold text-black">
-                            False
-                        </p>
+                    <p className="text-sm text-gray-400">Liquidation Check</p>
+                    <p className="text-[2.2rem] font-semibold text-black">
+                        False
+                    </p>
                 </div>
                 <div className="w-[110px] h-full bg-black rounded-full flex items-center justify-center">
                     <div className="w-[85%] h-[85%] rounded-full bg-white">

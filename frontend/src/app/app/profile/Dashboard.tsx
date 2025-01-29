@@ -125,7 +125,7 @@ const Dashboard = () => {
         {AllAssetsOverview.map((item, index) => (
           <div
             key={index}
-            className="border border-gray-200 p-6 rounded-xl mt-4 bg-smoke-white relative flex flex-col justify-center w-full lg:w-[calc(51%-1rem)] 3xl:w-[48%]"
+            className="border border-gray-200 p-6 rounded-xl mt-4 bg-[#D9D9D9] relative flex flex-col justify-center w-full lg:w-[calc(51%-1rem)] 3xl:w-[48%]"
           >
             <p className="text-sm text-gray-400">{item.label}</p>
             <p className="text-[2.2rem] font-semibold text-black pb-8">

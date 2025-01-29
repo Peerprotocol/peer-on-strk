@@ -154,16 +154,6 @@ const Nav = () => {
       </div>
 
       <div className="relative">
-        <Dropdown
-          options={options}
-          selected={selectedChain}
-          selectedClassname="bg-black/80 text-white"
-          dropdownClassname="bg-black/80 text-white"
-          onSelect={handleDropdownChange}
-        />
-      </div>
-
-      <div className="relative">
         {address ? (
           <div className="flex items-center gap-4">
             <AddressBar />
@@ -171,7 +161,7 @@ const Nav = () => {
         ) : (
           <button
             onClick={() => setIsChainModalOpen(true)}
-            className="border border-black px-6 py-2 rounded-3xl text-black"
+            className="border border-black px-6 py-2 rounded-3xl text-white bg-black"
           >
             Connect Wallet
           </button>

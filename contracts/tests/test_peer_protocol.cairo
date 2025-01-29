@@ -229,13 +229,15 @@ fn test_get_user_assets() {
     let user_assets = peer_protocol.get_user_assets(caller);
 
     assert!(
-        *user_assets.at(0).available_balance == deposit_amount1, "wrong asset available_balance
+        *user_assets.at(0).available_balance == deposit_amount1,
+        "wrong asset available_balance
         1"
     );
     assert!(*user_assets.at(0).token_address == token1_address, "wrong asset token1");
 
     assert!(
-        *user_assets.at(1).available_balance == deposit_amount2, "wrong asset available_balance
+        *user_assets.at(1).available_balance == deposit_amount2,
+        "wrong asset available_balance
         2"
     );
     assert!(*user_assets.at(1).token_address == token2_address, "wrong asset token2");
@@ -1193,7 +1195,7 @@ fn test_get_token_price_success() {
     assert_ge!(token_price, 0);
     println!("Token price: {}", token_price);
 
-    let _pragma_address_main: ContractAddress = starknet::contract_address_const::<
+    let pragma_address_main: ContractAddress = starknet::contract_address_const::<
         0x2a85bd616f912537c50a49a4076db02c00b29b2cdc8a197ce92ed1837fa875b
     >();
 
@@ -1209,7 +1211,7 @@ fn test_get_token_price_success() {
     let (token_price, _) = peer_protocol.get_token_price(strk_token);
     assert(token_price == return_data.price.into(), 'Price not equal');
 }
-
+// DO NOT DELETE
 // #[test]
 // #[fork(
 //     url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7",
@@ -1366,4 +1368,5 @@ fn test_get_token_price_success() {
 //     let liquidated_positions = peer_protocol.check_positions_for_liquidation(borrower);
 //     assert(liquidated_positions.len() > 0, 'No liquidations'); //
 // }
+
 

@@ -93,9 +93,9 @@ const Dashboard: React.FC<TokenInfo> = ({ tokenReserved }) => {
   };
 
   const MetricCard = ({ label, value }: { label: string; value: string }) => (
-    <div className="relative flex flex-col justify-center bg-[#F5F5F5] w-full h-[150px] rounded-2xl pl-4 lg:pl-6">
+    <div className="relative bg-[#D9D9D9] flex flex-col justify-center w-full h-[150px] rounded-2xl pl-4 lg:pl-6">
       <p className="text-gray-500 text-xs">{label}</p>
-      <p className="text-black font-normal text-2xl md:text-4xl pt-2 animate-fadeInBottom">
+      <p className="text-black font-semibold text-2xl md:text-[1.85rem] w-fit pt-2">
         {value}
       </p>
     </div>
@@ -113,7 +113,7 @@ const Dashboard: React.FC<TokenInfo> = ({ tokenReserved }) => {
         <h1 className="md:text-3xl md:font-semibold">
           {tokenReserved.symbol} Reserve
         </h1>
-        <span className="py-1 px-3 flex items-center gap-1 text-sm text-black/50 rounded-3xl border border-black/50">
+        <span className="py-1 px-3 flex items-center gap-1 text-sm text-black/50 rounded-3xl border border-black/50 ">
           <Image
             src={tokenReserved.icon}
             alt={tokenReserved.symbol}
@@ -124,12 +124,12 @@ const Dashboard: React.FC<TokenInfo> = ({ tokenReserved }) => {
         </span>
       </div>
       <div className="flex flex-col md:flex-row gap-4 lg:gap-8 w-full md:justify-between">
-        <div className="bg-white border rounded-[20px] w-full md:w-[650px] lg:w-[90%] grid grid-cols-2 place-content-center place-items-center gap-3 md:gap-6 lg:gap-8 py-5 px-5">
+        <div className="bg-[#F5F5F5] rounded-[20px] w-full md:w-[650px] lg:w-[90%] grid grid-cols-2 place-content-center place-items-center gap-3 md:gap-6 lg:gap-8 py-5 px-5">
           {coinMetricsData.map((metric, index) => (
             <MetricCard key={index} label={metric.label} value={metric.value} />
           ))}
         </div>
-        <div className="bg-white border rounded-[20px] w-[402px] h-[412px] p-4">
+        <div className="bg-white rounded-[20px] w-[402px] h-[412px] p-4">
           <div className="w-fit ml-auto">
             <Dropdown
               options={options}
@@ -142,7 +142,7 @@ const Dashboard: React.FC<TokenInfo> = ({ tokenReserved }) => {
           <br />
           <hr />
           <br />
-          <div className="w-[368px] h-[239px] rounded-[10px] bg-black/5 p-3">
+          <div className="w-[368px] h-[239px] rounded-[10px] bg-[#D9D9D9] p-3">
             <div className="w-full flex justify-between">
               <h4 className="text-xs font-normal text-black">Your supply</h4>
               <div className="flex flex-col text-[8px] gap-1 leading-3 font-normal text-black">

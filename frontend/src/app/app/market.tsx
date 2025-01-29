@@ -190,9 +190,9 @@ const Market = () => {
         </div>
       </div>
 
-      <div className="text-black border rounded-t-xl w-full overflow-x-auto">
-        <div className="flex gap-12 justify-between pt-6 rounded-t-xl bg-smoke-white py-4 w-full px-4 overflow-auto">
-          <p className="text-center font-semibold w-auto md:w-1/5">Asset</p>
+      <div className="text-black border rounded-t-xl w-full overflow-x-auto bg-white">
+        <div className="flex gap-12 justify-between pt-6 rounded-t-xl bg-[#E5E5E5] py-4 w-full px-4 overflow-auto">
+          <p className="text-center font-semibold w-auto md:w-1/5">Asset</p> 
           <p className="text-center font-semibold w-auto md:w-1/5"> Total Supply</p>
           <p className="text-center font-semibold w-auto md:w-1/5">Price</p>
           <p className="text-center font-semibold w-auto md:w-1/5">Supply APY</p>

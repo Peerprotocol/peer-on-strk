@@ -6,7 +6,7 @@ import { reserveDashboardData } from "@/data/reserveDashboardData";
 
 export default function Home() {
   return (
-    <main className="bg-[#F5F5F5]">
+    <main className="bg-[#D9D9D9]">
         <div className="flex h-screen">
           <Sidebar />
           <div className="flex-1 flex flex-col h-full max-h-screen overflow-auto">

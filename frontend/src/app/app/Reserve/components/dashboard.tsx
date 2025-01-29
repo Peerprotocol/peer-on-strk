@@ -95,7 +95,7 @@ const Dashboard: React.FC<TokenInfo> = ({ tokenReserved }) => {
   const MetricCard = ({ label, value }: { label: string; value: string }) => (
     <div className="relative bg-[#D9D9D9] flex flex-col justify-center w-full h-[150px] rounded-2xl pl-4 lg:pl-6">
       <p className="text-gray-500 text-xs">{label}</p>
-      <p className="text-black font-semibold text-2xl md:text-[1.7rem] pt-2">
+      <p className="text-black font-semibold text-2xl md:text-[1.85rem] w-fit pt-2">
         {value}
       </p>
     </div>

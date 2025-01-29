@@ -35,7 +35,7 @@ const Dashboard = () => {
     ];
 
     const MetricCard = ({ label, value, showInfo } : {label: any, value: any, showInfo: any}) => (
-        <div className="relative bg-smoke-white py-14 px-4 border rounded-lg">
+        <div className="relative bg-[#D9D9D9] py-14 px-4 border rounded-lg">
             <p className="text-gray-500 text-xs">{label}</p>
             <p className="text-black font-semibold text-2xl md:text-4xl pt-2">{value}</p>
             {showInfo && (

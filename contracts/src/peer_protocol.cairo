@@ -11,7 +11,7 @@ enum TransactionType {
 }
 
 #[derive(Drop, Serde, Copy, PartialEq, starknet::Store)]
-enum ProposalType {
+pub enum ProposalType {
     BORROWING,
     LENDING
 }
@@ -111,7 +111,7 @@ pub struct PoolData {
 }
 
 fn get_default_liquidation_threshold() -> LiquidationThreshold {
-    LiquidationThreshold { threshold_percentage: 85, minimum_liquidation_amount: 5000 }
+    LiquidationThreshold { threshold_percentage: 60, minimum_liquidation_amount: 5000 }
 }
 
 #[starknet::contract]
@@ -436,12 +436,21 @@ pub mod PeerProtocol {
             let caller = get_caller_address();
             let created_at = get_block_timestamp();
 
-            let (mut token_price, _) = self.get_token_price(token);
-            token_price += token_price / ONE_E8;
-            let token_amount = (amount / token_price) * ONE_E18;
-            let required_collateral_value: u256 = ((amount / token_price)
+            let (mut token_price, decimals) = self.get_token_price(token);
+            let token_amount = amount * token_price * ONE_E18 / fast_power(10_u32, decimals).into();
+            // let token_amount = (amount / token_price) * ONE_E18;
+
+            let required_collateral_value: u256 = (amount
+                * fast_power(10_u32, decimals).into()
                 * COLLATERAL_RATIO_NUMERATOR)
-                / COLLATERAL_RATIO_DENOMINATOR;
+                / (token_price * COLLATERAL_RATIO_DENOMINATOR);
+
+            // Previous calculation, say amount = 5000 USD and strk price = 0.3222, then required
+            // collateral value = 20173 USD, from this below...
+            // let required_collateral_value: u256 = ((amount /
+            // token_price)
+            //     * COLLATERAL_RATIO_NUMERATOR)
+            //     / COLLATERAL_RATIO_DENOMINATOR;
 
             // Check if borrower has sufficient collateral * 1.3
             let borrower_collateral_balance = self
@@ -574,9 +583,11 @@ pub mod PeerProtocol {
             let token_amount = amount * token_price * ONE_E18 / fast_power(10_u32, decimals).into();
             // let token_amount = (amount / token_price) * ONE_E18;
             // getting the required collateral value of the token from the dollar amount to be lent
-            let required_collateral_value: u256 = ((amount / token_price)
+            // 1.3 of loan amount
+            let required_collateral_value: u256 = (amount
+                * token_price
                 * COLLATERAL_RATIO_NUMERATOR)
-                / COLLATERAL_RATIO_DENOMINATOR;
+                / (fast_power(10_u32, decimals).into() * COLLATERAL_RATIO_DENOMINATOR);
 
             // Check to ensure that lender has deposited the token they want to lend after deducting
             // the locked funds
@@ -1050,10 +1061,8 @@ pub mod PeerProtocol {
 
             let total_proposals = self.proposals_count.read();
             let mut i: u256 = 1;
-
             while i <= total_proposals {
                 let proposal = self.proposals.entry(i).read();
-
                 if proposal.borrower == user
                     && proposal.is_accepted == true
                     && proposal.is_repaid == false {
@@ -1406,9 +1415,6 @@ pub mod PeerProtocol {
 
         fn _verify_liquidation(ref self: ContractState, proposal: @Proposal) -> (u256, bool, u256) {
             assert(self.pools.entry(*proposal.token).is_active.read(), 'Pool Error');
-            assert(
-                self.pools.entry(*proposal.accepted_collateral_token).is_active.read(), 'Pool Error'
-            );
 
             let (loan_token_price, loan_decimals) = self.get_token_price(*proposal.token);
             let (collateral_token_price, collateral_decimals) = self
@@ -1427,15 +1433,22 @@ pub mod PeerProtocol {
 
             // Get liquidation threshold for this token
             let opt_threshold = self.liquidation_thresholds.entry(*proposal.token).read();
+            assert!(opt_threshold.is_some(), "Liquidation threshold not set");
 
             let mut can_liquidate = false;
             if let Option::Some(threshold) = opt_threshold {
-                let can_liquidate_ref: bool = current_ltv >= threshold.threshold_percentage;
-                let threshold_loan_amount = current_collateral_value
-                    * threshold.threshold_percentage;
-                let liquidation_value = current_loan_value - threshold_loan_amount;
-                can_liquidate = can_liquidate_ref
-                    && liquidation_value >= threshold.minimum_liquidation_amount;
+                // can_liquidate = match current_ltv >= threshold.threshold_percentage {
+                //     false => false, // should not be liquidated
+                //     true => {
+                //         // further checks for margin.
+                //         let threshold_loan_amount = current_collateral_value
+                //             * threshold.threshold_percentage
+                //             / 100;
+                //         let liquidation_value = threshold_loan_amount - current_loan_value; // u256_sub Overflow
+                //         liquidation_value >= threshold.minimum_liquidation_amount
+                //     }
+                // };
+                can_liquidate = current_ltv >= threshold.threshold_percentage; // to start
             }
 
             (current_ltv, can_liquidate, current_loan_value)

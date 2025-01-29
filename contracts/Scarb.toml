@@ -18,3 +18,8 @@ sierra = true
 
 [scripts]
 test = "snforge test"
+
+# [[tool.snforge.fork]]
+# name = "MAINNET"
+# url = "https://starknet-sepolia.public.blastapi.io/rpc/v0_7"
+# block_id.tag = "latest"

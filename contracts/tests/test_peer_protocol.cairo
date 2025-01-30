@@ -1244,7 +1244,7 @@ fn test_deposit_to_pool() {
 
     let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
 
-    // Set up and activate the pool
+    // Setup and activate the pool
     start_cheat_caller_address(peer_protocol_address, owner);
     peer_protocol.add_supported_token(token_address, 0);
     peer_protocol.deploy_liquidity_pool(token_address, Option::None, Option::None);
@@ -1311,8 +1311,6 @@ fn test_withdraw_from_pool_should_panic_for_inactive_pool() {
     stop_cheat_caller_address(peer_protocol_address);
 }
 
-// TODO: Check edge case when trying to call withdraw after borrowing
-
 #[test]
 fn test_withdraw_from_pool() {
     let token_address = deploy_token("MockToken");
@@ -1327,7 +1325,7 @@ fn test_withdraw_from_pool() {
 
     let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
 
-    // Activate the pool by adding a supported token and deploying the pool
+    // Setup and activate the pool
     start_cheat_caller_address(peer_protocol_address, owner);
     peer_protocol.add_supported_token(token_address, 0);
     peer_protocol.deploy_liquidity_pool(token_address, Option::None, Option::None);
@@ -1383,6 +1381,87 @@ fn test_withdraw_from_pool() {
 
     stop_cheat_caller_address(peer_protocol_address);
 }
+
+#[test]
+fn test_borrow_from_pool() {
+    let token_address = deploy_token("MockToken");
+    let collateral_token_address = deploy_token("MockToken1");
+    let peer_protocol_address = deploy_peer_protocol();
+
+    let token = IERC20Dispatcher { contract_address: token_address };
+    let collateral_token = IERC20Dispatcher { contract_address: collateral_token_address };
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+
+    let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
+    let borrower: ContractAddress = starknet::contract_address_const::<0x122226789>();
+    let lender: ContractAddress = starknet::contract_address_const::<0x123336789>();
+
+    let mint_amount: u256 = 1000 * ONE_E18;
+    let borrow_amount_usd: u256 = 1;
+
+    // Deploy borrowed token pool and the collateral token pool
+    start_cheat_caller_address(peer_protocol_address, owner);
+    peer_protocol.add_supported_token(token_address, 'STRK/USD');
+    peer_protocol.add_supported_token(collateral_token_address, 'STRK/USD');
+
+    peer_protocol.deploy_liquidity_pool(token_address, Option::None, Option::None);
+    peer_protocol.deploy_liquidity_pool(collateral_token_address, Option::None, Option::None);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    token.mint(borrower, mint_amount);
+    token.mint(lender, mint_amount);
+    collateral_token.mint(borrower, mint_amount);
+
+    // Lender deposits tokens into the borrowed token pool
+    start_cheat_caller_address(token_address, lender);
+    token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(token_address);
+
+    start_cheat_caller_address(peer_protocol_address, lender);
+    peer_protocol.deposit_to_pool(token_address, mint_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // Borrower deposits collateral into the collateral token pool
+    start_cheat_caller_address(collateral_token_address, borrower);
+    collateral_token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(collateral_token_address);
+
+    start_cheat_caller_address(peer_protocol_address, borrower);
+    peer_protocol.deposit_to_pool(collateral_token_address, mint_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // Borrower borrows tokens from the pool
+    start_cheat_caller_address(peer_protocol_address, borrower);
+    //let mut spy = spy_events();
+    peer_protocol.borrow_from_pool(
+        token_address,
+        collateral_token_address,
+        borrow_amount_usd
+    );
+
+    let borrower_balance_after = token.balance_of(borrower);
+    assert!(
+        borrower_balance_after > mint_amount,
+        "Borrower balance did not increase as expected after borrowing"
+    );
+
+    // Check that the pool's total borrowed amount has increased
+    //let pool_data_borrowed_token = peer_protocol.get_liquidity_pool_data(token_address);
+    //assert!(
+    //    pool_data_borrowed_token.total_borrowed > 0,
+    //    "Pool total_borrowed did not update"
+    //);
+
+    // Check that the borrower's collateral is locked
+    //let user_locked_collateral = peer_protocol.get_locked_funds(borrower, collateral_token_address);
+    //assert!(
+    //    user_locked_collateral > 0,
+    //    "Collateral should be locked but found 0"
+    //);
+    stop_cheat_caller_address(peer_protocol_address);
+}
+
+// TODO: Check edge case when trying to call withdraw after borrowing
 
 // DO NOT DELETE
 // #[test]

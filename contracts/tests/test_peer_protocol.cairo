@@ -1218,18 +1218,15 @@ fn test_deposit_to_pool_should_panic_for_inactive_pool() {
     let token_address = deploy_token("MockToken");
     let peer_protocol_address = deploy_peer_protocol();
 
-    let token = IERC20Dispatcher { contract_address: token_address };
-
     let caller: ContractAddress = starknet::contract_address_const::<0x122226789>();
-    let mint_amount: u256 = 1000 * ONE_E18;
 
     let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
 
-    token.mint(caller, mint_amount);
-
     // Attempt to deposit into a pool that hasn't been activated
     start_cheat_caller_address(peer_protocol_address, caller);
-    peer_protocol.deposit_to_pool(token_address, mint_amount);
+    let deposit_amount: u256 = 100 * ONE_E18;
+
+    peer_protocol.deposit_to_pool(token_address, deposit_amount);
     stop_cheat_caller_address(peer_protocol_address);
 }
 
@@ -1260,7 +1257,7 @@ fn test_deposit_to_pool() {
     token.approve(peer_protocol_address, mint_amount);
     stop_cheat_caller_address(token_address);
 
-    // perform the deposit
+    // Perform the deposit
     start_cheat_caller_address(peer_protocol_address, caller);
     let deposit_amount: u256 = 100 * ONE_E18;
     let mut spy = spy_events();
@@ -1268,16 +1265,17 @@ fn test_deposit_to_pool() {
     peer_protocol.deposit_to_pool(token_address, deposit_amount);
 
     // Verify the pool's token balance matches the deposit
-    let pool_balance = token.balance_of(peer_protocol_address);
+    let balance = token.balance_of(peer_protocol_address);
     assert!(
-        pool_balance == deposit_amount,
+        balance == deposit_amount,
         "Pool token balance mismatch after deposit"
     );
 
     // Verify the caller's token balance has decreased
+    let balance = token.balance_of(caller);
     let expected_balance = mint_amount - deposit_amount;
     assert!(
-        token.balance_of(caller) == expected_balance,
+        balance == expected_balance,
         "User token balance mismatch after deposit"
     );
 
@@ -1294,6 +1292,100 @@ fn test_deposit_to_pool() {
 
     stop_cheat_caller_address(peer_protocol_address);
 }
+
+#[test]
+#[should_panic(expected: "Pool is not active")]
+fn test_withdraw_from_pool_should_panic_for_inactive_pool() {
+    let token_address = deploy_token("MockToken");
+    let peer_protocol_address = deploy_peer_protocol();
+
+    let token = IERC20Dispatcher { contract_address: token_address };
+
+    let caller: ContractAddress = starknet::contract_address_const::<0x122226789>();
+
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+
+    // Attempt to deposit into a pool that hasn't been activated
+    start_cheat_caller_address(peer_protocol_address, caller);
+    let withdraw_amount: u256 = 100 * ONE_E18;
+
+    peer_protocol.withdraw_from_pool(token_address, withdraw_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+}
+
+// TODO: Check edge case when trying to call withdraw after borrowing
+
+#[test]
+fn test_withdraw_from_pool() {
+    let token_address = deploy_token("MockToken");
+    let peer_protocol_address = deploy_peer_protocol();
+
+    let token = IERC20Dispatcher { contract_address: token_address };
+
+    let caller: ContractAddress = starknet::contract_address_const::<0x122226789>();
+    let mint_amount: u256 = 1000 * ONE_E18;
+
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+
+    let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
+
+    // Set up and activate the pool
+    start_cheat_caller_address(peer_protocol_address, owner);
+    peer_protocol.add_supported_token(token_address, 0);
+    peer_protocol.deploy_liquidity_pool(token_address, Option::None, Option::None);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    token.mint(caller, mint_amount);
+
+    // Approving peer_protocol contract to spend caller's tokens
+    start_cheat_caller_address(token_address, caller);
+    token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(token_address);
+
+    // Perform the deposit
+    start_cheat_caller_address(peer_protocol_address, caller);
+    let deposit_amount: u256 = 100 * ONE_E18;
+
+    peer_protocol.deposit_to_pool(token_address, deposit_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // Withdraw half of the deposit
+    start_cheat_caller_address(peer_protocol_address, caller);
+    let withdraw_amount : u256 = deposit_amount / 2;
+    let mut spy = spy_events();
+
+    peer_protocol.withdraw_from_pool(token_address, withdraw_amount);
+
+    // Check the pool balance
+    let balance = token.balance_of(peer_protocol_address);
+    let expected_balance = deposit_amount - withdraw_amount;
+    assert!(
+        balance == expected_balance,
+        "Pool token balance mismatch after withdraw"
+    );
+
+    // Check the user balance
+    let balance = token.balance_of(caller);
+    let expected_balance = mint_amount - (deposit_amount - withdraw_amount);
+    assert!(
+        balance == expected_balance,
+        "User token balance mismatch after withdraw"
+    );
+
+    // Verify the withdrawal event was emitted
+    let expected_event = PeerProtocol::Event::PoolWithdrawalSuccessful(
+        PeerProtocol::PoolWithdrawalSuccessful {
+            user: caller,
+            token: token_address,
+            amount: withdraw_amount,
+        },
+    );
+
+    spy.assert_emitted(@array![(peer_protocol_address, expected_event)]);
+
+    stop_cheat_caller_address(peer_protocol_address);
+}
+
 
 // DO NOT DELETE
 // #[test]

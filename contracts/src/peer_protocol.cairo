@@ -224,6 +224,7 @@ pub mod PeerProtocol {
         PositionLiquidated: PositionLiquidated,
         PoolCreated: PoolCreated,
         PoolDepositSuccessful:PoolDepositSuccessful,
+        PoolWithdrawalSuccessful:PoolWithdrawalSuccessful,
         #[flat]
         AccessControlEvent: AccessControlComponent::Event,
         #[flat]
@@ -339,6 +340,13 @@ pub mod PeerProtocol {
 
     #[derive(Drop, starknet::Event)]
     pub struct PoolDepositSuccessful {
+        pub user: ContractAddress,
+        pub token: ContractAddress,
+        pub amount: u256,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct PoolWithdrawalSuccessful {
         pub user: ContractAddress,
         pub token: ContractAddress,
         pub amount: u256,
@@ -1240,6 +1248,37 @@ pub mod PeerProtocol {
             self
                 .emit(
                     PoolDepositSuccessful {
+                        user: get_caller_address(),
+                        token: token_address,
+                        amount: amount
+                    }
+                );
+        }
+
+        fn withdraw_from_pool(
+            ref self: ContractState, token_address: ContractAddress, amount: u256
+        ) {
+            let pool_data = self.pools.entry(token_address);
+
+            assert!(pool_data.is_active.read(), "Pool is not active");
+
+            // Ensure the pool has enough liquidity
+            let pool_deposit = pool_data.total_deposit.read();
+            let pool_borrowed = pool_data.total_borrowed.read();
+            let available_tokens = pool_deposit - pool_borrowed;
+            assert!(
+                available_tokens >= amount,
+                "User doesn't have enough liquidity available"
+            );
+
+            self.withdraw(token_address, amount);
+
+            // Update the pool's total deposit
+            pool_data.total_deposit.write(pool_deposit - amount);
+
+            self
+                .emit(
+                    PoolWithdrawalSuccessful {
                         user: get_caller_address(),
                         token: token_address,
                         amount: amount

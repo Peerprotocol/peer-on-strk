@@ -107,7 +107,7 @@ const Table: React.FC = () => {
         return Array.isArray(transactions) ? transactions : [];
       case "Assets":
         return Array.isArray(userDeposits) ? userDeposits : [];
-      case "Position Overview":
+      case "":
         // Return an empty array for tabs without data
         return [];
       default:
@@ -225,7 +225,7 @@ const Table: React.FC = () => {
         <div className="overflow-x-auto text-black my-6">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="border bg-smoke-white">
+              <tr className="border bg-[#E5E5E5]">
                 <th className="p-4 text-left border-b font-semibold">Token</th>
                 <th className="p-4 text-left border-b font-semibold">
                   Quantity
@@ -235,7 +235,7 @@ const Table: React.FC = () => {
                 </th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="bg-white">
               {!dataForCurrentTab || dataForCurrentTab.length === 0 ? (
                 <tr>
                   <td
@@ -316,7 +316,7 @@ const Table: React.FC = () => {
         <div className="overflow-x-auto text-black my-6">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="border bg-smoke-white">
+              <tr className="border bg-[#E5E5E5]">
                 <th className="p-4 text-left border-b font-semibold">
                   Transaction Type
                 </th>
@@ -331,7 +331,7 @@ const Table: React.FC = () => {
                 <th className="p-4 text-left border-b font-semibold">Hash</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="bg-white">
               {isLoadingTransactions || isFetchingTransactions ? (
                 <tr>
                   <td colSpan={5} className="p-4 text-center">
@@ -425,7 +425,7 @@ const Table: React.FC = () => {
         <div className="overflow-x-auto text-black my-6">
           <table className="min-w-full border-collapse">
             <thead>
-              <tr className="border bg-smoke-white">
+              <tr className="border bg-[#E5E5E5]">
                 <th className=" px-2 py-4 text-left border-b font-semibold">
                   Asset
                 </th>
@@ -525,7 +525,7 @@ const Table: React.FC = () => {
                 </tr>
               )} */}
               {new Array(5).fill(null).map((_, index) => (
-                <tr key={index} className="border-2 border-gray-200">
+                <tr key={index} className="border-2 border-gray-200 bg-white">
                   <td className="flex items-center gap-1 py-2 pt-4 pl-2 ">
                     <Image
                       src={"/images/usdc.png"}

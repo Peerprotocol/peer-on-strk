@@ -111,7 +111,8 @@ pub struct PoolData {
     pool_token: ContractAddress,
     is_active: bool,
     total_deposit: u256,
-    total_borrowed: u256
+    total_borrowed: u256,
+    total_collateral_locked: u256
 }
 
 fn get_default_liquidation_threshold() -> LiquidationThreshold {
@@ -225,6 +226,7 @@ pub mod PeerProtocol {
         PoolCreated: PoolCreated,
         PoolDepositSuccessful:PoolDepositSuccessful,
         PoolWithdrawalSuccessful:PoolWithdrawalSuccessful,
+        PoolBorrowSuccessful:PoolBorrowSuccessful,
         #[flat]
         AccessControlEvent: AccessControlComponent::Event,
         #[flat]
@@ -350,6 +352,15 @@ pub mod PeerProtocol {
         pub user: ContractAddress,
         pub token: ContractAddress,
         pub amount: u256,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct PoolBorrowSuccessful {
+        pub user: ContractAddress,
+        pub borrowed: ContractAddress,
+        pub collateral: ContractAddress,
+        pub borrowed_amount: u256,
+        pub collateral_locked_amount: u256,
     }
 
     #[constructor]
@@ -1288,8 +1299,127 @@ pub mod PeerProtocol {
                     }
                 );
         }
-    }
 
+        fn borrow_from_pool(
+            ref self: ContractState,
+            borrowed_token_address: ContractAddress,
+            collateral_token_address: ContractAddress,
+            amount_usd: u256
+        ) {
+            assert!(amount_usd > 0, "Can't borrow zero value");
+
+            let borrowed_pool_data = self.pools.entry(borrowed_token_address);
+            let collateral_pool_data = self.pools.entry(collateral_token_address);
+
+            assert!(
+                borrowed_pool_data.is_active.read(),
+                "Borrowed token pool is not active"
+            );
+            assert!(
+                collateral_pool_data.is_active.read(),
+                "Collateral token pool is not active"
+            );
+
+            // Fetch prices from oracle
+            let borrowed_token_price : u256 = 1 * ONE_E18;
+            let collateral_token_price : u256 = 1 * ONE_E18;
+
+            // Convert borrowing amount from usd value to token units
+            let borrowed_amount = (amount_usd * ONE_E18 * ONE_E8) / borrowed_token_price;
+
+            // Calculate required collateral
+            let required_collateral = (amount_usd
+                * ONE_E18
+                * ONE_E8
+                * COLLATERAL_RATIO_NUMERATOR)
+                / (collateral_token_price * COLLATERAL_RATIO_DENOMINATOR);
+
+            // Check pool's available liquidity
+            let pool_total_deposit = borrowed_pool_data.total_deposit.read();
+            let pool_total_borrowed = borrowed_pool_data.total_borrowed.read();
+            let pool_liquidity_available = pool_total_deposit - pool_total_borrowed;
+
+            assert!(
+                pool_liquidity_available >= borrowed_amount,
+                "Insufficient pool liquidity"
+            );
+
+            // Check user's available collateral
+            let caller = get_caller_address();
+            let user_total_collateral_deposit = self
+                .token_deposits
+                .entry((caller, collateral_token_address))
+                .read();
+            let user_locked_collateral = self
+                .locked_funds
+                .entry((caller, collateral_token_address))
+                .read();
+            let user_available_collateral = user_total_collateral_deposit - user_locked_collateral;
+
+            assert!(
+                user_available_collateral >= required_collateral,
+                "Insufficient user collateral"
+            );
+
+            // Calculate protocol fee
+            let protocol_fee_in_tokens = (borrowed_amount * PROTOCOL_FEE_PERCENTAGE) / 100;
+            let net_borrow_in_tokens = borrowed_amount - protocol_fee_in_tokens;
+
+            // Transfer net borrowed tokens to the user
+            let borrowed_token = IERC20Dispatcher { contract_address: borrowed_token_address };
+            let success = borrowed_token.transfer(caller, net_borrow_in_tokens);
+            assert!(success, "Borrowed token transfer failed");
+
+            // Transfer protocol fee to protocol fee address
+            let protocol_fee_address = self.protocol_fee_address.read();
+            let success = borrowed_token.transfer(protocol_fee_address, protocol_fee_in_tokens);
+            assert!(success, "Protocol fee transfer failed");
+
+
+            // Lock user's collateral
+            let current_user_locked_collateral = self
+                .locked_funds
+                .entry((caller, collateral_token_address))
+                .read();
+            self
+                .locked_funds
+                .entry((caller, collateral_token_address))
+                .write(current_user_locked_collateral + required_collateral);
+
+            // Update total collateral locked
+            let current_collateral_locked_pool = collateral_pool_data.total_collateral_locked.read();
+            collateral_pool_data.total_collateral_locked.write(
+                current_collateral_locked_pool + required_collateral
+            );
+
+            // Update the borrowed pool's total amount (in token units)
+            let current_pool_borrowed = borrowed_pool_data.total_borrowed.read();
+            borrowed_pool_data
+                .total_borrowed
+                .write(current_pool_borrowed + borrowed_amount);
+
+            // Update user's borrowed amount
+            let user_borrowed_so_far = self
+                .borrowed_assets
+                .entry((caller, borrowed_token_address))
+                .read();
+            self
+                .borrowed_assets
+                .entry((caller, borrowed_token_address))
+                .write(user_borrowed_so_far + borrowed_amount);
+
+            self
+                .emit(
+                    PoolBorrowSuccessful {
+                        user: caller,
+                        borrowed: borrowed_token_address,
+                        collateral: collateral_token_address,
+                        borrowed_amount: borrowed_amount,
+                        collateral_locked_amount: required_collateral
+                    }
+                );
+        }
+    }
 
     #[generate_trait]
     impl InternalFunctions of InternalFunctionsTrait {

@@ -79,4 +79,20 @@ pub trait IPeerProtocol<TContractState> {
     );
 
     fn get_liquidity_pool_data(self: @TContractState, token: ContractAddress) -> PoolData;
+
+    fn calculate_rates(
+        self: @TContractState,
+        token: ContractAddress,
+        total_borrows: u256, 
+        total_deposits: u256
+    ) -> (u256, u256);
+
+    fn update_pool_rates(
+        ref self: TContractState,
+        token: ContractAddress,
+        base_rate: u256,
+        utilization_optimal: u256,
+        slope1: u256,
+        slope2: u256
+    );
 }

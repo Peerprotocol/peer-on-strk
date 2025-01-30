@@ -113,6 +113,14 @@ pub struct PoolData {
     total_liquidity: ContractAddress
 }
 
+#[derive(Drop, starknet::Store)]
+pub struct PoolRates {
+    base_rate: u256,
+    utilization_optimal: u256,
+    slope1: u256,
+    slope2: u256,
+}
+
 fn get_default_liquidation_threshold() -> LiquidationThreshold {
     LiquidationThreshold { threshold_percentage: 85, minimum_liquidation_amount: 5000 }
 }
@@ -122,7 +130,7 @@ pub mod PeerProtocol {
     use starknet::event::EventEmitter;
     use super::{
         Transaction, TransactionType, UserDeposit, UserAssets, Proposal, ProposalType,
-        CounterProposal, BorrowedDetails, PoolData
+        CounterProposal, BorrowedDetails, PoolData, PoolRates
     };
     use peer_protocol::interfaces::ipeer_protocol::IPeerProtocol;
     use peer_protocol::interfaces::ierc20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -193,7 +201,8 @@ pub mod PeerProtocol {
         src5: SRC5Component::Storage,
         #[substorage(v0)]
         accesscontrol: AccessControlComponent::Storage,
-        pragma_contract: ContractAddress
+        pragma_contract: ContractAddress,
+        pool_rates: Map<ContractAddress, PoolRates>
     }
 
     const MAX_U64: u64 = 18446744073709551615_u64;
@@ -205,6 +214,9 @@ pub mod PeerProtocol {
     const SECONDS_IN_YEAR: u256 = 31536000_u256;
     const ADMIN_ROLE: felt252 = selector!("ADMIN");
     const MAINTAINER_ROLE: felt252 = selector!("MAINTAINER");
+    const SCALE: u256 = 1_000_000; // 6 decimals for percentage calculations
+    const MIN_RATE: u256 = 100_000; // 0.1% minimum rate
+    const MAX_RATE: u256 = 300_000_000; // 300% maximum rate
 
 
     #[event]
@@ -225,7 +237,8 @@ pub mod PeerProtocol {
         #[flat]
         AccessControlEvent: AccessControlComponent::Event,
         #[flat]
-        SRC5Event: SRC5Component::Event
+        SRC5Event: SRC5Component::Event,
+        RatesUpdated: RatesUpdated
     }
 
     #[derive(Drop, starknet::Event)]
@@ -333,6 +346,15 @@ pub mod PeerProtocol {
         pub created_by: ContractAddress,
         pub token: ContractAddress,
         pub created_at: u64
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct RatesUpdated {
+        token: ContractAddress,
+        base_rate: u256,
+        utilization_optimal: u256,
+        slope1: u256,
+        slope2: u256,
     }
 
     #[constructor]
@@ -1199,6 +1221,7 @@ pub mod PeerProtocol {
                     }
                 );
         }
+
         fn get_liquidity_pool_data(self: @ContractState, token: ContractAddress) -> PoolData {
             self.pools.entry(token).read()
         }

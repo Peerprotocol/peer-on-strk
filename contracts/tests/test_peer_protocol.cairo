@@ -1211,6 +1211,90 @@ fn test_get_token_price_success() {
     let (token_price, _) = peer_protocol.get_token_price(strk_token);
     assert(token_price == return_data.price.into(), 'Price not equal');
 }
+
+#[test]
+#[should_panic(expected: "Pool is not active")]
+fn test_deposit_to_pool_should_panic_for_inactive_pool() {
+    let token_address = deploy_token("MockToken");
+    let peer_protocol_address = deploy_peer_protocol();
+
+    let token = IERC20Dispatcher { contract_address: token_address };
+
+    let caller: ContractAddress = starknet::contract_address_const::<0x122226789>();
+    let mint_amount: u256 = 1000 * ONE_E18;
+
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+
+    token.mint(caller, mint_amount);
+
+    // Attempt to deposit into a pool that hasn't been activated
+    start_cheat_caller_address(peer_protocol_address, caller);
+    peer_protocol.deposit_to_pool(token_address, mint_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+}
+
+#[test]
+fn test_deposit_to_pool() {
+    let token_address = deploy_token("MockToken");
+    let peer_protocol_address = deploy_peer_protocol();
+
+    let token = IERC20Dispatcher { contract_address: token_address };
+
+    let caller: ContractAddress = starknet::contract_address_const::<0x122226789>();
+    let mint_amount: u256 = 1000 * ONE_E18;
+
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+
+    let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
+
+    // Set up and activate the pool
+    start_cheat_caller_address(peer_protocol_address, owner);
+    peer_protocol.add_supported_token(token_address, 0);
+    peer_protocol.deploy_liquidity_pool(token_address, Option::None, Option::None);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    token.mint(caller, mint_amount);
+
+    // Approving peer_protocol contract to spend caller's tokens
+    start_cheat_caller_address(token_address, caller);
+    token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(token_address);
+
+    // perform the deposit
+    start_cheat_caller_address(peer_protocol_address, caller);
+    let deposit_amount: u256 = 100 * ONE_E18;
+    let mut spy = spy_events();
+
+    peer_protocol.deposit_to_pool(token_address, deposit_amount);
+
+    // Verify the pool's token balance matches the deposit
+    let pool_balance = token.balance_of(peer_protocol_address);
+    assert!(
+        pool_balance == deposit_amount,
+        "Pool token balance mismatch after deposit"
+    );
+
+    // Verify the caller's token balance has decreased
+    let expected_balance = mint_amount - deposit_amount;
+    assert!(
+        token.balance_of(caller) == expected_balance,
+        "User token balance mismatch after deposit"
+    );
+
+    // Verify that the correct event was emitted
+    let expected_event = PeerProtocol::Event::PoolDepositSuccessful(
+        PeerProtocol::PoolDepositSuccessful {
+            user: caller,
+            token: token_address,
+            amount: deposit_amount,
+        },
+    );
+
+    spy.assert_emitted(@array![(peer_protocol_address, expected_event)]);
+
+    stop_cheat_caller_address(peer_protocol_address);
+}
+
 // DO NOT DELETE
 // #[test]
 // #[fork(

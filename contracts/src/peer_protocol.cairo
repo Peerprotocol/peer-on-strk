@@ -110,7 +110,8 @@ pub struct LiquidationInfo {
 pub struct PoolData {
     pool_token: ContractAddress,
     is_active: bool,
-    total_liquidity: ContractAddress
+    total_deposit: u256,
+    total_borrowed: u256
 }
 
 fn get_default_liquidation_threshold() -> LiquidationThreshold {
@@ -222,6 +223,7 @@ pub mod PeerProtocol {
         ProposalCancelled: ProposalCancelled,
         PositionLiquidated: PositionLiquidated,
         PoolCreated: PoolCreated,
+        PoolDepositSuccessful:PoolDepositSuccessful,
         #[flat]
         AccessControlEvent: AccessControlComponent::Event,
         #[flat]
@@ -333,6 +335,13 @@ pub mod PeerProtocol {
         pub created_by: ContractAddress,
         pub token: ContractAddress,
         pub created_at: u64
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct PoolDepositSuccessful {
+        pub user: ContractAddress,
+        pub token: ContractAddress,
+        pub amount: u256,
     }
 
     #[constructor]
@@ -1214,6 +1223,28 @@ pub mod PeerProtocol {
         }
         fn get_liquidity_pool_data(self: @ContractState, token: ContractAddress) -> PoolData {
             self.pools.entry(token).read()
+        }
+
+        fn deposit_to_pool(
+            ref self: ContractState, token_address: ContractAddress, amount: u256
+        ) {
+            let pool_data = self.pools.entry(token_address);
+
+            assert!(pool_data.is_active.read(), "Pool is not active");
+            self.deposit(token_address, amount);
+
+            // Update the pool's total deposit
+            let updated_deposit = pool_data.total_deposit.read() + amount;
+            pool_data.total_deposit.write(updated_deposit);
+
+            self
+                .emit(
+                    PoolDepositSuccessful {
+                        user: get_caller_address(),
+                        token: token_address,
+                        amount: amount
+                    }
+                );
         }
     }
 

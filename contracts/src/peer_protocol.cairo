@@ -1239,9 +1239,10 @@ pub mod PeerProtocol {
             let pool_data = self.pools.entry(token_address);
 
             assert!(pool_data.is_active.read(), "Pool is not active");
+
             self.deposit(token_address, amount);
 
-            // Update the pool's total deposit
+            // Update the pool's total deposited amount
             let updated_deposit = pool_data.total_deposit.read() + amount;
             pool_data.total_deposit.write(updated_deposit);
 
@@ -1262,19 +1263,21 @@ pub mod PeerProtocol {
 
             assert!(pool_data.is_active.read(), "Pool is not active");
 
-            // Ensure the pool has enough liquidity
-            let pool_deposit = pool_data.total_deposit.read();
-            let pool_borrowed = pool_data.total_borrowed.read();
-            let available_tokens = pool_deposit - pool_borrowed;
+            // Calculate how much of the pool's liquidity is currently available
+            let total_deposit = pool_data.total_deposit.read();
+            let total_borrowed = pool_data.total_borrowed.read();
+            let available_liquidity = total_deposit - total_borrowed;
+
+            // Prevent withdrawal if the amount exceeds the pool's available liquidity
             assert!(
-                available_tokens >= amount,
-                "User doesn't have enough liquidity available"
+                available_liquidity >= amount,
+                "Insufficient pool liquidity for requested withdrawal"
             );
 
             self.withdraw(token_address, amount);
 
-            // Update the pool's total deposit
-            pool_data.total_deposit.write(pool_deposit - amount);
+            // Update the pool's total deposited amount
+            pool_data.total_deposit.write(total_deposit - amount);
 
             self
                 .emit(

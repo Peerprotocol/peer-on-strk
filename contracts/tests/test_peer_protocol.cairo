@@ -1264,18 +1264,18 @@ fn test_deposit_to_pool() {
 
     peer_protocol.deposit_to_pool(token_address, deposit_amount);
 
-    // Verify the pool's token balance matches the deposit
-    let balance = token.balance_of(peer_protocol_address);
+    // Verify the contract's token balance
+    let pool_balance = token.balance_of(peer_protocol_address);
     assert!(
-        balance == deposit_amount,
+        pool_balance == deposit_amount,
         "Pool token balance mismatch after deposit"
     );
 
-    // Verify the caller's token balance has decreased
-    let balance = token.balance_of(caller);
-    let expected_balance = mint_amount - deposit_amount;
+    // Verify the users's token balance has decreased
+    let user_balance = token.balance_of(caller);
+    let expected_user_balance = mint_amount - deposit_amount;
     assert!(
-        balance == expected_balance,
+        user_balance == expected_user_balance,
         "User token balance mismatch after deposit"
     );
 
@@ -1299,13 +1299,11 @@ fn test_withdraw_from_pool_should_panic_for_inactive_pool() {
     let token_address = deploy_token("MockToken");
     let peer_protocol_address = deploy_peer_protocol();
 
-    let token = IERC20Dispatcher { contract_address: token_address };
-
     let caller: ContractAddress = starknet::contract_address_const::<0x122226789>();
 
     let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
 
-    // Attempt to deposit into a pool that hasn't been activated
+    // Attempt to withdraw from a pool that has not been activated
     start_cheat_caller_address(peer_protocol_address, caller);
     let withdraw_amount: u256 = 100 * ONE_E18;
 
@@ -1329,7 +1327,7 @@ fn test_withdraw_from_pool() {
 
     let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
 
-    // Set up and activate the pool
+    // Activate the pool by adding a supported token and deploying the pool
     start_cheat_caller_address(peer_protocol_address, owner);
     peer_protocol.add_supported_token(token_address, 0);
     peer_protocol.deploy_liquidity_pool(token_address, Option::None, Option::None);
@@ -1337,42 +1335,42 @@ fn test_withdraw_from_pool() {
 
     token.mint(caller, mint_amount);
 
-    // Approving peer_protocol contract to spend caller's tokens
+    // Approve peer_protocol contract to spend the user's tokens
     start_cheat_caller_address(token_address, caller);
     token.approve(peer_protocol_address, mint_amount);
     stop_cheat_caller_address(token_address);
 
-    // Perform the deposit
+    // Perform the deposit into the pool
     start_cheat_caller_address(peer_protocol_address, caller);
     let deposit_amount: u256 = 100 * ONE_E18;
 
     peer_protocol.deposit_to_pool(token_address, deposit_amount);
     stop_cheat_caller_address(peer_protocol_address);
 
-    // Withdraw half of the deposit
+    // Withdraw half of the deposited amount
     start_cheat_caller_address(peer_protocol_address, caller);
     let withdraw_amount : u256 = deposit_amount / 2;
     let mut spy = spy_events();
 
     peer_protocol.withdraw_from_pool(token_address, withdraw_amount);
 
-    // Check the pool balance
-    let balance = token.balance_of(peer_protocol_address);
-    let expected_balance = deposit_amount - withdraw_amount;
+    // Verify the contract's token balance
+    let pool_balance = token.balance_of(peer_protocol_address);
+    let expected_pool_balance = deposit_amount - withdraw_amount;
     assert!(
-        balance == expected_balance,
+        pool_balance == expected_pool_balance,
         "Pool token balance mismatch after withdraw"
     );
 
-    // Check the user balance
-    let balance = token.balance_of(caller);
-    let expected_balance = mint_amount - (deposit_amount - withdraw_amount);
+    // Verify the user's token balance
+    let user_balance = token.balance_of(caller);
+    let expected_user_balance = mint_amount - (deposit_amount - withdraw_amount);
     assert!(
-        balance == expected_balance,
+        user_balance == expected_user_balance,
         "User token balance mismatch after withdraw"
     );
 
-    // Verify the withdrawal event was emitted
+    // Confirm the correct event was emitted
     let expected_event = PeerProtocol::Event::PoolWithdrawalSuccessful(
         PeerProtocol::PoolWithdrawalSuccessful {
             user: caller,
@@ -1385,7 +1383,6 @@ fn test_withdraw_from_pool() {
 
     stop_cheat_caller_address(peer_protocol_address);
 }
-
 
 // DO NOT DELETE
 // #[test]

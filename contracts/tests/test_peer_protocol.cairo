@@ -1331,7 +1331,6 @@ fn test_get_token_price_success() {
     let (token_price, _) = peer_protocol.get_token_price(strk_token);
     assert(token_price == return_data.price.into(), 'Price not equal');
 }
-
 // DO NOT DELETE
 // #[test]
 // #[fork(

@@ -1214,18 +1214,13 @@ pub mod PeerProtocol {
             let caller = get_caller_address();
             self
                 ._deploy_liquidity_pool(
-                    token,
-                    caller,
-                    opt_threshold_percentage,
-                    opt_minimum_liquidation_amount
+                    token, caller, opt_threshold_percentage, opt_minimum_liquidation_amount
                 );
 
             self
                 .emit(
                     PoolCreated {
-                        created_by: caller,
-                        token: token,
-                        created_at: get_block_timestamp()
+                        created_by: caller, token: token, created_at: get_block_timestamp()
                     }
                 );
         }
@@ -1235,22 +1230,19 @@ pub mod PeerProtocol {
         }
 
         fn calculate_rates(
-            self: @ContractState,
-            token: ContractAddress,
-            total_borrows: u256,
-            total_deposits: u256
+            self: @ContractState, token: ContractAddress, total_borrows: u256, total_deposits: u256
         ) -> (u256, u256) {
             // prevent division by zero
             if total_deposits == 0 {
                 return (MIN_RATE, MIN_RATE);
             }
-    
+
             // calculate utilization rate
             let utilization = (total_borrows * SCALE) / total_deposits;
-            
+
             // get pool parameters
             let rates = self.pool_rates.read(token);
-            
+
             // calculate borrow rate based on utilization
             let borrow_rate = if utilization <= rates.utilization_optimal {
                 // before kink: Rb = Rbase + U × Rslope1
@@ -1258,11 +1250,11 @@ pub mod PeerProtocol {
             } else {
                 // after kink: Rb = Rbase + Ukink × Rslope1 + (U - Ukink) × Rslope2
                 let excess_util = utilization - rates.utilization_optimal;
-                rates.base_rate + 
-                    (rates.utilization_optimal * rates.slope1) / SCALE +
-                    (excess_util * rates.slope2) / SCALE
+                rates.base_rate
+                    + (rates.utilization_optimal * rates.slope1) / SCALE
+                    + (excess_util * rates.slope2) / SCALE
             };
-    
+
             // apply min/max bounds to borrow rate
             let bounded_borrow_rate = if borrow_rate < MIN_RATE {
                 MIN_RATE
@@ -1271,12 +1263,13 @@ pub mod PeerProtocol {
             } else {
                 borrow_rate
             };
-    
+
             // calculate lending rate with reserve factor
             // Rl = U × Rb × (1 - reserve_factor)
             let reserve_factor = PROTOCOL_FEE_PERCENTAGE; // Using existing 1% protocol fee
-            let lending_rate = (bounded_borrow_rate * utilization * (100 - reserve_factor)) / (SCALE * 100);
-            
+            let lending_rate = (bounded_borrow_rate * utilization * (100 - reserve_factor))
+                / (SCALE * 100);
+
             let bounded_lending_rate = if lending_rate < MIN_RATE {
                 MIN_RATE
             } else if lending_rate > MAX_RATE {
@@ -1284,7 +1277,7 @@ pub mod PeerProtocol {
             } else {
                 lending_rate
             };
-    
+
             (bounded_lending_rate, bounded_borrow_rate)
         }
 
@@ -1300,22 +1293,12 @@ pub mod PeerProtocol {
             assert(utilization_optimal <= SCALE, 'Utilization must be <= 100%');
             assert(base_rate <= MAX_RATE, 'Base rate too high');
 
-            self.pool_rates.entry(token).write(PoolRates {
-                base_rate,
-                utilization_optimal,
-                slope1,
-                slope2
-            });
-    
-            self.emit(
-                RatesUpdated {
-                    token,
-                    base_rate,
-                    utilization_optimal,
-                    slope1,
-                    slope2
-                }
-            );
+            self
+                .pool_rates
+                .entry(token)
+                .write(PoolRates { base_rate, utilization_optimal, slope1, slope2 });
+
+            self.emit(RatesUpdated { token, base_rate, utilization_optimal, slope1, slope2 });
         }
 
         fn get_pool_rates(self: @ContractState, token: ContractAddress) -> PoolRates {
@@ -1362,7 +1345,10 @@ pub mod PeerProtocol {
             self.mint_spoks(proposal.id, proposal.borrower, lender);
 
             // Record Transaction
-            self.record_transaction(proposal.token, TransactionType::LEND, net_amount + fee_amount, lender);
+            self
+                .record_transaction(
+                    proposal.token, TransactionType::LEND, net_amount + fee_amount, lender
+                );
 
             // Update Proposal
             let mut updated_proposal = proposal;
@@ -1537,28 +1523,24 @@ pub mod PeerProtocol {
             // initialize liquidation threshold.
             self
                 ._init_liquidation_threshold(
-                    token,
-                    opt_threshold_percentage,
-                    opt_minimum_liquidation_amount
+                    token, opt_threshold_percentage, opt_minimum_liquidation_amount
                 );
 
             // Initialize default rates with default values
-            self.update_pool_rates(
+            self
+                .update_pool_rates(
                     token,
-                    20_000,      // 2% base rate (Rbase)
-                    800_000,     // 80% optimal utilization (Ukink)
-                    80_000,      // 8% slope1 
-                    400_000      // 40% slope2 (steeper after kink)
+                    20_000, // 2% base rate (Rbase)
+                    800_000, // 80% optimal utilization (Ukink)
+                    80_000, // 8% slope1 
+                    400_000 // 40% slope2 (steeper after kink)
                 );
 
             // Initialize pool data with zero totals
             let pool_data = PoolData {
-                pool_token: token,
-                is_active: true,
-                total_deposits: 0,
-                total_borrows: 0
+                pool_token: token, is_active: true, total_deposits: 0, total_borrows: 0
             };
-                
+
             // activate pool
             self.pools.entry(token).write(pool_data);
         }
@@ -1570,27 +1552,23 @@ pub mod PeerProtocol {
             opt_minimum_liquidation_amount: Option<u256>
         ) {
             let mut liquidation_threshold = get_default_liquidation_threshold();
-            
+
             // Override default threshold if provided
             if let Option::Some(threshold_percentage) = opt_threshold_percentage {
                 liquidation_threshold.threshold_percentage = threshold_percentage;
             }
-        
+
             // Override default minimum amount if provided
             if let Option::Some(minimum_liquidation_amount) = opt_minimum_liquidation_amount {
                 liquidation_threshold.minimum_liquidation_amount = minimum_liquidation_amount;
             }
-        
+
             // Validate thresholds
             assert!(
-                liquidation_threshold.minimum_liquidation_amount > 0, 
-                "Invalid liquidation amount"
+                liquidation_threshold.minimum_liquidation_amount > 0, "Invalid liquidation amount"
             );
-            assert!(
-                liquidation_threshold.threshold_percentage > 0, 
-                "Invalid threshold percentage"
-            );
-        
+            assert!(liquidation_threshold.threshold_percentage > 0, "Invalid threshold percentage");
+
             // Store the liquidation threshold
             self.liquidation_thresholds.entry(token).write(Option::Some(liquidation_threshold));
         }

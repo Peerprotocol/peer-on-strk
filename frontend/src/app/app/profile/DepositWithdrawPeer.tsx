@@ -266,7 +266,7 @@ export default function DepositWithdrawPeer() {
         )}
       </div>
       <hr className='border-t pb-4' />
-      <div className='bg-smoke-white py-2 px-6 rounded-lg'>
+      <div className='py-2 px-6 rounded-lg bg-[#D9D9D9]'>
         <div className='flex justify-between mb-4'>
           <p>Your {selectedOption.toLowerCase()}</p>
           <div className=''>

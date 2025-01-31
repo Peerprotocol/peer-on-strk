@@ -1,18 +1,20 @@
 use starknet::{ContractAddress, get_contract_address, get_block_timestamp};
 use snforge_std::{
     declare, ContractClassTrait, DeclareResultTrait, DeclareResult, start_cheat_caller_address,
-    stop_cheat_caller_address, start_cheat_block_timestamp, spy_events, EventSpyAssertionsTrait
+    stop_cheat_caller_address, start_cheat_block_timestamp, spy_events, EventSpyAssertionsTrait,
+    store, load, map_entry_address
 };
-//use snforge_std::cheat_codes::mock_call;
+use snforge_std::cheatcodes::mock_call;
 
 use peer_protocol::interfaces::ipeer_protocol::{
     IPeerProtocolDispatcher, IPeerProtocolDispatcherTrait
 };
-use peer_protocol::peer_protocol::PeerProtocol;
+use peer_protocol::peer_protocol::{PeerProtocol};
 
 use peer_protocol::interfaces::ierc20::{IERC20Dispatcher, IERC20DispatcherTrait};
+use pragma_lib::types::{DataType, PragmaPricesResponse};
 
-use peer_protocol::peer_protocol::ProposalType;
+use peer_protocol::peer_protocol::{Proposal, ProposalType};
 
 use core::num::traits::Zero;
 
@@ -231,12 +233,16 @@ fn test_get_user_assets() {
     let user_assets = peer_protocol.get_user_assets(caller);
 
     assert!(
-        *user_assets.at(0).available_balance == deposit_amount1, "wrong asset available_balance 1"
+        *user_assets.at(0).available_balance == deposit_amount1,
+        "wrong asset available_balance
+        1"
     );
     assert!(*user_assets.at(0).token_address == token1_address, "wrong asset token1");
 
     assert!(
-        *user_assets.at(1).available_balance == deposit_amount2, "wrong asset available_balance 2"
+        *user_assets.at(1).available_balance == deposit_amount2,
+        "wrong asset available_balance
+        2"
     );
     assert!(*user_assets.at(1).token_address == token2_address, "wrong asset token2");
 
@@ -625,7 +631,6 @@ fn test_get_borrow_proposal_details() {
     assert!(*borrow_proposals.at(1).amount == another_borrow_amount, "Wrong borrow amount2");
 }
 
-
 #[test]
 #[fork(
     url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7",
@@ -733,7 +738,6 @@ fn test_create_counter_proposal() {
     );
     spy.assert_emitted(@array![(peer_protocol_address, expected_event)]);
 }
-
 
 #[test]
 #[fork(
@@ -1311,7 +1315,179 @@ fn test_get_token_price_success() {
     assert_ge!(token_price, 0);
     println!("Token price: {}", token_price);
 
-    let _pragma_address_main: ContractAddress = starknet::contract_address_const::<
+    let pragma_address_main: ContractAddress = starknet::contract_address_const::<
         0x2a85bd616f912537c50a49a4076db02c00b29b2cdc8a197ce92ed1837fa875b
     >();
+
+    let return_data = PragmaPricesResponse {
+        price: 3222000,
+        decimals: 8,
+        last_updated_timestamp: starknet::get_block_timestamp(),
+        num_sources_aggregated: 5,
+        expiration_timestamp: Option::Some(starknet::get_block_timestamp() + 3600),
+    };
+
+    mock_call(pragma_address_main, selector!("get_data_median"), return_data, 1_u32);
+    let (token_price, _) = peer_protocol.get_token_price(strk_token);
+    assert(token_price == return_data.price.into(), 'Price not equal');
 }
+
+// DO NOT DELETE
+// #[test]
+// #[fork(
+//     url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7",
+//     block_tag: latest
+// )]
+// fn test_check_positions_for_liquidation() {
+//     let peer_protocol_address = deploy_peer_protocol();
+
+//     let loan_token_address = deploy_token("MockToken");
+//     let collateral_token_address = deploy_token("MockToken1");
+//     let collateral_id = 'ETH/USD';
+//     let loan_id = 'STRK/USD';
+
+//     // required participants
+//     let owner = starknet::contract_address_const::<0x123626789>();
+//     let borrower = starknet::contract_address_const::<0x122226789>();
+//     let lender = starknet::contract_address_const::<0x123336789>();
+//     let pragma_address_main: ContractAddress = starknet::contract_address_const::<
+//         0x2a85bd616f912537c50a49a4076db02c00b29b2cdc8a197ce92ed1837fa875b
+//     >();
+
+//     let collateral_token = IERC20Dispatcher { contract_address: collateral_token_address };
+//     let loan_token = IERC20Dispatcher { contract_address: loan_token_address };
+//     let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+
+//     let mint_amount: u256 = 1000 * ONE_E18;
+//     let borrow_amount: u256 = 5000;
+//     let interest_rate: u64 = 5;
+//     let duration: u64 = 10;
+//     let required_collateral_value = 30000;
+//     let collateral_value_with_ratio = (required_collateral_value * COLLATERAL_RATIO_NUMERATOR)
+//         / COLLATERAL_RATIO_DENOMINATOR;
+
+//     // Add supported token
+//     start_cheat_caller_address(peer_protocol_address, owner);
+//     peer_protocol.add_supported_token(loan_token_address, loan_id);
+//     peer_protocol.add_supported_token(collateral_token_address, collateral_id);
+//     // deploy liquidity pool
+//     peer_protocol.deploy_liquidity_pool(loan_token_address, Option::None, Option::None);
+//     peer_protocol
+//         .deploy_liquidity_pool(collateral_token_address, Option::Some(80), Option::Some(1000));
+//     stop_cheat_caller_address(peer_protocol_address);
+
+//     loan_token.mint(borrower, mint_amount);
+//     collateral_token.mint(borrower, mint_amount);
+//     loan_token.mint(lender, borrow_amount);
+
+//     // Approve token
+//     start_cheat_caller_address(loan_token_address, borrower);
+//     loan_token.approve(peer_protocol_address, mint_amount);
+//     stop_cheat_caller_address(loan_token_address);
+
+//     // Approve collateral token
+//     start_cheat_caller_address(collateral_token_address, borrower);
+//     collateral_token.approve(peer_protocol_address, mint_amount);
+//     stop_cheat_caller_address(collateral_token_address);
+
+//     // Borrower Deposit collateral
+//     start_cheat_caller_address(peer_protocol_address, borrower);
+//     peer_protocol.deposit(collateral_token_address, collateral_value_with_ratio);
+//     stop_cheat_caller_address(peer_protocol_address);
+
+//     // Borrower creates a borrow proposal
+//     let base_price = 32220000;
+//     let return_data = PragmaPricesResponse {
+//         price: base_price,
+//         decimals: 8,
+//         last_updated_timestamp: starknet::get_block_timestamp(),
+//         num_sources_aggregated: 5,
+//         expiration_timestamp: Option::Some(starknet::get_block_timestamp() + 3600),
+//     };
+//     start_cheat_caller_address(peer_protocol_address, borrower);
+//     mock_call(pragma_address_main, selector!("get_data_median"), return_data, 1_u32);
+//     let proposal_id = peer_protocol
+//         .create_borrow_proposal(
+//             loan_token_address, collateral_token_address, borrow_amount, interest_rate, duration
+//         );
+//     stop_cheat_caller_address(peer_protocol_address);
+
+//     // Lender deposits token
+//     start_cheat_caller_address(loan_token_address, lender);
+//     loan_token.approve(peer_protocol_address, borrow_amount);
+//     stop_cheat_caller_address(loan_token_address);
+
+//     start_cheat_caller_address(peer_protocol_address, lender);
+//     peer_protocol.deposit(loan_token_address, borrow_amount);
+//     stop_cheat_caller_address(peer_protocol_address);
+
+//     // Lender accepts the borrow proposal
+//     start_cheat_caller_address(peer_protocol_address, lender);
+//     peer_protocol.accept_proposal(proposal_id);
+//     stop_cheat_caller_address(peer_protocol_address);
+
+//     // here for some reason
+
+//     let base_price = 32220000;
+//     let collateral_price = 50000000;
+
+//     start_cheat_caller_address(peer_protocol_address, borrower);
+//     let return_data = PragmaPricesResponse {
+//         price: base_price,
+//         decimals: 8,
+//         last_updated_timestamp: starknet::get_block_timestamp(),
+//         num_sources_aggregated: 5,
+//         expiration_timestamp: Option::Some(starknet::get_block_timestamp() + 3600),
+//     };
+
+//     let collateral_return_data = PragmaPricesResponse {
+//         price: collateral_price,
+//         decimals: 8,
+//         last_updated_timestamp: starknet::get_block_timestamp(),
+//         num_sources_aggregated: 5,
+//         expiration_timestamp: Option::Some(starknet::get_block_timestamp() + 3600),
+//     };
+
+//     // here, incase
+//     // mock the return value of collateral
+//     // mock_call(pragma_address_main, selector!("get_data_median"), return_data, 1_u32);
+//     // stop_cheat_caller_address(peer_protocol_address);
+
+//     mock_call(pragma_address_main, selector!("get_data_median"), return_data, 1_u32);
+//     mock_call(pragma_address_main, selector!("get_data_median"), collateral_return_data, 1_u32);
+//     let liquidated_positions = peer_protocol.check_positions_for_liquidation(borrower);
+
+//     if liquidated_positions.len() > 0 {
+//         println!("Collateral amount: {}", *liquidated_positions.at(0).collateral_amount);
+//         println!("Loan amount: {}", *liquidated_positions.at(0).loan_amount);
+//         println!("Current ltv: {}", *liquidated_positions.at(0).current_ltv);
+//         println!("Can be liquidated: {}", *liquidated_positions.at(0).can_be_liquidated);
+//     }
+//     assert_eq!(liquidated_positions.len(), 0); // There are no liquidated positions for borrower.
+
+//     // the collateral drops in value
+//     let drop = collateral_price * 90 / 100;
+//     let new_price = collateral_price - drop; // 95% ltv
+//     let return_data = PragmaPricesResponse {
+//         price: base_price,
+//         decimals: 8,
+//         last_updated_timestamp: starknet::get_block_timestamp(),
+//         num_sources_aggregated: 5,
+//         expiration_timestamp: Option::Some(starknet::get_block_timestamp() + 3600)
+//     };
+
+//     let collateral_return_data = PragmaPricesResponse {
+//         price: new_price,
+//         decimals: 8,
+//         last_updated_timestamp: starknet::get_block_timestamp(),
+//         num_sources_aggregated: 5,
+//         expiration_timestamp: Option::Some(starknet::get_block_timestamp() + 3600)
+//     };
+
+//     mock_call(pragma_address_main, selector!("get_data_median"), return_data, 1_u32);
+//     mock_call(pragma_address_main, selector!("get_data_median"), collateral_return_data, 1_u32);
+//     let liquidated_positions = peer_protocol.check_positions_for_liquidation(borrower);
+//     assert(liquidated_positions.len() > 0, 'No liquidations'); //
+// }
+
+

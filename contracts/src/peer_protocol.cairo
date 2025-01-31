@@ -11,7 +11,7 @@ enum TransactionType {
 }
 
 #[derive(Drop, Serde, Copy, PartialEq, starknet::Store)]
-enum ProposalType {
+pub enum ProposalType {
     BORROWING,
     LENDING
 }
@@ -462,12 +462,14 @@ pub mod PeerProtocol {
             let caller = get_caller_address();
             let created_at = get_block_timestamp();
 
-            let (token_price, _) = self.get_token_price(token);
-            let (collateral_token_price, _) = self.get_token_price(accepted_collateral_token);
-            let token_amount = (amount * ONE_E18 * ONE_E8) / token_price;
+            let (token_price, token_decimals) = self.get_token_price(token);
+            let (collateral_token_price, collateral_decimals) = self
+                .get_token_price(accepted_collateral_token);
+            let token_amount = (amount * ONE_E18 * fast_power(10_u32, token_decimals).into())
+                / token_price;
             let required_collateral_value: u256 = (amount
                 * ONE_E18
-                * ONE_E8
+                * fast_power(10_u32, collateral_decimals).into()
                 * COLLATERAL_RATIO_NUMERATOR)
                 / (collateral_token_price * COLLATERAL_RATIO_DENOMINATOR);
 
@@ -597,12 +599,14 @@ pub mod PeerProtocol {
 
             let available_lending_funds = lender_token_balance - locked_funds;
 
-            let (token_price, _) = self.get_token_price(token);
-            let (collateral_token_price, _) = self.get_token_price(accepted_collateral_token);
-            let token_amount = (amount * ONE_E18 * ONE_E8) / token_price;
+            let (token_price, token_decimals) = self.get_token_price(token);
+            let (collateral_token_price, collateral_decimals) = self
+                .get_token_price(accepted_collateral_token);
+            let token_amount = (amount * ONE_E18 * fast_power(10_u32, token_decimals).into())
+                / token_price;
             let required_collateral_value: u256 = (amount
                 * ONE_E18
-                * ONE_E8
+                * fast_power(10_u32, collateral_decimals).into()
                 * COLLATERAL_RATIO_NUMERATOR)
                 / (collateral_token_price * COLLATERAL_RATIO_DENOMINATOR);
 
@@ -838,11 +842,14 @@ pub mod PeerProtocol {
             assert(proposal.is_cancelled == false, 'proposal is cancelled');
 
             // Calculate protocol fee
-            let (token_price, _) = self.get_token_price(proposal.token);
+            let (token_price, token_decimals) = self.get_token_price(proposal.token);
             // let (collateral_token_price, _) =
             // self.get_token_price(proposal.accepted_collateral_token);
 
-            let token_amount = (proposal.amount * ONE_E18 * ONE_E8) / token_price;
+            let token_amount = (proposal.amount
+                * ONE_E18
+                * fast_power(10_u32, token_decimals).into())
+                / token_price;
             let fee_amount = token_amount * PROTOCOL_FEE_PERCENTAGE / 100;
             let net_amount = token_amount - fee_amount;
 
@@ -1019,14 +1026,18 @@ pub mod PeerProtocol {
             assert(block_timestamp <= proposal.repayment_date, 'repayment date overdue');
 
             // Calculate repayment amount in tokens
-            let (token_price, _) = self.get_token_price(proposal.token); // 1 Token = X USD
+            let (token_price, token_decimals) = self
+                .get_token_price(proposal.token); // 1 Token = X USD
 
             let mut repayment_amount = amount;
 
             if repayment_amount + proposal.amount_repaid >= proposal.amount {
                 repayment_amount = proposal.amount - proposal.amount_repaid;
             }
-            let repayment_amount_in_tokens = (ONE_E18 * repayment_amount * ONE_E8) / token_price;
+            let repayment_amount_in_tokens = (ONE_E18
+                * repayment_amount
+                * fast_power(10_u32, token_decimals).into())
+                / token_price;
 
             // Calculate protocol fee
             let fee_amount_in_tokens = (repayment_amount_in_tokens * PROTOCOL_FEE_PERCENTAGE) / 100;
@@ -1054,11 +1065,14 @@ pub mod PeerProtocol {
                 .transfer_from(caller, proposal.lender, repayment_amount_with_interest_in_tokens);
 
             // Calculate collateral release amount
+            let (_, collateral_decimals) = self.get_token_price(proposal.accepted_collateral_token);
             let collateral = proposal.required_collateral_value;
             let repayment_percentage = (proposal.amount_repaid + repayment_amount)
-                * ONE_E8
+                * fast_power(10_u32, collateral_decimals).into()
                 / proposal.amount;
-            let total_collateral_release_amount = collateral * repayment_percentage / ONE_E8;
+            let total_collateral_release_amount = collateral
+                * repayment_percentage
+                / fast_power(10_u32, collateral_decimals).into();
             let collateral_release_amount = total_collateral_release_amount
                 - proposal.released_collateral;
 
@@ -1116,10 +1130,8 @@ pub mod PeerProtocol {
 
             let total_proposals = self.proposals_count.read();
             let mut i: u256 = 1;
-
             while i <= total_proposals {
                 let proposal = self.proposals.entry(i).read();
-
                 if proposal.borrower == user
                     && proposal.is_accepted == true
                     && proposal.is_repaid == false {
@@ -1155,6 +1167,7 @@ pub mod PeerProtocol {
             assert(proposal.is_accepted && !proposal.is_repaid, 'invalid proposal state');
 
             // Verify position is liquidatable
+            // current loan value is returned in the amount of tokens, not usd.
             let (_, can_liquidate, current_loan_value) = self._verify_liquidation(@proposal);
             assert(can_liquidate, 'position not liquidatable');
 
@@ -1574,7 +1587,6 @@ pub mod PeerProtocol {
         }
 
         fn _verify_liquidation(ref self: ContractState, proposal: @Proposal) -> (u256, bool, u256) {
-            assert(self.pools.entry(*proposal.token).is_active.read(), 'Pool Error');
             assert(
                 self.pools.entry(*proposal.accepted_collateral_token).is_active.read(), 'Pool Error'
             );
@@ -1583,29 +1595,38 @@ pub mod PeerProtocol {
             let (collateral_token_price, collateral_decimals) = self
                 .get_token_price(*proposal.accepted_collateral_token);
 
-            // Calculate current loan value
-            let current_loan_value = *proposal.amount
-                * loan_token_price
-                / fast_power(10_u32, loan_decimals).into();
-            let current_collateral_value = *proposal.required_collateral_value
-                * collateral_token_price
-                / fast_power(10_u32, collateral_decimals).into();
+            // Initially, the ltv is at 76% on borrow. Threshold is 85% to trigger liquidation.
+            // convert both the current loan amount tokens and the current collateral amount tokens
+            // to USD (to match), then check the current ltv.
+            let current_loan_value_in_usd = (*proposal.token_amount * loan_token_price)
+                / (ONE_E18 * fast_power(10_u32, loan_decimals).into());
 
+            let current_collateral_value_in_usd = (*proposal.required_collateral_value
+                * collateral_token_price)
+                / (ONE_E18 * fast_power(10_u32, collateral_decimals).into());
             // Calculate current LTV ratio
-            let current_ltv = (current_loan_value * 100) / current_collateral_value;
+            let current_ltv = (current_loan_value_in_usd * 100) / current_collateral_value_in_usd;
 
-            // Get liquidation threshold for this token
-            let opt_threshold = self.liquidation_thresholds.entry(*proposal.token).read();
+            // Get liquidation threshold for collateral token
+            let opt_threshold = self
+                .liquidation_thresholds
+                .entry(*proposal.accepted_collateral_token)
+                .read();
+            assert!(opt_threshold.is_some(), "Liquidation threshold not set");
 
-            let mut can_liquidate = false;
-            if let Option::Some(threshold) = opt_threshold {
-                let can_liquidate_ref: bool = current_ltv >= threshold.threshold_percentage;
-                let threshold_loan_amount = current_collateral_value
-                    * threshold.threshold_percentage;
-                let liquidation_value = current_loan_value - threshold_loan_amount;
-                can_liquidate = can_liquidate_ref
-                    && liquidation_value >= threshold.minimum_liquidation_amount;
-            }
+            let threshold = opt_threshold.unwrap();
+            let can_liquidate_ref = current_ltv >= threshold.threshold_percentage;
+            let gas_percentage = threshold.threshold_percentage - current_ltv;
+            let liquidation_amount = gas_percentage * current_collateral_value_in_usd / 100;
+            let can_liquidate = can_liquidate_ref
+                && liquidation_amount >= threshold.minimum_liquidation_amount;
+
+            // convert to the amount of tokens before recording
+            // though from the current state of this codebase, it's never used.
+            let current_loan_value = (current_loan_value_in_usd
+                * ONE_E18
+                * fast_power(10_u32, loan_decimals).into())
+                / loan_token_price;
 
             (current_ltv, can_liquidate, current_loan_value)
         }

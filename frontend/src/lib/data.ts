@@ -204,3 +204,102 @@ export const tableData = [
     duration: "7days",
   },
 ];
+
+export const positionData = [
+  {
+    month: 'Sep 2024',
+    data: [
+      {
+        asset: 'USDC',
+        position_type: 'Borrow',
+        price:'0.99',
+        amount: '200 USDC',
+        merchant: '0x1234567890abcdef1234567890abcdef12345678',
+        status: 'Pending',
+        created_at: 'Sep 10, 2024'
+      },
+      {
+        asset: 'USDC',
+        position_type: 'Borrow',
+        price:'0.99',
+        amount: '200 USDC',
+        merchant: '0x1234567890abcdef1234567890abcdef12345678',
+        status: 'Completed',
+        created_at: 'Sep 10, 2024'
+      },
+      {
+        asset: 'USDC',
+        position_type: 'Borrow',
+        price:'0.99',
+        amount: '200 USDC',
+        merchant: '0x1234567890abcdef1234567890abcdef12345678',
+        status: 'Ongoing',
+        created_at: 'Sep 10, 2024'
+      }
+    ]
+  },
+  {
+    month: 'Aug 2024',
+    data: [
+      {
+        asset: 'USDC',
+        position_type: 'Borrow',
+        price:'0.99',
+        amount: '200 USDC',
+        merchant: '0x1234567890abcdef1234567890abcdef12345678',
+        status: 'Pending',
+        created_at: 'Sep 10, 2024'
+      },
+      {
+        asset: 'USDC',
+        position_type: 'Borrow',
+        price:'0.99',
+        amount: '200 USDC',
+        merchant: '0x1234567890abcdef1234567890abcdef12345678',
+        status: 'Completed',
+        created_at: 'Sep 10, 2024'
+      },
+      {
+        asset: 'USDC',
+        position_type: 'Borrow',
+        price:'0.99',
+        amount: '200 USDC',
+        merchant: '0x1234567890abcdef1234567890abcdef12345678',
+        status: 'Pending',
+        created_at: 'Sep 10, 2024'
+      }
+    ]
+  },
+  {
+    month: 'July 2024',
+    data: [
+      {
+        asset: 'USDC',
+        position_type: 'Borrow',
+        price:'0.99',
+        amount: '200 USDC',
+        merchant: '0x1234567890abcdef1234567890abcdef12345678',
+        status: 'Ongoing',
+        created_at: 'Sep 10, 2024'
+      },
+      {
+        asset: 'USDC',
+        position_type: 'Borrow',
+        price:'0.99',
+        amount: '200 USDC',
+        merchant: '0x1234567890abcdef1234567890abcdef12345678',
+        status: 'Pending',
+        created_at: 'Sep 10, 2024'
+      },
+      {
+        asset: 'USDC',
+        position_type: 'Borrow',
+        price:'0.99',
+        amount: '200 USDC',
+        merchant: '0x1234567890abcdef1234567890abcdef12345678',
+        status: 'Pending',
+        created_at: 'Sep 10, 2024'
+      }
+    ]
+  }
+]

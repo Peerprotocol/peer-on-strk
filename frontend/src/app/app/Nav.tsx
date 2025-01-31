@@ -5,7 +5,7 @@ import Link from "next/link";
 import ConnectButton from "@/components/lib/Connect";
 import AddressBar from "@/components/lib/AddressBar";
 import { useAccount } from "@starknet-react/core";
-import { X } from "lucide-react";
+import { FileText, X } from "lucide-react";
 
 const CHAINS = {
   SOLANA: {
@@ -142,7 +142,15 @@ const Nav = () => {
         />
       </div>
 
-      <div className="relative">
+      <div className="relative flex items-center gap-3">
+        <Link href={'/app/positions'}>
+          <Image 
+            src={'/images/position_icon.png'}
+            alt="Position Icon"
+            height={40}
+            width={40}
+          />
+        </Link>
         {address ? (
           <div className="flex items-center gap-4">
             <AddressBar />

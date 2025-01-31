@@ -216,7 +216,7 @@ pub mod PeerProtocol {
     const ADMIN_ROLE: felt252 = selector!("ADMIN");
     const MAINTAINER_ROLE: felt252 = selector!("MAINTAINER");
     const SCALE: u256 = 1_000_000; // 6 decimals for percentage calculations
-    const MIN_RATE: u256 = 100_000; // 0.1% minimum rate
+    const MIN_RATE: u256 = 10_000; // 0.1% minimum rate
     const MAX_RATE: u256 = 300_000_000; // 300% maximum rate
     const RATE_UPDATE_INTERVAL: u64 = 3600; // 1 hour in seconds
 

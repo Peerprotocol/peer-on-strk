@@ -114,7 +114,7 @@ pub struct PoolData {
     total_borrows: u256
 }
 
-#[derive(Drop, starknet::Store)]
+#[derive(Drop, Serde, Copy, starknet::Store)]
 pub struct PoolRates {
     base_rate: u256,
     utilization_optimal: u256,
@@ -1253,17 +1253,17 @@ pub mod PeerProtocol {
             
             // calculate borrow rate based on utilization
             let borrow_rate = if utilization <= rates.utilization_optimal {
-                // Before kink: Rb = Rbase + U × Rslope1
+                // before kink: Rb = Rbase + U × Rslope1
                 rates.base_rate + (utilization * rates.slope1) / SCALE
             } else {
-                // After kink: Rb = Rbase + Ukink × Rslope1 + (U - Ukink) × Rslope2
+                // after kink: Rb = Rbase + Ukink × Rslope1 + (U - Ukink) × Rslope2
                 let excess_util = utilization - rates.utilization_optimal;
                 rates.base_rate + 
                     (rates.utilization_optimal * rates.slope1) / SCALE +
                     (excess_util * rates.slope2) / SCALE
             };
     
-            // Apply min/max bounds to borrow rate
+            // apply min/max bounds to borrow rate
             let bounded_borrow_rate = if borrow_rate < MIN_RATE {
                 MIN_RATE
             } else if borrow_rate > MAX_RATE {
@@ -1272,7 +1272,7 @@ pub mod PeerProtocol {
                 borrow_rate
             };
     
-            // Calculate lending rate with reserve factor
+            // calculate lending rate with reserve factor
             // Rl = U × Rb × (1 - reserve_factor)
             let reserve_factor = PROTOCOL_FEE_PERCENTAGE; // Using existing 1% protocol fee
             let lending_rate = (bounded_borrow_rate * utilization * (100 - reserve_factor)) / (SCALE * 100);
@@ -1299,17 +1299,13 @@ pub mod PeerProtocol {
             // validate parameters
             assert(utilization_optimal <= SCALE, 'Utilization must be <= 100%');
             assert(base_rate <= MAX_RATE, 'Base rate too high');
-            
-            // update storage
-            self.pool_rates.write(
-                token,
-                PoolRates {
-                    base_rate,
-                    utilization_optimal,
-                    slope1,
-                    slope2
-                }
-            );
+
+            self.pool_rates.entry(token).write(PoolRates {
+                base_rate,
+                utilization_optimal,
+                slope1,
+                slope2
+            });
     
             self.emit(
                 RatesUpdated {
@@ -1320,6 +1316,10 @@ pub mod PeerProtocol {
                     slope2
                 }
             );
+        }
+
+        fn get_pool_rates(self: @ContractState, token: ContractAddress) -> PoolRates {
+            self.pool_rates.entry(token).read()
         }
     }
 

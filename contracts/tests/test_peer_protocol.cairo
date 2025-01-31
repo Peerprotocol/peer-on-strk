@@ -20,6 +20,10 @@ const ONE_E18: u256 = 1000000000000000000_u256;
 const ONE_E8: u256 = 100000000_u256;
 const COLLATERAL_RATIO_NUMERATOR: u256 = 13_u256;
 const COLLATERAL_RATIO_DENOMINATOR: u256 = 10_u256;
+const SCALE: u256 = 1_000_000;
+const MIN_RATE: u256 = 100_000;
+const MAX_RATE: u256 = 300_000_000;
+const PROTOCOL_FEE_PERCENTAGE: u256 = 1_u256;
 
 fn deploy_token(name: ByteArray) -> ContractAddress {
     let contract = declare("MockToken").unwrap().contract_class();
@@ -1168,7 +1172,138 @@ fn test_deploy_liquidity_pool() {
     // get pool data and check
     let pool_data = peer_protocol.get_liquidity_pool_data(token_address);
     assert!(pool_data.pool_token != Zero::zero(), "Pool token address is zero");
-    assert!(pool_data.is_active, "Pool is not deployed")
+    assert!(pool_data.is_active, "Pool is not deployed");
+}
+
+#[test]
+fn test_rate_system() {
+    // Setup
+    let token_address = deploy_token("MockToken");
+    let peer_protocol_address = deploy_peer_protocol();
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+    let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
+
+    // Add supported token
+    start_cheat_caller_address(peer_protocol_address, owner);
+    peer_protocol.add_supported_token(token_address, 0);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // Deploy pool
+    start_cheat_caller_address(peer_protocol_address, owner);
+    peer_protocol.deploy_liquidity_pool(token_address, Option::None, Option::None);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    let pool_rates = peer_protocol.get_pool_rates(token_address);
+    assert(pool_rates.base_rate == 20_000, 'wrong base rate');
+    assert(pool_rates.utilization_optimal == 800_000, 'wrong base rate');
+    assert(pool_rates.slope1 == 80_000, 'wrong base rate');
+    assert(pool_rates.slope2 == 400_000, 'wrong base rate');
+
+    // // Test 1: Zero deposits
+    // let (lending_rate, borrow_rate) = peer_protocol.calculate_rates(token_address, 100, 0);
+    // assert(lending_rate == MIN_RATE, 'Wrong min lending rate');
+    // assert(borrow_rate == MIN_RATE, 'Wrong min borrow rate');
+
+    // // Test 2: 50% utilization (below kink)
+    // let total_deposits = 1_000_000; // 1M
+    // let total_borrows = 500_000;    // 500K = 50% utilization
+    // let (lending_rate, borrow_rate) = peer_protocol.calculate_rates(
+    //     token_address, 
+    //     total_borrows, 
+    //     total_deposits
+    // );
+    
+    // // At 50% utilization:
+    // // borrow_rate = 20_000 + (500_000 * 80_000) / 1_000_000 = 60_000 (6%)
+    // assert(borrow_rate == 60_000, 'Wrong borrow rate at 50%');
+    // // lending_rate = 60_000 * 500_000 * 99 / (1_000_000 * 100) = 29_700 (2.97%)
+    // assert(lending_rate == 29_700, 'Wrong lending rate at 50%');
+
+    // // Test 3: 90% utilization (above kink)
+    // let total_deposits = 1_000_000;
+    // let total_borrows = 900_000;
+    // let (lending_rate, borrow_rate) = peer_protocol.calculate_rates(
+    //     token_address,
+    //     total_borrows,
+    //     total_deposits
+    // );
+    
+    // // At 90% utilization:
+    // // borrow_rate = 20_000 + (800_000 * 80_000) / 1_000_000 + 
+    // //               ((900_000 - 800_000) * 400_000) / 1_000_000 = 124_000 (12.4%)
+    // assert(borrow_rate == 124_000, 'Wrong borrow rate at 90%');
+    // // lending_rate = 124_000 * 900_000 * 99 / (1_000_000 * 100) = 110_484 (11.0484%)
+    // assert(lending_rate == 110_484, 'Wrong lending rate at 90%');
+
+    // // Test 4: Update rates
+    // start_cheat_caller_address(peer_protocol_address, owner);
+    // peer_protocol.update_pool_rates(
+    //     token_address,
+    //     30_000,      // 3% base rate
+    //     700_000,     // 70% optimal utilization
+    //     100_000,     // 10% slope1
+    //     500_000      // 50% slope2
+    // );
+    // stop_cheat_caller_address(peer_protocol_address);
+
+    // // Test with updated rates at 60% utilization
+    // let (lending_rate, borrow_rate) = peer_protocol.calculate_rates(
+    //     token_address,
+    //     600_000,    // 60% utilization
+    //     1_000_000
+    // );
+    
+    // // With new rates at 60% utilization:
+    // // borrow_rate = 30_000 + (600_000 * 100_000) / 1_000_000 = 90_000 (9%)
+    // assert(borrow_rate == 90_000, 'Wrong updated borrow rate');
+    // // lending_rate = 90_000 * 600_000 * 99 / (1_000_000 * 100) = 53_460 (5.346%)
+    // assert(lending_rate == 53_460, 'Wrong updated lending rate');
+}
+
+#[test]
+#[should_panic(expected: 'Utilization must be <= 100%')]
+fn test_invalid_utilization() {
+    let token_address = deploy_token("MockToken");
+    let peer_protocol_address = deploy_peer_protocol();
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+    let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
+
+    start_cheat_caller_address(peer_protocol_address, owner);
+    peer_protocol.add_supported_token(token_address, 0);
+    peer_protocol.deploy_liquidity_pool(token_address, Option::None, Option::None);
+    
+    // Try to set utilization > 100%
+    peer_protocol.update_pool_rates(
+        token_address,
+        20_000,
+        1_100_000,  // 110% optimal utilization
+        80_000,
+        400_000
+    );
+    stop_cheat_caller_address(peer_protocol_address);
+}
+
+#[test]
+#[should_panic(expected: 'Base rate too high')]
+fn test_invalid_base_rate() {
+    let token_address = deploy_token("MockToken");
+    let peer_protocol_address = deploy_peer_protocol();
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+    let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
+
+    start_cheat_caller_address(peer_protocol_address, owner);
+    peer_protocol.add_supported_token(token_address, 0);
+    peer_protocol.deploy_liquidity_pool(token_address, Option::None, Option::None);
+    
+    // Try to set base rate > MAX_RATE
+    peer_protocol.update_pool_rates(
+        token_address,
+        MAX_RATE + 1,
+        800_000,
+        80_000,
+        400_000
+    );
+    stop_cheat_caller_address(peer_protocol_address);
 }
 
 #[test]

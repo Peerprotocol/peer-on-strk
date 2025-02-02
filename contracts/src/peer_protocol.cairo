@@ -1321,7 +1321,7 @@ pub mod PeerProtocol {
             );
 
             let (token_price, token_decimals) = self
-            .get_token_price(token);
+                .get_token_price(token);
             let (collateral_token_price, collateral_token_decimals) = self
                 .get_token_price(collateral);
 
@@ -1392,11 +1392,11 @@ pub mod PeerProtocol {
 
             // Update pool's borrowed amount
             let prev_pool_borrowed = token_pool.total_borrowed.read();
-            token_pool.total_borrowed.write(prev_pool_borrowed + token_amount);
+            token_pool.total_borrowed.write(prev_pool_borrowed + net_amount);
 
             // Update user's borrowed amount
             let user_borrowed = self.borrowed_assets.entry((caller, token)).read();
-            self.borrowed_assets.entry((caller, token)).write(user_borrowed + token_amount);
+            self.borrowed_assets.entry((caller, token)).write(user_borrowed + net_amount);
 
             self
                 .emit(
@@ -1404,12 +1404,11 @@ pub mod PeerProtocol {
                         user: caller,
                         borrowed: token,
                         collateral: collateral,
-                        borrowed_amount: token_amount,
+                        borrowed_amount: net_amount,
                         collateral_locked_amount: required_collateral_value,
                     }
                 );
         }
-
     }
 
     #[generate_trait]

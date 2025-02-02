@@ -111,7 +111,8 @@ pub struct PoolData {
     pool_token: ContractAddress,
     is_active: bool,
     total_deposits: u256,
-    total_borrows: u256
+    total_borrowed: u256,
+    total_collateral_locked: u256
 }
 
 #[derive(Drop, Serde, Copy, starknet::Store)]
@@ -240,7 +241,10 @@ pub mod PeerProtocol {
         AccessControlEvent: AccessControlComponent::Event,
         #[flat]
         SRC5Event: SRC5Component::Event,
-        RatesUpdated: RatesUpdated
+        RatesUpdated: RatesUpdated,
+        PoolDepositSuccessful: PoolDepositSuccessful,
+        PoolWithdrawalSuccessful: PoolWithdrawalSuccessful,
+        PoolBorrowSuccessful: PoolBorrowSuccessful
     }
 
     #[derive(Drop, starknet::Event)]
@@ -357,6 +361,29 @@ pub mod PeerProtocol {
         utilization_optimal: u256,
         slope1: u256,
         slope2: u256,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct PoolDepositSuccessful {
+        pub user: ContractAddress,
+        pub token: ContractAddress,
+        pub amount: u256,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct PoolWithdrawalSuccessful {
+        pub user: ContractAddress,
+        pub token: ContractAddress,
+        pub amount: u256,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct PoolBorrowSuccessful {
+        pub user: ContractAddress,
+        pub borrowed: ContractAddress,
+        pub collateral: ContractAddress,
+        pub borrowed_amount: u256,
+        pub collateral_locked_amount: u256,
     }
 
     #[constructor]
@@ -1317,6 +1344,29 @@ pub mod PeerProtocol {
         fn get_pool_rates(self: @ContractState, token: ContractAddress) -> PoolRates {
             self.pool_rates.entry(token).read()
         }
+
+        fn deposit_to_pool(ref self: ContractState, token: ContractAddress, amount: u256) {
+            let pool_data = self.pools.entry(token);
+
+            assert!(pool_data.is_active.read(), "Pool is not active");
+
+            self.deposit(token, amount);
+
+            // Update the pool's total deposited amount
+            let updated_deposit = pool_data.total_deposits.read() + amount;
+            pool_data.total_deposits.write(updated_deposit);
+
+            self
+                .emit(
+                    PoolDepositSuccessful {
+                        user: get_caller_address(),
+                        token: token,
+                        amount: amount
+                    }
+                );
+        }
+
+        
     }
 
 
@@ -1551,7 +1601,11 @@ pub mod PeerProtocol {
 
             // Initialize pool data with zero totals
             let pool_data = PoolData {
-                pool_token: token, is_active: true, total_deposits: 0, total_borrows: 0
+                pool_token: token,
+                is_active: true,
+                total_deposits: 0,
+                total_borrowed: 0,
+                total_collateral_locked: 0
             };
 
             // activate pool

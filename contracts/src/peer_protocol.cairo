@@ -113,6 +113,16 @@ pub struct PoolData {
     total_deposit: u256,
     total_borrowed: u256,
     total_collateral_locked: u256
+    total_deposits: u256,
+    total_borrows: u256
+}
+
+#[derive(Drop, Serde, Copy, starknet::Store)]
+pub struct PoolRates {
+    base_rate: u256,
+    utilization_optimal: u256,
+    slope1: u256,
+    slope2: u256,
 }
 
 fn get_default_liquidation_threshold() -> LiquidationThreshold {
@@ -124,7 +134,7 @@ pub mod PeerProtocol {
     use starknet::event::EventEmitter;
     use super::{
         Transaction, TransactionType, UserDeposit, UserAssets, Proposal, ProposalType,
-        CounterProposal, BorrowedDetails, PoolData
+        CounterProposal, BorrowedDetails, PoolData, PoolRates
     };
     use peer_protocol::interfaces::ipeer_protocol::IPeerProtocol;
     use peer_protocol::interfaces::ierc20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -195,7 +205,8 @@ pub mod PeerProtocol {
         src5: SRC5Component::Storage,
         #[substorage(v0)]
         accesscontrol: AccessControlComponent::Storage,
-        pragma_contract: ContractAddress
+        pragma_contract: ContractAddress,
+        pool_rates: Map<ContractAddress, PoolRates>
     }
 
     const MAX_U64: u64 = 18446744073709551615_u64;
@@ -207,6 +218,10 @@ pub mod PeerProtocol {
     const SECONDS_IN_YEAR: u256 = 31536000_u256;
     const ADMIN_ROLE: felt252 = selector!("ADMIN");
     const MAINTAINER_ROLE: felt252 = selector!("MAINTAINER");
+    const SCALE: u256 = 1_000_000; // 6 decimals for percentage calculations
+    const MIN_RATE: u256 = 10_000; // 0.1% minimum rate
+    const MAX_RATE: u256 = 300_000_000; // 300% maximum rate
+    const RATE_UPDATE_INTERVAL: u64 = 3600; // 1 hour in seconds
 
 
     #[event]
@@ -230,7 +245,8 @@ pub mod PeerProtocol {
         #[flat]
         AccessControlEvent: AccessControlComponent::Event,
         #[flat]
-        SRC5Event: SRC5Component::Event
+        SRC5Event: SRC5Component::Event,
+        RatesUpdated: RatesUpdated
     }
 
     #[derive(Drop, starknet::Event)]
@@ -361,6 +377,13 @@ pub mod PeerProtocol {
         pub collateral: ContractAddress,
         pub borrowed_amount: u256,
         pub collateral_locked_amount: u256,
+    }
+    struct RatesUpdated {
+        token: ContractAddress,
+        base_rate: u256,
+        utilization_optimal: u256,
+        slope1: u256,
+        slope2: u256,
     }
 
     #[constructor]
@@ -1233,6 +1256,7 @@ pub mod PeerProtocol {
                 ._deploy_liquidity_pool(
                     token, caller, opt_threshold_percentage, opt_minimum_liquidation_amount
                 );
+
             self
                 .emit(
                     PoolCreated {
@@ -1240,9 +1264,87 @@ pub mod PeerProtocol {
                     }
                 );
         }
+
         fn get_liquidity_pool_data(self: @ContractState, token: ContractAddress) -> PoolData {
             self.pools.entry(token).read()
         }
+
+        fn calculate_rates(
+            self: @ContractState, token: ContractAddress, total_borrows: u256, total_deposits: u256
+        ) -> (u256, u256) {
+            // prevent division by zero
+            if total_deposits == 0 {
+                return (MIN_RATE, MIN_RATE);
+            }
+
+            // calculate utilization rate
+            let utilization = (total_borrows * SCALE) / total_deposits;
+
+            // get pool parameters
+            let rates = self.pool_rates.read(token);
+
+            // calculate borrow rate based on utilization
+            let borrow_rate = if utilization <= rates.utilization_optimal {
+                // before kink: Rb = Rbase + U × Rslope1
+                rates.base_rate + (utilization * rates.slope1) / SCALE
+            } else {
+                // after kink: Rb = Rbase + Ukink × Rslope1 + (U - Ukink) × Rslope2
+                let excess_util = utilization - rates.utilization_optimal;
+                rates.base_rate
+                    + (rates.utilization_optimal * rates.slope1) / SCALE
+                    + (excess_util * rates.slope2) / SCALE
+            };
+
+            // apply min/max bounds to borrow rate
+            let bounded_borrow_rate = if borrow_rate < MIN_RATE {
+                MIN_RATE
+            } else if borrow_rate > MAX_RATE {
+                MAX_RATE
+            } else {
+                borrow_rate
+            };
+
+            // calculate lending rate with reserve factor
+            // Rl = U × Rb × (1 - reserve_factor)
+            let reserve_factor = PROTOCOL_FEE_PERCENTAGE; // Using existing 1% protocol fee
+            let lending_rate = (bounded_borrow_rate * utilization * (100 - reserve_factor))
+                / (SCALE * 100);
+
+            let bounded_lending_rate = if lending_rate < MIN_RATE {
+                MIN_RATE
+            } else if lending_rate > MAX_RATE {
+                MAX_RATE
+            } else {
+                lending_rate
+            };
+
+            (bounded_lending_rate, bounded_borrow_rate)
+        }
+
+        fn update_pool_rates(
+            ref self: ContractState,
+            token: ContractAddress,
+            base_rate: u256,
+            utilization_optimal: u256,
+            slope1: u256,
+            slope2: u256
+        ) {
+            // validate parameters
+            assert(utilization_optimal <= SCALE, 'Utilization must be <= 100%');
+            assert(base_rate <= MAX_RATE, 'Base rate too high');
+
+            self
+                .pool_rates
+                .entry(token)
+                .write(PoolRates { base_rate, utilization_optimal, slope1, slope2 });
+
+            self.emit(RatesUpdated { token, base_rate, utilization_optimal, slope1, slope2 });
+        }
+
+        fn get_pool_rates(self: @ContractState, token: ContractAddress) -> PoolRates {
+            self.pool_rates.entry(token).read()
+        }
+    }
 
         fn deposit_to_pool(
             ref self: ContractState, token: ContractAddress, amount: u256
@@ -1614,21 +1716,39 @@ pub mod PeerProtocol {
                 self.owner.read() == caller || self.accesscontrol.has_role(MAINTAINER_ROLE, caller),
                 "Unauthorized Access"
             );
+
             // check whether token is supported
             let token_supported_check: bool = self.supported_tokens.entry(token).read();
             assert!(token_supported_check, "Token is not supported");
+
             // check whether pool does not exists
             let pool_exist_check = (self.pools.entry(token).pool_token.read() == Zero::zero()
                 && !self.pools.entry(token).is_active.read());
             assert!(pool_exist_check, "Pool already exist");
+
             // initialize liquidation threshold.
             self
                 ._init_liquidation_threshold(
                     token, opt_threshold_percentage, opt_minimum_liquidation_amount
                 );
+
+            // Initialize default rates with default values
+            self
+                .update_pool_rates(
+                    token,
+                    20_000, // 2% base rate (Rbase)
+                    800_000, // 80% optimal utilization (Ukink)
+                    80_000, // 8% slope1 
+                    400_000 // 40% slope2 (steeper after kink)
+                );
+
+            // Initialize pool data with zero totals
+            let pool_data = PoolData {
+                pool_token: token, is_active: true, total_deposits: 0, total_borrows: 0
+            };
+
             // activate pool
-            self.pools.entry(token).pool_token.write(token);
-            self.pools.entry(token).is_active.write(true);
+            self.pools.entry(token).write(pool_data);
         }
 
         fn _init_liquidation_threshold(
@@ -1638,18 +1758,24 @@ pub mod PeerProtocol {
             opt_minimum_liquidation_amount: Option<u256>
         ) {
             let mut liquidation_threshold = get_default_liquidation_threshold();
+
+            // Override default threshold if provided
             if let Option::Some(threshold_percentage) = opt_threshold_percentage {
                 liquidation_threshold.threshold_percentage = threshold_percentage;
             }
 
+            // Override default minimum amount if provided
             if let Option::Some(minimum_liquidation_amount) = opt_minimum_liquidation_amount {
                 liquidation_threshold.minimum_liquidation_amount = minimum_liquidation_amount;
             }
 
+            // Validate thresholds
             assert!(
                 liquidation_threshold.minimum_liquidation_amount > 0, "Invalid liquidation amount"
             );
             assert!(liquidation_threshold.threshold_percentage > 0, "Invalid threshold percentage");
+
+            // Store the liquidation threshold
             self.liquidation_thresholds.entry(token).write(Option::Some(liquidation_threshold));
         }
 

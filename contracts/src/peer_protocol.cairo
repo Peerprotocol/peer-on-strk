@@ -1282,7 +1282,7 @@ pub mod PeerProtocol {
             // Prevent withdrawal if the amount exceeds the pool's available liquidity
             assert!(
                 available_liquidity >= amount,
-                "Insufficient pool liquidity for requested withdrawal"
+                "Requested withdrawal exceeds available pool liquidity"
             );
 
             self.withdraw(token, amount);

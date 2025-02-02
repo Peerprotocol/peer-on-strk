@@ -1505,6 +1505,159 @@ fn test_borrow_from_pool() {
     spy.assert_emitted(@array![(peer_protocol_address, expected_event)]);
 }
 
+#[test]
+#[should_panic(expected: "Insufficient user collateral")]
+#[fork(
+    url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7",
+    block_tag: latest
+)]
+fn test_borrow_from_pool_should_panic_for_insufficient_user_collateral() {
+    let token_address = deploy_token("MockToken");
+    let collateral_token_address = deploy_token("MockToken1");
+    let peer_protocol_address = deploy_peer_protocol();
+
+    let token = IERC20Dispatcher { contract_address: token_address };
+    let collateral_token = IERC20Dispatcher { contract_address: collateral_token_address };
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+
+    let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
+    let borrower: ContractAddress = starknet::contract_address_const::<0x122226789>();
+    let lender: ContractAddress = starknet::contract_address_const::<0x123336789>();
+
+    let mint_amount: u256 = 3000 * ONE_E18;
+    let borrow_amount: u256 = 500; // Borrow amount in USD
+
+    // Setup and activate the pools
+    start_cheat_caller_address(peer_protocol_address, owner);
+    peer_protocol.add_supported_token(token_address, 'STRK/USD');
+    peer_protocol.add_supported_token(collateral_token_address, 'STRK/USD');
+    peer_protocol.deploy_liquidity_pool(token_address, Option::None, Option::None);
+    peer_protocol.deploy_liquidity_pool(collateral_token_address, Option::None, Option::None);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    token.mint(lender, mint_amount);
+    collateral_token.mint(borrower, mint_amount);
+
+    // Lender approves and deposits borrow token into the pool
+    start_cheat_caller_address(token_address, lender);
+    token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(token_address);
+
+    start_cheat_caller_address(peer_protocol_address, lender);
+    peer_protocol.deposit_to_pool(token_address, mint_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // Attempt to borrow from the pool without any collateral deposit
+    start_cheat_caller_address(peer_protocol_address, borrower);
+    peer_protocol.borrow_from_pool(token_address, collateral_token_address, borrow_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+}
+
+#[test]
+#[should_panic(expected: "Insufficient pool liquidity")]
+#[fork(
+    url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7",
+    block_tag: latest
+)]
+fn test_borrow_from_pool_should_panic_for_insufficient_pool_liquidity() {
+    let token_address = deploy_token("MockToken");
+    let collateral_token_address = deploy_token("MockToken1");
+    let peer_protocol_address = deploy_peer_protocol();
+
+    let collateral_token = IERC20Dispatcher { contract_address: collateral_token_address };
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+
+    let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
+    let borrower: ContractAddress = starknet::contract_address_const::<0x122226789>();
+
+    let mint_amount: u256 = 3000 * ONE_E18;
+    let borrow_amount: u256 = 500; // Borrow amount in USD
+
+    // Setup and activate the pools
+    start_cheat_caller_address(peer_protocol_address, owner);
+    peer_protocol.add_supported_token(token_address, 'STRK/USD');
+    peer_protocol.add_supported_token(collateral_token_address, 'STRK/USD');
+    peer_protocol.deploy_liquidity_pool(token_address, Option::None, Option::None);
+    peer_protocol.deploy_liquidity_pool(collateral_token_address, Option::None, Option::None);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    collateral_token.mint(borrower, mint_amount);
+
+    // Borrower approves and deposits collateral token into the pool
+    start_cheat_caller_address(collateral_token_address, borrower);
+    collateral_token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(collateral_token_address);
+
+    start_cheat_caller_address(peer_protocol_address, borrower);
+    peer_protocol.deposit_to_pool(collateral_token_address, mint_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // Attempt to borrow from the pool when there is not enough available liquidity
+    start_cheat_caller_address(peer_protocol_address, borrower);
+    peer_protocol.borrow_from_pool(token_address, collateral_token_address, borrow_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+}
+
+#[test]
+#[should_panic(expected: "Requested withdrawal exceeds available pool liquidity")]
+#[fork(
+    url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7",
+    block_tag: latest
+)]
+fn test_should_panic_for_trying_to_withdraw_locked_tokens() {
+    let token_address = deploy_token("MockToken");
+    let collateral_token_address = deploy_token("MockToken1");
+    let peer_protocol_address = deploy_peer_protocol();
+
+    let token = IERC20Dispatcher { contract_address: token_address };
+    let collateral_token = IERC20Dispatcher { contract_address: collateral_token_address };
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+
+    let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
+    let borrower: ContractAddress = starknet::contract_address_const::<0x122226789>();
+    let lender: ContractAddress = starknet::contract_address_const::<0x123336789>();
+
+    let mint_amount: u256 = 3000 * ONE_E18;
+    let borrow_amount: u256 = 500; // Borrow amount in USD
+
+    // Setup and activate the pools
+    start_cheat_caller_address(peer_protocol_address, owner);
+    peer_protocol.add_supported_token(token_address, 'STRK/USD');
+    peer_protocol.add_supported_token(collateral_token_address, 'STRK/USD');
+    peer_protocol.deploy_liquidity_pool(token_address, Option::None, Option::None);
+    peer_protocol.deploy_liquidity_pool(collateral_token_address, Option::None, Option::None);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    token.mint(lender, mint_amount);
+    collateral_token.mint(borrower, mint_amount);
+
+    // Lender approves and deposits borrow token into the pool
+    start_cheat_caller_address(token_address, lender);
+    token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(token_address);
+
+    start_cheat_caller_address(peer_protocol_address, lender);
+    peer_protocol.deposit_to_pool(token_address, mint_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // Borrower approves and deposits collateral token into the pool
+    start_cheat_caller_address(collateral_token_address, borrower);
+    collateral_token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(collateral_token_address);
+
+    start_cheat_caller_address(peer_protocol_address, borrower);
+    peer_protocol.deposit_to_pool(collateral_token_address, mint_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // Borrow from the pool
+    start_cheat_caller_address(peer_protocol_address, borrower);
+    peer_protocol.borrow_from_pool(token_address, collateral_token_address, borrow_amount);
+
+    // Attempt to withdraw tokens that are currently locked as collateral
+    peer_protocol.withdraw_from_pool(token_address, mint_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+}
+
 // DO NOT DELETE
 // #[test]
 // #[fork(

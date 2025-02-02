@@ -111,7 +111,8 @@ pub struct PoolData {
     pool_token: ContractAddress,
     is_active: bool,
     total_deposits: u256,
-    total_borrows: u256
+    total_borrowed: u256,
+    total_collateral_locked: u256
 }
 
 #[derive(Drop, Serde, Copy, starknet::Store)]
@@ -240,7 +241,10 @@ pub mod PeerProtocol {
         AccessControlEvent: AccessControlComponent::Event,
         #[flat]
         SRC5Event: SRC5Component::Event,
-        RatesUpdated: RatesUpdated
+        RatesUpdated: RatesUpdated,
+        PoolDepositSuccessful: PoolDepositSuccessful,
+        PoolWithdrawalSuccessful: PoolWithdrawalSuccessful,
+        PoolBorrowSuccessful: PoolBorrowSuccessful
     }
 
     #[derive(Drop, starknet::Event)]
@@ -357,6 +361,29 @@ pub mod PeerProtocol {
         utilization_optimal: u256,
         slope1: u256,
         slope2: u256,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct PoolDepositSuccessful {
+        pub user: ContractAddress,
+        pub token: ContractAddress,
+        pub amount: u256,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct PoolWithdrawalSuccessful {
+        pub user: ContractAddress,
+        pub token: ContractAddress,
+        pub amount: u256,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct PoolBorrowSuccessful {
+        pub user: ContractAddress,
+        pub borrowed: ContractAddress,
+        pub collateral: ContractAddress,
+        pub borrowed_amount: u256,
+        pub collateral_locked_amount: u256,
     }
 
     #[constructor]
@@ -1317,6 +1344,145 @@ pub mod PeerProtocol {
         fn get_pool_rates(self: @ContractState, token: ContractAddress) -> PoolRates {
             self.pool_rates.entry(token).read()
         }
+
+        fn deposit_to_pool(ref self: ContractState, token: ContractAddress, amount: u256) {
+            let pool_data = self.pools.entry(token);
+
+            assert!(pool_data.is_active.read(), "Pool is not active");
+
+            self.deposit(token, amount);
+
+            // Update the pool's total deposited amount
+            let updated_deposit = pool_data.total_deposits.read() + amount;
+            pool_data.total_deposits.write(updated_deposit);
+
+            self
+                .emit(
+                    PoolDepositSuccessful {
+                        user: get_caller_address(), token: token, amount: amount
+                    }
+                );
+        }
+
+        fn withdraw_from_pool(ref self: ContractState, token: ContractAddress, amount: u256) {
+            let pool_data = self.pools.entry(token);
+
+            assert!(pool_data.is_active.read(), "Pool is not active");
+
+            // Calculate how much of the pool's liquidity is currently available
+            let total_deposit = pool_data.total_deposits.read();
+            let total_borrowed = pool_data.total_borrowed.read();
+            let available_liquidity = total_deposit - total_borrowed;
+
+            // Prevent withdrawal if the amount exceeds the pool's available liquidity
+            assert!(
+                available_liquidity >= amount,
+                "Requested withdrawal exceeds available pool liquidity"
+            );
+
+            self.withdraw(token, amount);
+
+            // Update the pool's total deposited amount
+            pool_data.total_deposits.write(total_deposit - amount);
+
+            self
+                .emit(
+                    PoolWithdrawalSuccessful {
+                        user: get_caller_address(), token: token, amount: amount
+                    }
+                );
+        }
+
+        fn borrow_from_pool(
+            ref self: ContractState,
+            token: ContractAddress,
+            collateral: ContractAddress,
+            amount: u256
+        ) {
+            assert!(amount > 0, "Borrow amount must be greater than zero");
+
+            let token_pool = self.pools.entry(token);
+            let collateral_pool = self.pools.entry(collateral);
+
+            assert!(token_pool.is_active.read(), "Borrowed token pool is not active");
+            assert!(collateral_pool.is_active.read(), "Collateral token pool is not active");
+
+            let (token_price, token_decimals) = self.get_token_price(token);
+            let (collateral_token_price, collateral_token_decimals) = self
+                .get_token_price(collateral);
+
+            // Convert USD amount to token units
+            let token_amount = (amount * ONE_E18 * fast_power(10_u32, token_decimals).into())
+                / token_price;
+
+            // Calculate required collateral
+            let required_collateral_value = (amount
+                * ONE_E18
+                * fast_power(10_u32, collateral_token_decimals).into()
+                * COLLATERAL_RATIO_NUMERATOR)
+                / (collateral_token_price * COLLATERAL_RATIO_DENOMINATOR);
+
+            // Ensure pool has sufficient liquidity
+            let pool_deposit = token_pool.total_deposits.read();
+            let pool_borrowed = token_pool.total_borrowed.read();
+            let available_liquidity = pool_deposit - pool_borrowed;
+
+            assert!(available_liquidity >= token_amount, "Insufficient pool liquidity");
+
+            // Verify user's available collateral
+            let caller = get_caller_address();
+            let user_collateral_deposit = self.token_deposits.entry((caller, collateral)).read();
+            let user_collateral_locked = self.locked_funds.entry((caller, collateral)).read();
+            let available_user_collateral = user_collateral_deposit - user_collateral_locked;
+
+            assert!(
+                available_user_collateral >= required_collateral_value,
+                "Insufficient user collateral"
+            );
+
+            // Calculate protocol fee and net token amount to transfer
+            let protocol_fee = (token_amount * PROTOCOL_FEE_PERCENTAGE) / 100;
+            let net_amount = token_amount - protocol_fee;
+
+            // Transfer net borrowed tokens to the user
+            IERC20Dispatcher { contract_address: token }.transfer(caller, net_amount);
+
+            // Transfer protocol fee to the fee address
+            IERC20Dispatcher { contract_address: token }
+                .transfer(self.protocol_fee_address.read(), protocol_fee);
+
+            // Lock user's collateral
+            let prev_locked_funds = self.locked_funds.entry((caller, collateral)).read();
+            self
+                .locked_funds
+                .entry((caller, collateral))
+                .write(prev_locked_funds + required_collateral_value);
+
+            // Update pool's collateral locked
+            let prev_pool_locked = collateral_pool.total_collateral_locked.read();
+            collateral_pool
+                .total_collateral_locked
+                .write(prev_pool_locked + required_collateral_value);
+
+            // Update pool's borrowed amount
+            let prev_pool_borrowed = token_pool.total_borrowed.read();
+            token_pool.total_borrowed.write(prev_pool_borrowed + net_amount);
+
+            // Update user's borrowed amount
+            let user_borrowed = self.borrowed_assets.entry((caller, token)).read();
+            self.borrowed_assets.entry((caller, token)).write(user_borrowed + net_amount);
+
+            self
+                .emit(
+                    PoolBorrowSuccessful {
+                        user: caller,
+                        borrowed: token,
+                        collateral: collateral,
+                        borrowed_amount: net_amount,
+                        collateral_locked_amount: required_collateral_value,
+                    }
+                );
+        }
     }
 
 
@@ -1551,7 +1717,11 @@ pub mod PeerProtocol {
 
             // Initialize pool data with zero totals
             let pool_data = PoolData {
-                pool_token: token, is_active: true, total_deposits: 0, total_borrows: 0
+                pool_token: token,
+                is_active: true,
+                total_deposits: 0,
+                total_borrowed: 0,
+                total_collateral_locked: 0
             };
 
             // activate pool

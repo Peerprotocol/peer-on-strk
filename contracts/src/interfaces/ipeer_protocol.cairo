@@ -94,4 +94,12 @@ pub trait IPeerProtocol<TContractState> {
     );
 
     fn get_pool_rates(self: @TContractState, token: ContractAddress) -> PoolRates;
+
+    fn deposit_to_pool(ref self: TContractState, token: ContractAddress, amount: u256);
+
+    fn withdraw_from_pool(ref self: TContractState, token: ContractAddress, amount: u256);
+
+    fn borrow_from_pool(
+        ref self: TContractState, token: ContractAddress, collateral: ContractAddress, amount: u256
+    );
 }

@@ -1366,7 +1366,36 @@ pub mod PeerProtocol {
                 );
         }
 
-        
+        fn withdraw_from_pool(ref self: ContractState, token: ContractAddress, amount: u256) {
+            let pool_data = self.pools.entry(token);
+
+            assert!(pool_data.is_active.read(), "Pool is not active");
+
+            // Calculate how much of the pool's liquidity is currently available
+            let total_deposit = pool_data.total_deposits.read();
+            let total_borrowed = pool_data.total_borrowed.read();
+            let available_liquidity = total_deposit - total_borrowed;
+
+            // Prevent withdrawal if the amount exceeds the pool's available liquidity
+            assert!(
+                available_liquidity >= amount,
+                "Requested withdrawal exceeds available pool liquidity"
+            );
+
+            self.withdraw(token, amount);
+
+            // Update the pool's total deposited amount
+            pool_data.total_deposits.write(total_deposit - amount);
+
+            self
+                .emit(
+                    PoolWithdrawalSuccessful {
+                        user: get_caller_address(),
+                        token: token,
+                        amount: amount
+                    }
+                );
+        }
     }
 
 

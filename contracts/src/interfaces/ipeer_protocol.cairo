@@ -2,7 +2,7 @@ use starknet::ContractAddress;
 
 use peer_protocol::peer_protocol::{
     Transaction, UserAssets, UserDeposit, BorrowedDetails, Proposal, LiquidationInfo,
-    CounterProposal, PoolData
+    CounterProposal, PoolData, PoolRates
 };
 
 use core::array::Array;
@@ -79,4 +79,19 @@ pub trait IPeerProtocol<TContractState> {
     );
 
     fn get_liquidity_pool_data(self: @TContractState, token: ContractAddress) -> PoolData;
+
+    fn calculate_rates(
+        self: @TContractState, token: ContractAddress, total_borrows: u256, total_deposits: u256
+    ) -> (u256, u256);
+
+    fn update_pool_rates(
+        ref self: TContractState,
+        token: ContractAddress,
+        base_rate: u256,
+        utilization_optimal: u256,
+        slope1: u256,
+        slope2: u256
+    );
+
+    fn get_pool_rates(self: @TContractState, token: ContractAddress) -> PoolRates;
 }

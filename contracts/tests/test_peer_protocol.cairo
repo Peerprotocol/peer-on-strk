@@ -1331,6 +1331,453 @@ fn test_get_token_price_success() {
     let (token_price, _) = peer_protocol.get_token_price(strk_token);
     assert(token_price == return_data.price.into(), 'Price not equal');
 }
+
+#[test]
+#[should_panic(expected: "Pool is not active")]
+fn test_deposit_to_pool_should_panic_for_inactive_pool() {
+    let token_address = deploy_token("MockToken");
+    let peer_protocol_address = deploy_peer_protocol();
+
+    let caller: ContractAddress = starknet::contract_address_const::<0x122226789>();
+
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+
+    // Attempt to deposit into a pool that hasn't been activated
+    start_cheat_caller_address(peer_protocol_address, caller);
+    let deposit_amount: u256 = 100 * ONE_E18;
+
+    peer_protocol.deposit_to_pool(token_address, deposit_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+}
+
+#[test]
+fn test_deposit_to_pool() {
+    let token_address = deploy_token("MockToken");
+    let peer_protocol_address = deploy_peer_protocol();
+
+    let token = IERC20Dispatcher { contract_address: token_address };
+
+    let caller: ContractAddress = starknet::contract_address_const::<0x122226789>();
+    let mint_amount: u256 = 1000 * ONE_E18;
+
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+
+    let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
+
+    // Setup and activate the pool
+    start_cheat_caller_address(peer_protocol_address, owner);
+    peer_protocol.add_supported_token(token_address, 0);
+    peer_protocol.deploy_liquidity_pool(token_address, Option::None, Option::None);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    token.mint(caller, mint_amount);
+
+    // Approving peer_protocol contract to spend caller's tokens
+    start_cheat_caller_address(token_address, caller);
+    token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(token_address);
+
+    // Perform the deposit
+    start_cheat_caller_address(peer_protocol_address, caller);
+    let deposit_amount: u256 = 100 * ONE_E18;
+    let mut spy = spy_events();
+
+    peer_protocol.deposit_to_pool(token_address, deposit_amount);
+
+    // Verify the contract's token balance
+    let pool_balance = token.balance_of(peer_protocol_address);
+    assert!(
+        pool_balance == deposit_amount,
+        "Pool token balance mismatch after deposit"
+    );
+
+    // Verify the users's token balance has decreased
+    let user_balance = token.balance_of(caller);
+    let expected_user_balance = mint_amount - deposit_amount;
+    assert!(
+        user_balance == expected_user_balance,
+        "User token balance mismatch after deposit"
+    );
+
+    // Verify that the correct event was emitted
+    let expected_event = PeerProtocol::Event::PoolDepositSuccessful(
+        PeerProtocol::PoolDepositSuccessful {
+            user: caller,
+            token: token_address,
+            amount: deposit_amount,
+        },
+    );
+
+    spy.assert_emitted(@array![(peer_protocol_address, expected_event)]);
+
+    stop_cheat_caller_address(peer_protocol_address);
+}
+
+#[test]
+#[should_panic(expected: "Pool is not active")]
+fn test_withdraw_from_pool_should_panic_for_inactive_pool() {
+    let token_address = deploy_token("MockToken");
+    let peer_protocol_address = deploy_peer_protocol();
+
+    let caller: ContractAddress = starknet::contract_address_const::<0x122226789>();
+
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+
+    // Attempt to withdraw from a pool that has not been activated
+    start_cheat_caller_address(peer_protocol_address, caller);
+    let withdraw_amount: u256 = 100 * ONE_E18;
+
+    peer_protocol.withdraw_from_pool(token_address, withdraw_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+}
+
+#[test]
+fn test_withdraw_from_pool() {
+    let token_address = deploy_token("MockToken");
+    let peer_protocol_address = deploy_peer_protocol();
+
+    let token = IERC20Dispatcher { contract_address: token_address };
+
+    let caller: ContractAddress = starknet::contract_address_const::<0x122226789>();
+    let mint_amount: u256 = 1000 * ONE_E18;
+
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+
+    let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
+
+    // Setup and activate the pool
+    start_cheat_caller_address(peer_protocol_address, owner);
+    peer_protocol.add_supported_token(token_address, 0);
+    peer_protocol.deploy_liquidity_pool(token_address, Option::None, Option::None);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    token.mint(caller, mint_amount);
+
+    // Approve peer_protocol contract to spend the user's tokens
+    start_cheat_caller_address(token_address, caller);
+    token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(token_address);
+
+    // Perform the deposit into the pool
+    start_cheat_caller_address(peer_protocol_address, caller);
+    let deposit_amount: u256 = 100 * ONE_E18;
+
+    peer_protocol.deposit_to_pool(token_address, deposit_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // Withdraw half of the deposited amount
+    start_cheat_caller_address(peer_protocol_address, caller);
+    let withdraw_amount : u256 = deposit_amount / 2;
+    let mut spy = spy_events();
+
+    peer_protocol.withdraw_from_pool(token_address, withdraw_amount);
+
+    // Verify the contract's token balance
+    let pool_balance = token.balance_of(peer_protocol_address);
+    let expected_pool_balance = deposit_amount - withdraw_amount;
+    assert!(
+        pool_balance == expected_pool_balance,
+        "Pool token balance mismatch after withdraw"
+    );
+
+    // Verify the user's token balance
+    let user_balance = token.balance_of(caller);
+    let expected_user_balance = mint_amount - (deposit_amount - withdraw_amount);
+    assert!(
+        user_balance == expected_user_balance,
+        "User token balance mismatch after withdraw"
+    );
+
+    // Confirm the correct event was emitted
+    let expected_event = PeerProtocol::Event::PoolWithdrawalSuccessful(
+        PeerProtocol::PoolWithdrawalSuccessful {
+            user: caller,
+            token: token_address,
+            amount: withdraw_amount,
+        },
+    );
+
+    spy.assert_emitted(@array![(peer_protocol_address, expected_event)]);
+
+    stop_cheat_caller_address(peer_protocol_address);
+}
+
+#[test]
+#[fork(
+    url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7",
+    block_tag: latest
+)]
+fn test_borrow_from_pool() {
+    let token_address = deploy_token("MockToken");
+    let collateral_token_address = deploy_token("MockToken1");
+    let peer_protocol_address = deploy_peer_protocol();
+
+    let token = IERC20Dispatcher { contract_address: token_address };
+    let collateral_token = IERC20Dispatcher { contract_address: collateral_token_address };
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+
+    let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
+    let borrower: ContractAddress = starknet::contract_address_const::<0x122226789>();
+    let lender: ContractAddress = starknet::contract_address_const::<0x123336789>();
+
+    let mint_amount: u256 = 3000 * ONE_E18;
+    let borrow_amount: u256 = 500; // Borrow amount in USD
+
+    // Setup and activate the pools
+    start_cheat_caller_address(peer_protocol_address, owner);
+    peer_protocol.add_supported_token(token_address, 'STRK/USD');
+    peer_protocol.add_supported_token(collateral_token_address, 'STRK/USD');
+    peer_protocol.deploy_liquidity_pool(token_address, Option::None, Option::None);
+    peer_protocol.deploy_liquidity_pool(collateral_token_address, Option::None, Option::None);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    token.mint(lender, mint_amount);
+    collateral_token.mint(borrower, mint_amount);
+
+    // Lender approves and deposits borrow token into the pool
+    start_cheat_caller_address(token_address, lender);
+    token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(token_address);
+
+    start_cheat_caller_address(peer_protocol_address, lender);
+    peer_protocol.deposit_to_pool(token_address, mint_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // Borrower approves and deposits collateral token into the pool
+    start_cheat_caller_address(collateral_token_address, borrower);
+    collateral_token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(collateral_token_address);
+
+    start_cheat_caller_address(peer_protocol_address, borrower);
+    peer_protocol.deposit_to_pool(collateral_token_address, mint_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // Borrow from the pool
+    start_cheat_caller_address(peer_protocol_address, borrower);
+    let mut spy = spy_events();
+    peer_protocol.borrow_from_pool(token_address, collateral_token_address, borrow_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // Get pool data
+    let token_pool = peer_protocol.get_liquidity_pool_data(token_address);
+    let collateral_pool = peer_protocol.get_liquidity_pool_data(collateral_token_address);
+
+    // Retrieve token prices
+    let (token_price, _) = peer_protocol.get_token_price(token_address);
+    let (collateral_token_price, _) = peer_protocol.get_token_price(collateral_token_address);
+
+    // Calculate expected borrowed token amount, fee, and net
+    let token_amount = (borrow_amount * ONE_E18 * ONE_E8) / token_price;
+    let protocol_fee = (token_amount * PeerProtocol::PROTOCOL_FEE_PERCENTAGE) / 100;
+    let net_borrow_amount = token_amount - protocol_fee;
+
+    // Calculate expected collateral
+    let expected_collateral = (borrow_amount
+        * ONE_E18
+        * ONE_E8
+        * COLLATERAL_RATIO_NUMERATOR)
+        / (collateral_token_price * COLLATERAL_RATIO_DENOMINATOR);
+
+    // Check that the pool's borrowed amount matches the net borrowed tokens
+    assert!(
+        token_pool.total_borrowed == net_borrow_amount,
+        "Pool borrowed amount does not match the expected net borrowed amount"
+    );
+
+    // Check that the borrower’s token balance equals the net borrowed amount
+    let borrower_token_balance = token.balance_of(borrower);
+    assert!(
+        borrower_token_balance == net_borrow_amount,
+        "Borrower's token balance does not match the expected net borrowed amount"
+    );
+
+    // Check the borrower's recorded borrowed amount is updated correctly
+    let user_assets = peer_protocol.get_user_assets(borrower);
+    let recorded_borrow = *user_assets.at(0).total_borrowed;
+    assert!(
+        recorded_borrow == net_borrow_amount,
+        "User's recorded borrowed amount does not match the expected net borrowed amount"
+    );
+
+    // Verify the collateral pool's locked amount
+    assert!(
+        collateral_pool.total_collateral_locked == expected_collateral,
+        "Collateral pool locked amount does not match the expected collateral"
+    );
+
+    // Verify the borrower's collateral locked in the contract
+    let borrower_locked_collateral = peer_protocol
+        .get_locked_funds(borrower, collateral_token_address);
+    assert!(
+        borrower_locked_collateral == expected_collateral,
+        "Borrower's locked collateral does not match the expected collateral"
+    );
+
+    let expected_event = PeerProtocol::Event::PoolBorrowSuccessful(
+        PeerProtocol::PoolBorrowSuccessful {
+            user: borrower,
+            borrowed: token_address,
+            collateral: collateral_token_address,
+            borrowed_amount: net_borrow_amount,
+            collateral_locked_amount: borrower_locked_collateral,
+        }
+    );
+    spy.assert_emitted(@array![(peer_protocol_address, expected_event)]);
+}
+
+#[test]
+#[should_panic(expected: "Insufficient user collateral")]
+#[fork(
+    url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7",
+    block_tag: latest
+)]
+fn test_borrow_from_pool_should_panic_for_insufficient_user_collateral() {
+    let token_address = deploy_token("MockToken");
+    let collateral_token_address = deploy_token("MockToken1");
+    let peer_protocol_address = deploy_peer_protocol();
+
+    let token = IERC20Dispatcher { contract_address: token_address };
+    let collateral_token = IERC20Dispatcher { contract_address: collateral_token_address };
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+
+    let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
+    let borrower: ContractAddress = starknet::contract_address_const::<0x122226789>();
+    let lender: ContractAddress = starknet::contract_address_const::<0x123336789>();
+
+    let mint_amount: u256 = 3000 * ONE_E18;
+    let borrow_amount: u256 = 500; // Borrow amount in USD
+
+    // Setup and activate the pools
+    start_cheat_caller_address(peer_protocol_address, owner);
+    peer_protocol.add_supported_token(token_address, 'STRK/USD');
+    peer_protocol.add_supported_token(collateral_token_address, 'STRK/USD');
+    peer_protocol.deploy_liquidity_pool(token_address, Option::None, Option::None);
+    peer_protocol.deploy_liquidity_pool(collateral_token_address, Option::None, Option::None);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    token.mint(lender, mint_amount);
+    collateral_token.mint(borrower, mint_amount);
+
+    // Lender approves and deposits borrow token into the pool
+    start_cheat_caller_address(token_address, lender);
+    token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(token_address);
+
+    start_cheat_caller_address(peer_protocol_address, lender);
+    peer_protocol.deposit_to_pool(token_address, mint_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // Attempt to borrow from the pool without any collateral deposit
+    start_cheat_caller_address(peer_protocol_address, borrower);
+    peer_protocol.borrow_from_pool(token_address, collateral_token_address, borrow_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+}
+
+#[test]
+#[should_panic(expected: "Insufficient pool liquidity")]
+#[fork(
+    url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7",
+    block_tag: latest
+)]
+fn test_borrow_from_pool_should_panic_for_insufficient_pool_liquidity() {
+    let token_address = deploy_token("MockToken");
+    let collateral_token_address = deploy_token("MockToken1");
+    let peer_protocol_address = deploy_peer_protocol();
+
+    let collateral_token = IERC20Dispatcher { contract_address: collateral_token_address };
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+
+    let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
+    let borrower: ContractAddress = starknet::contract_address_const::<0x122226789>();
+
+    let mint_amount: u256 = 3000 * ONE_E18;
+    let borrow_amount: u256 = 500; // Borrow amount in USD
+
+    // Setup and activate the pools
+    start_cheat_caller_address(peer_protocol_address, owner);
+    peer_protocol.add_supported_token(token_address, 'STRK/USD');
+    peer_protocol.add_supported_token(collateral_token_address, 'STRK/USD');
+    peer_protocol.deploy_liquidity_pool(token_address, Option::None, Option::None);
+    peer_protocol.deploy_liquidity_pool(collateral_token_address, Option::None, Option::None);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    collateral_token.mint(borrower, mint_amount);
+
+    // Borrower approves and deposits collateral token into the pool
+    start_cheat_caller_address(collateral_token_address, borrower);
+    collateral_token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(collateral_token_address);
+
+    start_cheat_caller_address(peer_protocol_address, borrower);
+    peer_protocol.deposit_to_pool(collateral_token_address, mint_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // Attempt to borrow from the pool when there is not enough available liquidity
+    start_cheat_caller_address(peer_protocol_address, borrower);
+    peer_protocol.borrow_from_pool(token_address, collateral_token_address, borrow_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+}
+
+#[test]
+#[should_panic(expected: "Requested withdrawal exceeds available pool liquidity")]
+#[fork(
+    url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7",
+    block_tag: latest
+)]
+fn test_should_panic_for_trying_to_withdraw_locked_tokens() {
+    let token_address = deploy_token("MockToken");
+    let collateral_token_address = deploy_token("MockToken1");
+    let peer_protocol_address = deploy_peer_protocol();
+
+    let token = IERC20Dispatcher { contract_address: token_address };
+    let collateral_token = IERC20Dispatcher { contract_address: collateral_token_address };
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+
+    let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
+    let borrower: ContractAddress = starknet::contract_address_const::<0x122226789>();
+    let lender: ContractAddress = starknet::contract_address_const::<0x123336789>();
+
+    let mint_amount: u256 = 3000 * ONE_E18;
+    let borrow_amount: u256 = 500; // Borrow amount in USD
+
+    // Setup and activate the pools
+    start_cheat_caller_address(peer_protocol_address, owner);
+    peer_protocol.add_supported_token(token_address, 'STRK/USD');
+    peer_protocol.add_supported_token(collateral_token_address, 'STRK/USD');
+    peer_protocol.deploy_liquidity_pool(token_address, Option::None, Option::None);
+    peer_protocol.deploy_liquidity_pool(collateral_token_address, Option::None, Option::None);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    token.mint(lender, mint_amount);
+    collateral_token.mint(borrower, mint_amount);
+
+    // Lender approves and deposits borrow token into the pool
+    start_cheat_caller_address(token_address, lender);
+    token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(token_address);
+
+    start_cheat_caller_address(peer_protocol_address, lender);
+    peer_protocol.deposit_to_pool(token_address, mint_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // Borrower approves and deposits collateral token into the pool
+    start_cheat_caller_address(collateral_token_address, borrower);
+    collateral_token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(collateral_token_address);
+
+    start_cheat_caller_address(peer_protocol_address, borrower);
+    peer_protocol.deposit_to_pool(collateral_token_address, mint_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // Borrow from the pool
+    start_cheat_caller_address(peer_protocol_address, borrower);
+    peer_protocol.borrow_from_pool(token_address, collateral_token_address, borrow_amount);
+
+    // Attempt to withdraw tokens that are currently locked as collateral
+    peer_protocol.withdraw_from_pool(token_address, mint_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+}
+
 // DO NOT DELETE
 // #[test]
 // #[fork(

@@ -1383,6 +1383,10 @@ fn test_withdraw_from_pool() {
 }
 
 #[test]
+#[fork(
+    url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7",
+    block_tag: latest
+)]
 fn test_borrow_from_pool() {
     let token_address = deploy_token("MockToken");
     let collateral_token_address = deploy_token("MockToken1");
@@ -1396,23 +1400,21 @@ fn test_borrow_from_pool() {
     let borrower: ContractAddress = starknet::contract_address_const::<0x122226789>();
     let lender: ContractAddress = starknet::contract_address_const::<0x123336789>();
 
-    let mint_amount: u256 = 1000 * ONE_E18;
-    let borrow_amount_usd: u256 = 1;
+    let mint_amount: u256 = 3000 * ONE_E18;
+    let borrow_amount: u256 = 500; // Borrow amount in USD
 
-    // Deploy borrowed token pool and the collateral token pool
+    // Setup and activate the pools
     start_cheat_caller_address(peer_protocol_address, owner);
     peer_protocol.add_supported_token(token_address, 'STRK/USD');
     peer_protocol.add_supported_token(collateral_token_address, 'STRK/USD');
-
     peer_protocol.deploy_liquidity_pool(token_address, Option::None, Option::None);
     peer_protocol.deploy_liquidity_pool(collateral_token_address, Option::None, Option::None);
     stop_cheat_caller_address(peer_protocol_address);
 
-    token.mint(borrower, mint_amount);
     token.mint(lender, mint_amount);
     collateral_token.mint(borrower, mint_amount);
 
-    // Lender deposits tokens into the borrowed token pool
+    // Lender approves and deposits borrow token into the pool
     start_cheat_caller_address(token_address, lender);
     token.approve(peer_protocol_address, mint_amount);
     stop_cheat_caller_address(token_address);
@@ -1421,7 +1423,7 @@ fn test_borrow_from_pool() {
     peer_protocol.deposit_to_pool(token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
 
-    // Borrower deposits collateral into the collateral token pool
+    // Borrower approves and deposits collateral token into the pool
     start_cheat_caller_address(collateral_token_address, borrower);
     collateral_token.approve(peer_protocol_address, mint_amount);
     stop_cheat_caller_address(collateral_token_address);
@@ -1430,38 +1432,78 @@ fn test_borrow_from_pool() {
     peer_protocol.deposit_to_pool(collateral_token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
 
-    // Borrower borrows tokens from the pool
+    // Borrow from the pool
     start_cheat_caller_address(peer_protocol_address, borrower);
-    //let mut spy = spy_events();
-    peer_protocol.borrow_from_pool(
-        token_address,
-        collateral_token_address,
-        borrow_amount_usd
-    );
-
-    let borrower_balance_after = token.balance_of(borrower);
-    assert!(
-        borrower_balance_after > mint_amount,
-        "Borrower balance did not increase as expected after borrowing"
-    );
-
-    // Check that the pool's total borrowed amount has increased
-    //let pool_data_borrowed_token = peer_protocol.get_liquidity_pool_data(token_address);
-    //assert!(
-    //    pool_data_borrowed_token.total_borrowed > 0,
-    //    "Pool total_borrowed did not update"
-    //);
-
-    // Check that the borrower's collateral is locked
-    //let user_locked_collateral = peer_protocol.get_locked_funds(borrower, collateral_token_address);
-    //assert!(
-    //    user_locked_collateral > 0,
-    //    "Collateral should be locked but found 0"
-    //);
+    let mut spy = spy_events();
+    peer_protocol.borrow_from_pool(token_address, collateral_token_address, borrow_amount);
     stop_cheat_caller_address(peer_protocol_address);
-}
 
-// TODO: Check edge case when trying to call withdraw after borrowing
+    // Get pool data
+    let token_pool = peer_protocol.get_liquidity_pool_data(token_address);
+    let collateral_pool = peer_protocol.get_liquidity_pool_data(collateral_token_address);
+
+    // Retrieve token prices
+    let (token_price, _) = peer_protocol.get_token_price(token_address);
+    let (collateral_token_price, _) = peer_protocol.get_token_price(collateral_token_address);
+
+    // Calculate expected borrowed token amount, fee, and net
+    let token_amount = (borrow_amount * ONE_E18 * ONE_E8) / token_price;
+    let protocol_fee = (token_amount * PeerProtocol::PROTOCOL_FEE_PERCENTAGE) / 100;
+    let net_borrow_amount = token_amount - protocol_fee;
+
+    // Calculate expected collateral
+    let expected_collateral = (borrow_amount
+        * ONE_E18
+        * ONE_E8
+        * COLLATERAL_RATIO_NUMERATOR)
+        / (collateral_token_price * COLLATERAL_RATIO_DENOMINATOR);
+
+    // Check that the pool's borrowed amount matches the net borrowed tokens
+    assert!(
+        token_pool.total_borrowed == net_borrow_amount,
+        "Pool borrowed amount does not match the expected net borrowed amount"
+    );
+
+    // Check that the borrower’s token balance equals the net borrowed amount
+    let borrower_token_balance = token.balance_of(borrower);
+    assert!(
+        borrower_token_balance == net_borrow_amount,
+        "Borrower's token balance does not match the expected net borrowed amount"
+    );
+
+    // Check the borrower's recorded borrowed amount is updated correctly
+    let user_assets = peer_protocol.get_user_assets(borrower);
+    let recorded_borrow = *user_assets.at(0).total_borrowed;
+    assert!(
+        recorded_borrow == net_borrow_amount,
+        "User's recorded borrowed amount does not match the expected net borrowed amount"
+    );
+
+    // Verify the collateral pool's locked amount
+    assert!(
+        collateral_pool.total_collateral_locked == expected_collateral,
+        "Collateral pool locked amount does not match the expected collateral"
+    );
+
+    // Verify the borrower's collateral locked in the contract
+    let borrower_locked_collateral = peer_protocol
+        .get_locked_funds(borrower, collateral_token_address);
+    assert!(
+        borrower_locked_collateral == expected_collateral,
+        "Borrower's locked collateral does not match the expected collateral"
+    );
+
+    let expected_event = PeerProtocol::Event::PoolBorrowSuccessful(
+        PeerProtocol::PoolBorrowSuccessful {
+            user: borrower,
+            borrowed: token_address,
+            collateral: collateral_token_address,
+            borrowed_amount: net_borrow_amount,
+            collateral_locked_amount: borrower_locked_collateral,
+        }
+    );
+    spy.assert_emitted(@array![(peer_protocol_address, expected_event)]);
+}
 
 // DO NOT DELETE
 // #[test]

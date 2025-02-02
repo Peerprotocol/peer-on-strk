@@ -1386,25 +1386,17 @@ fn test_deposit_to_pool() {
 
     // Verify the contract's token balance
     let pool_balance = token.balance_of(peer_protocol_address);
-    assert!(
-        pool_balance == deposit_amount,
-        "Pool token balance mismatch after deposit"
-    );
+    assert!(pool_balance == deposit_amount, "Pool token balance mismatch after deposit");
 
     // Verify the users's token balance has decreased
     let user_balance = token.balance_of(caller);
     let expected_user_balance = mint_amount - deposit_amount;
-    assert!(
-        user_balance == expected_user_balance,
-        "User token balance mismatch after deposit"
-    );
+    assert!(user_balance == expected_user_balance, "User token balance mismatch after deposit");
 
     // Verify that the correct event was emitted
     let expected_event = PeerProtocol::Event::PoolDepositSuccessful(
         PeerProtocol::PoolDepositSuccessful {
-            user: caller,
-            token: token_address,
-            amount: deposit_amount,
+            user: caller, token: token_address, amount: deposit_amount,
         },
     );
 
@@ -1467,7 +1459,7 @@ fn test_withdraw_from_pool() {
 
     // Withdraw half of the deposited amount
     start_cheat_caller_address(peer_protocol_address, caller);
-    let withdraw_amount : u256 = deposit_amount / 2;
+    let withdraw_amount: u256 = deposit_amount / 2;
     let mut spy = spy_events();
 
     peer_protocol.withdraw_from_pool(token_address, withdraw_amount);
@@ -1475,25 +1467,17 @@ fn test_withdraw_from_pool() {
     // Verify the contract's token balance
     let pool_balance = token.balance_of(peer_protocol_address);
     let expected_pool_balance = deposit_amount - withdraw_amount;
-    assert!(
-        pool_balance == expected_pool_balance,
-        "Pool token balance mismatch after withdraw"
-    );
+    assert!(pool_balance == expected_pool_balance, "Pool token balance mismatch after withdraw");
 
     // Verify the user's token balance
     let user_balance = token.balance_of(caller);
     let expected_user_balance = mint_amount - (deposit_amount - withdraw_amount);
-    assert!(
-        user_balance == expected_user_balance,
-        "User token balance mismatch after withdraw"
-    );
+    assert!(user_balance == expected_user_balance, "User token balance mismatch after withdraw");
 
     // Confirm the correct event was emitted
     let expected_event = PeerProtocol::Event::PoolWithdrawalSuccessful(
         PeerProtocol::PoolWithdrawalSuccessful {
-            user: caller,
-            token: token_address,
-            amount: withdraw_amount,
+            user: caller, token: token_address, amount: withdraw_amount,
         },
     );
 
@@ -1572,10 +1556,7 @@ fn test_borrow_from_pool() {
     let net_borrow_amount = token_amount - protocol_fee;
 
     // Calculate expected collateral
-    let expected_collateral = (borrow_amount
-        * ONE_E18
-        * ONE_E8
-        * COLLATERAL_RATIO_NUMERATOR)
+    let expected_collateral = (borrow_amount * ONE_E18 * ONE_E8 * COLLATERAL_RATIO_NUMERATOR)
         / (collateral_token_price * COLLATERAL_RATIO_DENOMINATOR);
 
     // Check that the pool's borrowed amount matches the net borrowed tokens
@@ -1729,7 +1710,6 @@ fn test_should_panic_for_trying_to_withdraw_locked_tokens() {
     peer_protocol.withdraw_from_pool(token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
 }
-
 // DO NOT DELETE
 // #[test]
 // #[fork(

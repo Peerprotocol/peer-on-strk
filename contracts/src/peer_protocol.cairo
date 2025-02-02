@@ -1359,9 +1359,7 @@ pub mod PeerProtocol {
             self
                 .emit(
                     PoolDepositSuccessful {
-                        user: get_caller_address(),
-                        token: token,
-                        amount: amount
+                        user: get_caller_address(), token: token, amount: amount
                     }
                 );
         }
@@ -1390,9 +1388,7 @@ pub mod PeerProtocol {
             self
                 .emit(
                     PoolWithdrawalSuccessful {
-                        user: get_caller_address(),
-                        token: token,
-                        amount: amount
+                        user: get_caller_address(), token: token, amount: amount
                     }
                 );
         }
@@ -1408,24 +1404,15 @@ pub mod PeerProtocol {
             let token_pool = self.pools.entry(token);
             let collateral_pool = self.pools.entry(collateral);
 
-            assert!(
-                token_pool.is_active.read(),
-                "Borrowed token pool is not active"
-            );
-            assert!(
-                collateral_pool.is_active.read(),
-                "Collateral token pool is not active"
-            );
+            assert!(token_pool.is_active.read(), "Borrowed token pool is not active");
+            assert!(collateral_pool.is_active.read(), "Collateral token pool is not active");
 
-            let (token_price, token_decimals) = self
-                .get_token_price(token);
+            let (token_price, token_decimals) = self.get_token_price(token);
             let (collateral_token_price, collateral_token_decimals) = self
                 .get_token_price(collateral);
 
             // Convert USD amount to token units
-            let token_amount = (amount
-                * ONE_E18
-                * fast_power(10_u32, token_decimals).into())
+            let token_amount = (amount * ONE_E18 * fast_power(10_u32, token_decimals).into())
                 / token_price;
 
             // Calculate required collateral
@@ -1444,14 +1431,8 @@ pub mod PeerProtocol {
 
             // Verify user's available collateral
             let caller = get_caller_address();
-            let user_collateral_deposit = self
-                .token_deposits
-                .entry((caller, collateral))
-                .read();
-            let user_collateral_locked  = self
-                .locked_funds
-                .entry((caller, collateral))
-                .read();
+            let user_collateral_deposit = self.token_deposits.entry((caller, collateral)).read();
+            let user_collateral_locked = self.locked_funds.entry((caller, collateral)).read();
             let available_user_collateral = user_collateral_deposit - user_collateral_locked;
 
             assert!(
@@ -1464,18 +1445,14 @@ pub mod PeerProtocol {
             let net_amount = token_amount - protocol_fee;
 
             // Transfer net borrowed tokens to the user
-            IERC20Dispatcher { contract_address: token }
-                .transfer(caller, net_amount);
+            IERC20Dispatcher { contract_address: token }.transfer(caller, net_amount);
 
             // Transfer protocol fee to the fee address
             IERC20Dispatcher { contract_address: token }
                 .transfer(self.protocol_fee_address.read(), protocol_fee);
 
             // Lock user's collateral
-            let prev_locked_funds = self
-                .locked_funds
-                .entry((caller, collateral))
-                .read();
+            let prev_locked_funds = self.locked_funds.entry((caller, collateral)).read();
             self
                 .locked_funds
                 .entry((caller, collateral))

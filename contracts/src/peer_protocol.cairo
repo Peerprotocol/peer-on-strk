@@ -1502,7 +1502,7 @@ pub mod PeerProtocol {
             let caller = get_caller_address();
             assert!(caller == self.owner.read(), "unauthorized caller");
 
-            // self.upgradeable.upgrade(new_class_hash);
+            self.upgradeable.upgrade(new_class_hash);
         }
     }
 

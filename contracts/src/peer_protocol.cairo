@@ -73,7 +73,8 @@ pub struct Proposal {
     repayment_date: u64,
     is_repaid: bool,
     num_proposal_counters: u256,
-    is_cancelled: bool
+    is_cancelled: bool,
+    borrower_nft_id: u256
 }
 
 #[derive(Drop, Serde, Copy, starknet::Store)]
@@ -142,7 +143,7 @@ pub mod PeerProtocol {
 
     use starknet::{
         ContractAddress, get_block_timestamp, get_caller_address, get_contract_address,
-        contract_address_const, get_tx_info
+        contract_address_const, get_tx_info, ClassHash
     };
     use core::starknet::storage::{
         StoragePointerReadAccess, StoragePointerWriteAccess, Map, StoragePathEntry, MutableVecTrait,
@@ -154,24 +155,28 @@ pub mod PeerProtocol {
     use super::{LiquidationThreshold, LiquidationInfo, get_default_liquidation_threshold};
     use pragma_lib::abi::{IPragmaABIDispatcher, IPragmaABIDispatcherTrait};
     use pragma_lib::types::{DataType, PragmaPricesResponse};
+    use openzeppelin_upgrades::UpgradeableComponent;
     use openzeppelin_access::accesscontrol::AccessControlComponent;
     use openzeppelin_introspection::src5::SRC5Component;
     use alexandria_math::fast_power::fast_power;
 
     component!(path: SRC5Component, storage: src5, event: SRC5Event);
     component!(path: AccessControlComponent, storage: accesscontrol, event: AccessControlEvent);
+    component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
 
 
     #[abi(embed_v0)]
-    impl AccessControlImpl =
-        AccessControlComponent::AccessControlImpl<ContractState>;
+    impl AccessControlImpl = AccessControlComponent::AccessControlImpl<ContractState>;
+
     #[abi(embed_v0)]
-    impl AccessControlCamelImpl =
-        AccessControlComponent::AccessControlCamelImpl<ContractState>;
+    impl AccessControlCamelImpl = AccessControlComponent::AccessControlCamelImpl<ContractState>;
+
     impl AccessControlInternalImpl = AccessControlComponent::InternalImpl<ContractState>;
 
     #[abi(embed_v0)]
     impl SRC5Impl = SRC5Component::SRC5Impl<ContractState>;
+
+    impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
 
     #[storage]
     struct Storage {
@@ -195,7 +200,7 @@ pub mod PeerProtocol {
         counter_proposals: Map<(u256, u256), CounterProposal>,
         protocol_fee_address: ContractAddress,
         spok_nft: ContractAddress,
-        next_spok_id: u256,
+        last_spok_id: u256,
         locked_funds: Map<(ContractAddress, ContractAddress), u256>, // (user, token) => amount
         liquidation_thresholds: Map<ContractAddress, Option<LiquidationThreshold>>,
         price_oracles: Map<ContractAddress, felt252>, // Map of token and it's asset_id
@@ -204,7 +209,9 @@ pub mod PeerProtocol {
         #[substorage(v0)]
         accesscontrol: AccessControlComponent::Storage,
         pragma_contract: ContractAddress,
-        pool_rates: Map<ContractAddress, PoolRates>
+        pool_rates: Map<ContractAddress, PoolRates>,
+        #[substorage(v0)]
+        upgradeable: UpgradeableComponent::Storage,
     }
 
     const MAX_U64: u64 = 18446744073709551615_u64;
@@ -244,7 +251,9 @@ pub mod PeerProtocol {
         RatesUpdated: RatesUpdated,
         PoolDepositSuccessful: PoolDepositSuccessful,
         PoolWithdrawalSuccessful: PoolWithdrawalSuccessful,
-        PoolBorrowSuccessful: PoolBorrowSuccessful
+        PoolBorrowSuccessful: PoolBorrowSuccessful,
+        #[flat]
+        UpgradeableEvent: UpgradeableComponent::Event,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -549,7 +558,8 @@ pub mod PeerProtocol {
                 repayment_date: 0,
                 is_repaid: false,
                 num_proposal_counters: 0,
-                is_cancelled: false
+                is_cancelled: false,
+                borrower_nft_id: 0
             };
 
             // Store the proposal
@@ -672,7 +682,8 @@ pub mod PeerProtocol {
                 repayment_date: 0,
                 is_repaid: false,
                 num_proposal_counters: 0,
-                is_cancelled: false
+                is_cancelled: false,
+                borrower_nft_id: 0
             };
 
             // Store proposal
@@ -1139,6 +1150,9 @@ pub mod PeerProtocol {
             self.proposals.entry(proposal.id).write(updated_proposal);
 
             if updated_proposal.is_repaid {
+                let spok = IPeerSPOKNFTDispatcher { contract_address: self.spok_nft.read() };
+                spok.burn(proposal.borrower_nft_id);
+
                 self
                     .emit(
                         ProposalRepaid {
@@ -1483,6 +1497,13 @@ pub mod PeerProtocol {
                     }
                 );
         }
+
+        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
+            let caller = get_caller_address();
+            assert!(caller == self.owner.read(), "unauthorized caller");
+
+            // self.upgradeable.upgrade(new_class_hash);
+        }
     }
 
 
@@ -1521,7 +1542,7 @@ pub mod PeerProtocol {
                 .transfer(self.protocol_fee_address.read(), fee_amount);
 
             // Mint SPOK
-            self.mint_spoks(proposal.id, proposal.borrower, lender);
+            let borrower_token_id = self.mint_spoks(proposal.id, proposal.borrower);
 
             // Record Transaction
             self
@@ -1537,6 +1558,7 @@ pub mod PeerProtocol {
             updated_proposal.accepted_at = get_block_timestamp();
             updated_proposal.repayment_date = updated_proposal.accepted_at
                 + proposal.duration * 86400;
+            updated_proposal.borrower_nft_id = borrower_token_id;
 
             self.proposals.entry(proposal.id).write(updated_proposal);
         }
@@ -1569,7 +1591,7 @@ pub mod PeerProtocol {
             proposal_token.transfer(self.protocol_fee_address.read(), fee_amount);
 
             // Mint SPOK
-            self.mint_spoks(proposal.id, proposal.lender, borrower);
+            let borrower_token_id = self.mint_spoks(proposal.id, borrower);
 
             // Record Transaction
             self
@@ -1585,6 +1607,7 @@ pub mod PeerProtocol {
             updated_proposal.accepted_at = get_block_timestamp();
             updated_proposal.repayment_date = updated_proposal.accepted_at
                 + proposal.duration * 86400;
+            updated_proposal.borrower_nft_id = borrower_token_id;
 
             let borrowed_token_details = BorrowedDetails {
                 token_borrowed: updated_proposal.token,
@@ -1600,19 +1623,18 @@ pub mod PeerProtocol {
         fn mint_spoks(
             ref self: ContractState,
             proposal_id: u256,
-            creator: ContractAddress,
-            acceptor: ContractAddress
-        ) {
+            borrower: ContractAddress
+        ) -> u256 {
             let spok = IPeerSPOKNFTDispatcher { contract_address: self.spok_nft.read() };
 
-            // Mint NFTs for both parties
-            let creator_token_id = self.next_spok_id.read();
-            let acceptor_token_id = creator_token_id + 1;
+            // Mint NFTs to only the borrower
+            let borrower_token_id = self.last_spok_id.read() + 1;
 
-            spok.mint(proposal_id, creator, creator_token_id);
-            spok.mint(proposal_id, acceptor, acceptor_token_id);
+            spok.mint(proposal_id, borrower, borrower_token_id);
 
-            self.next_spok_id.write(acceptor_token_id + 1);
+            self.last_spok_id.write(borrower_token_id);
+
+            borrower_token_id
         }
 
         fn record_transaction(

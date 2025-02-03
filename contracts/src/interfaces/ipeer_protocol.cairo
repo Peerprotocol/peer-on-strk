@@ -1,4 +1,4 @@
-use starknet::ContractAddress;
+use starknet::{ContractAddress, ClassHash};
 
 use peer_protocol::peer_protocol::{
     Transaction, UserAssets, UserDeposit, BorrowedDetails, Proposal, LiquidationInfo,
@@ -102,4 +102,6 @@ pub trait IPeerProtocol<TContractState> {
     fn borrow_from_pool(
         ref self: TContractState, token: ContractAddress, collateral: ContractAddress, amount: u256
     );
+
+    fn upgrade(ref self: TContractState, new_class_hash: ClassHash);
 }

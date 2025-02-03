@@ -43,5 +43,9 @@ mod SPOKNFT {
         ) {
             self.erc721.mint(recipient, token_id);
         }
+
+        fn burn(ref self: ContractState, token_id: u256) {
+            self.erc721.burn(token_id);
+        }
     }
 }

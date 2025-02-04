@@ -13,6 +13,7 @@ import { toHex } from "@/components/internal/helpers";
 import { toast as toastify } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import NewProposalModal from "@/components/proposalModal";
+import { CallData } from "starknet";
 
 // Constants
 const ITEMS_PER_PAGE = 7;
@@ -103,7 +104,7 @@ const TableRow = ({ onCounter }: TableRowProps) => {
     ],
   });
 
-  const handleLend = async (proposalId: any) => {
+  const handleLend = async (proposalId: bigint) => {
     console.log("proposal id", proposalId);
     setLoading(true);
     try {
@@ -113,7 +114,7 @@ const TableRow = ({ onCounter }: TableRowProps) => {
             abi: protocolAbi,
             contractAddress: PROTOCOL_ADDRESS,
             entrypoint: "accept_proposal",
-            calldata: [0xb, 0x0],
+            calldata: CallData.compile(["0", BigInt(proposalId)]),
           },
         ],
       });
@@ -223,13 +224,13 @@ const TableRow = ({ onCounter }: TableRowProps) => {
 
               {/* Quantity Column */}
               <div className="text-center px-4 py-6">
-                <p className="font-medium">{item.amount.toString()}</p>
+                <p className="font-medium">{Number(item.token_amount / BigInt(10 ** 18)).toFixed(2)}</p>
               </div>
 
               {/* Net Value Column */}
               <div className="text-center px-4 py-6">
                 <p className="font-medium">
-                  {item.required_collateral_value.toString()}
+                $ {item.amount.toString()}  
                 </p>
               </div>
 

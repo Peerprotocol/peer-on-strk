@@ -81,7 +81,7 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
           abi: protocolAbi,
           contractAddress: PROTOCOL_ADDRESS,
           entrypoint: "accept_proposal",
-          calldata: [proposalId, "0"]
+          calldata: [proposalId, proposalId]
         }]
       });
 
@@ -183,12 +183,12 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
 
               {/* Quantity Column */}
               <div className="text-center px-4 py-6">
-                <p className="font-medium">{item.amount.toString()}</p>
+                <p className="font-medium">{Number(item.token_amount / BigInt(10 ** 18)).toFixed(2)}</p>
               </div>
 
               {/* Net Value Column */}
               <div className="text-center px-4 py-6">
-                <p className="font-medium">{item.required_collateral_value.toString()}</p>
+                <p className="font-medium">$ {item.amount.toString()} </p>
               </div>
 
               {/* Interest Rate Column */}

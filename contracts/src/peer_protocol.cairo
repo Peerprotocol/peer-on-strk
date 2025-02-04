@@ -10,8 +10,8 @@ enum TransactionType {
     REPAY
 }
 
-#[derive(Drop, Serde, Copy, PartialEq, starknet::Store)]
-pub enum ProposalType {
+#[derive(Drop, Serde, Copy, PartialEq, Debug, starknet::Store)]
+enum ProposalType {
     BORROWING,
     LENDING
 }
@@ -1543,7 +1543,7 @@ pub mod PeerProtocol {
             contract_address_const::<0>()
         }
 
-        fn handle_borrower_acceptance(
+         fn handle_borrower_acceptance(
             ref self: ContractState,
             proposal: Proposal,
             lender: ContractAddress,

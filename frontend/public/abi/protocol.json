@@ -35,7 +35,15 @@
         "type": "core::starknet::contract_address::ContractAddress"
       },
       {
+        "name": "accepted_collateral_token",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
         "name": "required_collateral_value",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "token_amount",
         "type": "core::integer::u256"
       },
       {
@@ -117,7 +125,19 @@
         "type": "core::integer::u256"
       },
       {
+        "name": "released_collateral",
+        "type": "core::integer::u256"
+      },
+      {
         "name": "amount",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "amount_repaid",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "token_amount",
         "type": "core::integer::u256"
       },
       {
@@ -155,6 +175,10 @@
       {
         "name": "is_cancelled",
         "type": "core::bool"
+      },
+      {
+        "name": "borrower_nft_id",
+        "type": "core::integer::u256"
       }
     ]
   },
@@ -321,6 +345,68 @@
     ]
   },
   {
+    "type": "enum",
+    "name": "core::option::Option::<core::integer::u256>",
+    "variants": [
+      {
+        "name": "Some",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "None",
+        "type": "()"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "peer_protocol::peer_protocol::PoolData",
+    "members": [
+      {
+        "name": "pool_token",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "is_active",
+        "type": "core::bool"
+      },
+      {
+        "name": "total_deposits",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "total_borrowed",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "total_collateral_locked",
+        "type": "core::integer::u256"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "peer_protocol::peer_protocol::PoolRates",
+    "members": [
+      {
+        "name": "base_rate",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "utilization_optimal",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "slope1",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "slope2",
+        "type": "core::integer::u256"
+      }
+    ]
+  },
+  {
     "type": "interface",
     "name": "peer_protocol::interfaces::ipeer_protocol::IPeerProtocol",
     "items": [
@@ -347,6 +433,10 @@
           {
             "name": "token_address",
             "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "asset_id",
+            "type": "core::felt252"
           }
         ],
         "outputs": [],
@@ -382,10 +472,6 @@
           },
           {
             "name": "amount",
-            "type": "core::integer::u256"
-          },
-          {
-            "name": "required_collateral_value",
             "type": "core::integer::u256"
           },
           {
@@ -441,8 +527,8 @@
             "type": "core::integer::u256"
           },
           {
-            "name": "required_collateral_value",
-            "type": "core::integer::u256"
+            "name": "accepted_collateral_token",
+            "type": "core::starknet::contract_address::ContractAddress"
           },
           {
             "name": "interest_rate",
@@ -510,6 +596,10 @@
           {
             "name": "proposal_id",
             "type": "core::integer::u256"
+          },
+          {
+            "name": "amount",
+            "type": "core::integer::u256"
           }
         ],
         "outputs": [],
@@ -545,10 +635,6 @@
           },
           {
             "name": "amount",
-            "type": "core::integer::u256"
-          },
-          {
-            "name": "required_collateral_value",
             "type": "core::integer::u256"
           },
           {
@@ -617,7 +703,7 @@
         ],
         "outputs": [
           {
-            "type": "core::integer::u256"
+            "type": "(core::integer::u256, core::integer::u32)"
           }
         ],
         "state_mutability": "view"
@@ -677,6 +763,391 @@
           }
         ],
         "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "deploy_liquidity_pool",
+        "inputs": [
+          {
+            "name": "token",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "opt_threshold_percentage",
+            "type": "core::option::Option::<core::integer::u256>"
+          },
+          {
+            "name": "opt_minimum_liquidation_amount",
+            "type": "core::option::Option::<core::integer::u256>"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "get_liquidity_pool_data",
+        "inputs": [
+          {
+            "name": "token",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "peer_protocol::peer_protocol::PoolData"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "calculate_rates",
+        "inputs": [
+          {
+            "name": "token",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "total_borrows",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "total_deposits",
+            "type": "core::integer::u256"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "(core::integer::u256, core::integer::u256)"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "update_pool_rates",
+        "inputs": [
+          {
+            "name": "token",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "base_rate",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "utilization_optimal",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "slope1",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "slope2",
+            "type": "core::integer::u256"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "get_pool_rates",
+        "inputs": [
+          {
+            "name": "token",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "peer_protocol::peer_protocol::PoolRates"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "deposit_to_pool",
+        "inputs": [
+          {
+            "name": "token",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "amount",
+            "type": "core::integer::u256"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "withdraw_from_pool",
+        "inputs": [
+          {
+            "name": "token",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "amount",
+            "type": "core::integer::u256"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "borrow_from_pool",
+        "inputs": [
+          {
+            "name": "token",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "collateral",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "amount",
+            "type": "core::integer::u256"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "upgrade",
+        "inputs": [
+          {
+            "name": "new_class_hash",
+            "type": "core::starknet::class_hash::ClassHash"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      }
+    ]
+  },
+  {
+    "type": "impl",
+    "name": "AccessControlImpl",
+    "interface_name": "openzeppelin_access::accesscontrol::interface::IAccessControl"
+  },
+  {
+    "type": "interface",
+    "name": "openzeppelin_access::accesscontrol::interface::IAccessControl",
+    "items": [
+      {
+        "type": "function",
+        "name": "has_role",
+        "inputs": [
+          {
+            "name": "role",
+            "type": "core::felt252"
+          },
+          {
+            "name": "account",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::bool"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_role_admin",
+        "inputs": [
+          {
+            "name": "role",
+            "type": "core::felt252"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::felt252"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "grant_role",
+        "inputs": [
+          {
+            "name": "role",
+            "type": "core::felt252"
+          },
+          {
+            "name": "account",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "revoke_role",
+        "inputs": [
+          {
+            "name": "role",
+            "type": "core::felt252"
+          },
+          {
+            "name": "account",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "renounce_role",
+        "inputs": [
+          {
+            "name": "role",
+            "type": "core::felt252"
+          },
+          {
+            "name": "account",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      }
+    ]
+  },
+  {
+    "type": "impl",
+    "name": "AccessControlCamelImpl",
+    "interface_name": "openzeppelin_access::accesscontrol::interface::IAccessControlCamel"
+  },
+  {
+    "type": "interface",
+    "name": "openzeppelin_access::accesscontrol::interface::IAccessControlCamel",
+    "items": [
+      {
+        "type": "function",
+        "name": "hasRole",
+        "inputs": [
+          {
+            "name": "role",
+            "type": "core::felt252"
+          },
+          {
+            "name": "account",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::bool"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getRoleAdmin",
+        "inputs": [
+          {
+            "name": "role",
+            "type": "core::felt252"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::felt252"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "grantRole",
+        "inputs": [
+          {
+            "name": "role",
+            "type": "core::felt252"
+          },
+          {
+            "name": "account",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "revokeRole",
+        "inputs": [
+          {
+            "name": "role",
+            "type": "core::felt252"
+          },
+          {
+            "name": "account",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "renounceRole",
+        "inputs": [
+          {
+            "name": "role",
+            "type": "core::felt252"
+          },
+          {
+            "name": "account",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      }
+    ]
+  },
+  {
+    "type": "impl",
+    "name": "SRC5Impl",
+    "interface_name": "openzeppelin_introspection::interface::ISRC5"
+  },
+  {
+    "type": "interface",
+    "name": "openzeppelin_introspection::interface::ISRC5",
+    "items": [
+      {
+        "type": "function",
+        "name": "supports_interface",
+        "inputs": [
+          {
+            "name": "interface_id",
+            "type": "core::felt252"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::bool"
+          }
+        ],
+        "state_mutability": "view"
       }
     ]
   },
@@ -694,6 +1165,10 @@
       },
       {
         "name": "spok_nft",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "pragma_address",
         "type": "core::starknet::contract_address::ContractAddress"
       }
     ]
@@ -913,11 +1388,6 @@
         "kind": "data"
       },
       {
-        "name": "token",
-        "type": "core::starknet::contract_address::ContractAddress",
-        "kind": "data"
-      },
-      {
         "name": "amount",
         "type": "core::integer::u256",
         "kind": "data"
@@ -1002,6 +1472,254 @@
   },
   {
     "type": "event",
+    "name": "peer_protocol::peer_protocol::PeerProtocol::PoolCreated",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "created_by",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "token",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "created_at",
+        "type": "core::integer::u64",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "openzeppelin_access::accesscontrol::accesscontrol::AccessControlComponent::RoleGranted",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "role",
+        "type": "core::felt252",
+        "kind": "data"
+      },
+      {
+        "name": "account",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "sender",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "openzeppelin_access::accesscontrol::accesscontrol::AccessControlComponent::RoleRevoked",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "role",
+        "type": "core::felt252",
+        "kind": "data"
+      },
+      {
+        "name": "account",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "sender",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "openzeppelin_access::accesscontrol::accesscontrol::AccessControlComponent::RoleAdminChanged",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "role",
+        "type": "core::felt252",
+        "kind": "data"
+      },
+      {
+        "name": "previous_admin_role",
+        "type": "core::felt252",
+        "kind": "data"
+      },
+      {
+        "name": "new_admin_role",
+        "type": "core::felt252",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "openzeppelin_access::accesscontrol::accesscontrol::AccessControlComponent::Event",
+    "kind": "enum",
+    "variants": [
+      {
+        "name": "RoleGranted",
+        "type": "openzeppelin_access::accesscontrol::accesscontrol::AccessControlComponent::RoleGranted",
+        "kind": "nested"
+      },
+      {
+        "name": "RoleRevoked",
+        "type": "openzeppelin_access::accesscontrol::accesscontrol::AccessControlComponent::RoleRevoked",
+        "kind": "nested"
+      },
+      {
+        "name": "RoleAdminChanged",
+        "type": "openzeppelin_access::accesscontrol::accesscontrol::AccessControlComponent::RoleAdminChanged",
+        "kind": "nested"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "openzeppelin_introspection::src5::SRC5Component::Event",
+    "kind": "enum",
+    "variants": []
+  },
+  {
+    "type": "event",
+    "name": "peer_protocol::peer_protocol::PeerProtocol::RatesUpdated",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "token",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "base_rate",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "utilization_optimal",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "slope1",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "slope2",
+        "type": "core::integer::u256",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "peer_protocol::peer_protocol::PeerProtocol::PoolDepositSuccessful",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "user",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "token",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "amount",
+        "type": "core::integer::u256",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "peer_protocol::peer_protocol::PeerProtocol::PoolWithdrawalSuccessful",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "user",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "token",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "amount",
+        "type": "core::integer::u256",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "peer_protocol::peer_protocol::PeerProtocol::PoolBorrowSuccessful",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "user",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "borrowed",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "collateral",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "borrowed_amount",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "collateral_locked_amount",
+        "type": "core::integer::u256",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "openzeppelin_upgrades::upgradeable::UpgradeableComponent::Upgraded",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "class_hash",
+        "type": "core::starknet::class_hash::ClassHash",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "openzeppelin_upgrades::upgradeable::UpgradeableComponent::Event",
+    "kind": "enum",
+    "variants": [
+      {
+        "name": "Upgraded",
+        "type": "openzeppelin_upgrades::upgradeable::UpgradeableComponent::Upgraded",
+        "kind": "nested"
+      }
+    ]
+  },
+  {
+    "type": "event",
     "name": "peer_protocol::peer_protocol::PeerProtocol::Event",
     "kind": "enum",
     "variants": [
@@ -1059,6 +1777,46 @@
         "name": "PositionLiquidated",
         "type": "peer_protocol::peer_protocol::PeerProtocol::PositionLiquidated",
         "kind": "nested"
+      },
+      {
+        "name": "PoolCreated",
+        "type": "peer_protocol::peer_protocol::PeerProtocol::PoolCreated",
+        "kind": "nested"
+      },
+      {
+        "name": "AccessControlEvent",
+        "type": "openzeppelin_access::accesscontrol::accesscontrol::AccessControlComponent::Event",
+        "kind": "flat"
+      },
+      {
+        "name": "SRC5Event",
+        "type": "openzeppelin_introspection::src5::SRC5Component::Event",
+        "kind": "flat"
+      },
+      {
+        "name": "RatesUpdated",
+        "type": "peer_protocol::peer_protocol::PeerProtocol::RatesUpdated",
+        "kind": "nested"
+      },
+      {
+        "name": "PoolDepositSuccessful",
+        "type": "peer_protocol::peer_protocol::PeerProtocol::PoolDepositSuccessful",
+        "kind": "nested"
+      },
+      {
+        "name": "PoolWithdrawalSuccessful",
+        "type": "peer_protocol::peer_protocol::PeerProtocol::PoolWithdrawalSuccessful",
+        "kind": "nested"
+      },
+      {
+        "name": "PoolBorrowSuccessful",
+        "type": "peer_protocol::peer_protocol::PeerProtocol::PoolBorrowSuccessful",
+        "kind": "nested"
+      },
+      {
+        "name": "UpgradeableEvent",
+        "type": "openzeppelin_upgrades::upgradeable::UpgradeableComponent::Event",
+        "kind": "flat"
       }
     ]
   }

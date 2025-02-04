@@ -91,9 +91,9 @@ const Market = () => {
   ) => {
     if (Protocol === "P2P") {
       if (action === "Lend") {
-        router.push(`app/LendMarket`);
+        router.push(`dashboard/LendMarket`);
       } else if (action === "Borrow") {
-        router.push(`app/BorrowMarket`);
+        router.push(`dashboard/BorrowMarket`);
       }
     } else {
       openModal(action as "Deposit" | "Borrow", data);

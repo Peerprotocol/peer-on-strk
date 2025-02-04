@@ -876,6 +876,7 @@ pub mod PeerProtocol {
 
         fn accept_proposal(ref self: ContractState, proposal_id: u256) {
             let caller = get_caller_address();
+
             let proposal = self.proposals.entry(proposal_id).read();
 
             assert(proposal.is_accepted == false, 'proposal already accepted');
@@ -893,7 +894,10 @@ pub mod PeerProtocol {
             let fee_amount = token_amount * PROTOCOL_FEE_PERCENTAGE / 100;
             let net_amount = token_amount - fee_amount;
 
-            match proposal.proposal_type {
+            let proposal_type = proposal.proposal_type;
+            assert(proposal_type == ProposalType::BORROWING || proposal_type == ProposalType::LENDING, 'Invalid proposal type');
+
+            match proposal_type {
                 ProposalType::BORROWING => {
                     assert(caller != proposal.borrower, 'borrower not allowed');
                     self.handle_borrower_acceptance(proposal, caller, net_amount, fee_amount);

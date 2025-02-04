@@ -6,3 +6,4 @@ target
 .DS_Store
 package.json
 Scarb.lock
+README-copy.MD

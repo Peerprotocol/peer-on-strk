@@ -82,7 +82,9 @@ struct CounterProposal {
     id: u256,
     proposal_id: u256,
     creator: ContractAddress,
+    accepted_collateral_token: ContractAddress,
     required_collateral_value: u256,
+    token_amount: u256,
     amount: u256,
     interest_rate: u64,
     duration: u64,
@@ -919,7 +921,7 @@ pub mod PeerProtocol {
             ref self: ContractState,
             proposal_id: u256,
             amount: u256,
-            required_collateral_value: u256,
+            accepted_collateral_token: ContractAddress,
             interest_rate: u64,
             duration: u64
         ) {
@@ -932,43 +934,62 @@ pub mod PeerProtocol {
             assert!(
                 proposal.proposal_type == ProposalType::LENDING, "Can only counter lending proposal"
             );
+            assert!(
+                self.supported_tokens.entry(accepted_collateral_token).read(),
+                "Collateral token not supported"
+            );
+            assert!(amount > 0, "Borrow amount must be greater than zero");
+            assert!(interest_rate > 0 && interest_rate <= 7, "Interest rate out of bounds");
+            assert!(duration >= 7 && duration <= 45, "Duration out of bounds");
 
             // Check if borrower has sufficient collateral * 1.3
             let borrower_collateral_balance = self
                 .token_deposits
-                .entry((caller, proposal.accepted_collateral_token))
+                .entry((caller, accepted_collateral_token))
                 .read();
             let borrower_locked_funds = self
                 .locked_funds
-                .entry((caller, proposal.accepted_collateral_token))
+                .entry((caller, accepted_collateral_token))
                 .read();
 
+                let (token_price, token_decimals) = self.get_token_price(proposal.token);
+                let (collateral_token_price, collateral_decimals) = self
+                    .get_token_price(accepted_collateral_token);
+                let token_amount = (amount * ONE_E18 * fast_power(10_u32, token_decimals).into())
+                    / token_price;
+                let required_collateral_value: u256 = (amount
+                    * ONE_E18
+                    * fast_power(10_u32, collateral_decimals).into()
+                    * COLLATERAL_RATIO_NUMERATOR)
+                    / (collateral_token_price * COLLATERAL_RATIO_DENOMINATOR);
+    
+
             let available_collateral = borrower_collateral_balance - borrower_locked_funds;
-            let required_collateral_ratio = (required_collateral_value * COLLATERAL_RATIO_NUMERATOR)
-                / COLLATERAL_RATIO_DENOMINATOR;
 
             assert(
-                available_collateral >= required_collateral_ratio, 'insufficient collateral funds'
+                available_collateral >= required_collateral_value, 'insufficient collateral funds'
             );
 
             // Lock borrowers collateral
             let prev_locked_funds = self
                 .locked_funds
-                .entry((caller, proposal.accepted_collateral_token))
+                .entry((caller, accepted_collateral_token))
                 .read();
 
             self
                 .locked_funds
-                .entry((caller, proposal.accepted_collateral_token))
-                .write(prev_locked_funds + required_collateral_ratio);
+                .entry((caller, accepted_collateral_token))
+                .write(prev_locked_funds + required_collateral_value);
 
             let counter_proposal_id = proposal.num_proposal_counters + 1;
 
             let counter_proposal = CounterProposal {
                 id: counter_proposal_id,
                 creator: caller,
+                accepted_collateral_token,
                 proposal_id: proposal_id,
                 required_collateral_value,
+                token_amount,
                 amount,
                 interest_rate,
                 duration,

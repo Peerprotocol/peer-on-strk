@@ -710,8 +710,7 @@ fn test_create_counter_proposal() {
     // borrower creates counter proposal
     start_cheat_caller_address(peer_protocol_address, borrower);
 
-    let counter_amount: u256 = 250 * ONE_E18;
-    let counter_required_collateral_value: u256 = 200 * ONE_E18;
+    let counter_amount: u256 = 250;
     let counter_interest_rate: u64 = 3;
     let counter_duration: u64 = 8;
 
@@ -719,7 +718,7 @@ fn test_create_counter_proposal() {
         .create_counter_proposal(
             proposal_id,
             counter_amount,
-            counter_required_collateral_value,
+            collateral_token_address,
             counter_interest_rate,
             counter_duration
         );
@@ -834,8 +833,7 @@ fn test_get_counter_proposals() {
     // borrower1 creates counter proposal
     start_cheat_caller_address(peer_protocol_address, borrower1);
 
-    let counter_amount: u256 = 250 * ONE_E18;
-    let counter_required_collateral_value: u256 = 200 * ONE_E18;
+    let counter_amount: u256 = 250;
     let counter_interest_rate: u64 = 3;
     let counter_duration: u64 = 8;
 
@@ -843,7 +841,7 @@ fn test_get_counter_proposals() {
         .create_counter_proposal(
             proposal_id,
             counter_amount,
-            counter_required_collateral_value,
+            collateral_token_address,
             counter_interest_rate,
             counter_duration
         );
@@ -853,8 +851,7 @@ fn test_get_counter_proposals() {
     // borrower2 creates counter proposal
     start_cheat_caller_address(peer_protocol_address, borrower2);
 
-    let counter_amount_2: u256 = 400 * ONE_E18;
-    let counter_required_collateral_value_2: u256 = 300 * ONE_E18;
+    let counter_amount_2: u256 = 400;
     let counter_interest_rate_2: u64 = 7;
     let counter_duration_2: u64 = 30;
 
@@ -862,7 +859,7 @@ fn test_get_counter_proposals() {
         .create_counter_proposal(
             proposal_id,
             counter_amount_2,
-            counter_required_collateral_value_2,
+            collateral_token_address,
             counter_interest_rate_2,
             counter_duration_2
         );

@@ -29,7 +29,7 @@ pub trait IPeerProtocol<TContractState> {
         ref self: TContractState,
         proposal_id: u256,
         amount: u256,
-        required_collateral_value: u256,
+        accepted_collateral_token: ContractAddress,
         interest_rate: u64,
         duration: u64
     );

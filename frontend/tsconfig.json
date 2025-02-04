@@ -33,7 +33,7 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     "src/pages/deposit.tsx",
-    "src/app/withdraw",
+    "src/dashboard/withdraw",
     "src/components/WalletConnectProvider.tsx"
   ],
   "exclude": [

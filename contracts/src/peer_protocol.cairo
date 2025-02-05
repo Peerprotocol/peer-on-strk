@@ -876,9 +876,8 @@ pub mod PeerProtocol {
 
         fn accept_proposal(ref self: ContractState, proposal_id: u256) {
             let caller = get_caller_address();
-
+            assert(proposal_id <= self.proposals_count.read(), 'invalid proposal id');
             let proposal = self.proposals.entry(proposal_id).read();
-
             assert(proposal.is_accepted == false, 'proposal already accepted');
             assert(proposal.is_cancelled == false, 'proposal is cancelled');
 

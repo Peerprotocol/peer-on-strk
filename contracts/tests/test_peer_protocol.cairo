@@ -626,10 +626,92 @@ fn test_accept_proposal() {
     let proposal = *lending_proposals.at(0);
     assert!(!proposal.is_cancelled, "proposal should not be cancelled");
     assert!(!proposal.is_accepted, "proposal should not be accepted");
-
     // Accept proposal
     start_cheat_caller_address(peer_protocol_address, borrower);
     peer_protocol.accept_proposal(proposal.id);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // Verify acceptance
+    let updated_proposals = peer_protocol.get_lending_proposal_details();
+    let updated_proposal = *updated_proposals.at(0);
+    assert!(updated_proposal.is_accepted, "proposal should be accepted");
+
+    // Verify funds and collateral
+    let borrower_collateral_locked = peer_protocol.get_locked_funds(borrower, collateral_token_address);
+    assert!(borrower_collateral_locked > 0, "Collateral should be locked");
+}
+
+#[test]
+#[fork(
+    url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7",
+    block_tag: latest
+)]
+#[should_panic(expected: 'invalid proposal id')]
+fn test_accept_invalid_proposal_should_panic() {
+    // Setup tokens
+    let token_address = deploy_token("MockToken");
+    let collateral_token_address = deploy_token("MockToken1");
+    let peer_protocol_address = deploy_peer_protocol();
+
+    let lending_token = IERC20Dispatcher { contract_address: token_address };
+    let collateral_token = IERC20Dispatcher { contract_address: collateral_token_address };
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+
+    let owner: ContractAddress = starknet::contract_address_const::<0x123626789>();
+    let lender: ContractAddress = starknet::contract_address_const::<0x122226789>();
+    let borrower: ContractAddress = starknet::contract_address_const::<0x122226737>();
+
+    let mint_amount: u256 = 3000 * ONE_E18;
+    let lending_amount: u256 = 500;
+    let interest_rate: u64 = 5;
+    let duration: u64 = 10;
+
+    // Add supported tokens
+    start_cheat_caller_address(peer_protocol_address, owner);
+    peer_protocol.add_supported_token(token_address, 'STRK/USD');
+    peer_protocol.add_supported_token(collateral_token_address, 'STRK/USD');
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // Setup lender
+    lending_token.mint(lender, mint_amount);
+    start_cheat_caller_address(token_address, lender);
+    lending_token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(token_address);
+
+    start_cheat_caller_address(peer_protocol_address, lender);
+    peer_protocol.deposit(token_address, mint_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+    
+    // Setup borrower collateral
+    collateral_token.mint(borrower, mint_amount);
+    start_cheat_caller_address(collateral_token_address, borrower);
+    collateral_token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(collateral_token_address);
+
+    start_cheat_caller_address(peer_protocol_address, borrower);
+    peer_protocol.deposit(collateral_token_address, mint_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // Create lending proposal
+    start_cheat_caller_address(peer_protocol_address, lender);
+    peer_protocol.create_lending_proposal(
+        token_address, 
+        collateral_token_address, 
+        lending_amount, 
+        interest_rate, 
+        duration
+    );
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // Verify proposal creation
+    let lending_proposals = peer_protocol.get_lending_proposal_details();
+    assert!(lending_proposals.len() == 1, "wrong number of lending proposals");
+    let proposal = *lending_proposals.at(0);
+    assert!(!proposal.is_cancelled, "proposal should not be cancelled");
+    assert!(!proposal.is_accepted, "proposal should not be accepted");
+    // Accept proposal
+    start_cheat_caller_address(peer_protocol_address, borrower);
+    peer_protocol.accept_proposal(42);
     stop_cheat_caller_address(peer_protocol_address);
 
     // Verify acceptance

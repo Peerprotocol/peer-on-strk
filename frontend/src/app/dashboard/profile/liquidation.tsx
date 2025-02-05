@@ -150,7 +150,7 @@ const Liquidation = () => {
                     <>
                         <p className="text-sm text-gray-400">Locked Balance</p>
                         <p className="text-[2.2rem] font-semibold text-black">
-                            ${totalBalance}
+                            ${(Number(totalBalance) / Number (10 ** 18)).toFixed(2)}
                         </p>
 
                         <div className="mt-4 space-y-2">
@@ -158,9 +158,9 @@ const Liquidation = () => {
                                 <div key={token.symbol} className="flex justify-between items-center text-sm">
                                     <span className="text-gray-600">{token.symbol}</span>
                                     <div className="flex flex-col items-end">
-                                        <span className="text-black">{token.balance} {token.symbol}</span>
+                                        <span className="text-black">{(Number(token.balance) / Number (10 ** 18)).toFixed(2)} {token.symbol}</span>
                                         <span className="text-gray-500 text-xs">
-                                            ${token.balanceUsd.toFixed(2)}
+                                            ${(Number(token.balanceUsd) /  Number (10 ** 18)).toFixed(2)}
                                         </span>
                                     </div>
                                 </div>

@@ -114,7 +114,7 @@ const TableRow = ({ onCounter }: TableRowProps) => {
             abi: protocolAbi,
             contractAddress: PROTOCOL_ADDRESS,
             entrypoint: "accept_proposal",
-            calldata: CallData.compile(["0", BigInt(proposalId)]),
+            calldata: CallData.compile([proposalId, '0']),
           },
         ],
       });
@@ -252,7 +252,7 @@ const TableRow = ({ onCounter }: TableRowProps) => {
                       ? "bg-gray-400 cursor-not-allowed"
                       : "bg-black hover:bg-opacity-90 transition"
                   }`}
-                  onClick={() => handleLend(item.id.toString())}
+                  onClick={() =>{console.log('item id', item.id), handleLend(item.id)}}
                   disabled={loading || proposalsLoading}
                 >
                   {loading ? "..." : "Borrow"}

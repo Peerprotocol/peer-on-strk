@@ -74,6 +74,7 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
   });
 
   const handleLend = async (proposalId: any) => {
+    console.log('proposal id', proposalId);
     setLoading(true);
     try {
       const transaction = await lend({
@@ -81,7 +82,7 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
           abi: protocolAbi,
           contractAddress: PROTOCOL_ADDRESS,
           entrypoint: "accept_proposal",
-          calldata: [proposalId, proposalId]
+          calldata: [proposalId, '0']
         }]
       });
 
@@ -208,7 +209,8 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
                       ? "bg-gray-400 cursor-not-allowed"
                       : "bg-black hover:bg-opacity-90 transition"
                     }`}
-                  onClick={() => handleLend(item.id.toString())}
+                    
+                  onClick={() => {console.log('item id', item.id), handleLend(item.id.toString())}}
                   disabled={loading || proposalsLoading}
                 >
                   {loading ? "..." : "Lend"}

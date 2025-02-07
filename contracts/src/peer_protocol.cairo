@@ -785,9 +785,10 @@ pub mod PeerProtocol {
                             .interests_earned
                             .entry((user, supported_token))
                             .read();
+                        let locked_funds = self.get_locked_funds(user, supported_token);
 
                         let available_balance = if total_borrowed == 0 {
-                            total_deposits
+                            total_deposits - locked_funds
                         } else {
                             match total_deposits > total_borrowed {
                                 true => total_deposits - total_borrowed,
@@ -1090,7 +1091,6 @@ pub mod PeerProtocol {
             // Calculate repayment amount in tokens
             let (token_price, token_decimals) = self
                 .get_token_price(proposal.token); // 1 Token = X USD
-
             let mut repayment_amount = amount;
 
             if repayment_amount + proposal.amount_repaid >= proposal.amount {
@@ -1123,8 +1123,9 @@ pub mod PeerProtocol {
                 borrower_balance >= repayment_amount_with_interest_in_tokens,
                 'insufficient borrower balance'
             );
+            
             IERC20Dispatcher { contract_address: proposal.token }
-                .transfer_from(caller, proposal.lender, repayment_amount_with_interest_in_tokens);
+                .transfer(proposal.lender, repayment_amount_with_interest_in_tokens);
 
             // Calculate collateral release amount
             let (_, collateral_decimals) = self.get_token_price(proposal.accepted_collateral_token);
@@ -1176,6 +1177,16 @@ pub mod PeerProtocol {
             if updated_proposal.is_repaid {
                 let spok = IPeerSPOKNFTDispatcher { contract_address: self.spok_nft.read() };
                 spok.burn(proposal.borrower_nft_id);
+
+                // Unlock lenders locked tokens
+             let locked_funds = self
+             .locked_funds
+             .entry((proposal.lender, proposal.token))
+             .read();
+         self
+             .locked_funds
+             .entry((proposal.lender, proposal.token))
+             .write(locked_funds - proposal.token_amount);
 
                 self
                     .emit(
@@ -1639,6 +1650,7 @@ pub mod PeerProtocol {
                 interest_rate: proposal.interest_rate,
                 amount_borrowed: net_amount
             };
+
             self.borrowed_tokens.write(borrower, borrowed_token_details);
 
             self.proposals.entry(proposal.id).write(updated_proposal);
@@ -1653,8 +1665,9 @@ pub mod PeerProtocol {
 
             // Mint NFTs to only the borrower
             let borrower_token_id = self.last_spok_id.read() + 1;
+            // println!("borrower nft id: {}", borrower_token_id);
 
-            spok.mint(proposal_id, borrower, borrower_token_id);
+            spok.mint(borrower, borrower_token_id, proposal_id);
 
             self.last_spok_id.write(borrower_token_id);
 

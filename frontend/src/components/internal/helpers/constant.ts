@@ -3,4 +3,4 @@ export const ETH_SEPOLIA: string =
 export const STRK_SEPOLIA: string =
   "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d";
 export const PROTOCOL_ADDRESS: string =
-  "0x1756504899876be773a9958b4667d64675aacc9fa1d42bc409c8d2258869d92";
+  "0x6578ac3d11e48a826a7936b5e6daa474dce77aa8609bef33a8601efcd965da3";

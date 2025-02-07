@@ -1189,9 +1189,9 @@ fn test_repay_proposal() {
     let lender = starknet::contract_address_const::<0x123336789>();
 
     let mint_amount: u256 = 3000 * ONE_E18;
-    let borrow_amount: u256 = 500;
-    let interest_rate: u64 = 5;
-    let duration: u64 = 10;
+    let borrow_amount: u256 = 20;
+    let interest_rate: u64 = 1;
+    let duration: u64 = 7;
 
     // Add supported token
     start_cheat_caller_address(peer_protocol_address, owner);
@@ -1248,7 +1248,7 @@ fn test_repay_proposal() {
     start_cheat_caller_address(peer_protocol_address, borrower);
     start_cheat_block_timestamp(peer_protocol_address, get_block_timestamp() + duration * 86400);
     let mut spy = spy_events();
-    let first_installment_amount = 250;
+    let first_installment_amount = 5;
     peer_protocol.repay_proposal(proposal_id, first_installment_amount);
     stop_cheat_caller_address(peer_protocol_address);
 
@@ -1278,7 +1278,7 @@ fn test_repay_proposal() {
 
     // Check borrower balance after repayment
     let token_balance_after_first_installment = token.balance_of(borrower);
-    let first_installment_amount: u256 = 250;
+    let first_installment_amount: u256 = 5;
     assert_eq!(
         token_balance_before_first_installment - token_balance_after_first_installment,
         net_amount_in_tokens + interests_amount_over_duration
@@ -1297,7 +1297,7 @@ fn test_repay_proposal() {
 
     start_cheat_caller_address(peer_protocol_address, borrower);
     start_cheat_block_timestamp(peer_protocol_address, get_block_timestamp() + duration * 86400);
-    let second_installment_amount = 250;
+    let second_installment_amount = 10;
     peer_protocol.repay_proposal(proposal_id, second_installment_amount);
     stop_cheat_caller_address(peer_protocol_address);
     let proposals = peer_protocol.get_borrow_proposal_details();

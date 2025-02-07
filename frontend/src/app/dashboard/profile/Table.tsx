@@ -16,46 +16,53 @@ import {
   getCryptoPrices,
   formatDate1,
   felt252ToHex,
+  toHex,
 } from "@/components/internal/helpers";
 import AssetsLoader from "../loaders/assetsloader";
 import RepayModal from "@/components/custom/RepayModal";
 
+
+// Types
+interface TokenInfo {
+  symbol: string;
+  address: string;
+  icon: any;
+  decimals: number;
+}
+
+// Constants
+const ROWS_PER_PAGE = 5;
+const TABS = ["Assets", "Position Overview", "Transaction History"] as const;
+type TabType = (typeof TABS)[number];
+
+const tokens: TokenInfo[] = [
+  { symbol: "STRK", address: STRK_SEPOLIA, icon: STRK, decimals: 18 },
+  { symbol: "ETH", address: ETH_SEPOLIA, icon: ETH, decimals: 18 },
+];
+
+const TRANSACTION_TYPE_MAP: { [key: string]: string } = {
+  "19216509646883156": "DEPOSIT",
+  "412198569506257514217804": "WITHDRAWAL",
+};
+
+
 const Table: React.FC = () => {
-  // State to manage the active tab
-  const [activeTab, setActiveTab] = useState("Transaction History");
+  // State Management
+  const [activeTab, setActiveTab] = useState<TabType>("Transaction History");
   const [showModal, setShowModal] = useState(false);
-
-  // Pagination setup
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 5;
+  const [usdValues, setUsdValues] = useState({ eth: 0, strk: 0 });
+  const [isLoadingPrices, setIsLoadingPrices] = useState(false);
+  const [priceError, setPriceError] = useState<string | null>(null);
+  const [selectedProposal, setSelectedProposal] = useState<{ id: any, amount: number } | null>(null);
 
-  interface TokenInfo {
-    symbol: string;
-    address: string;
-    icon: any;
-    decimals: number;
-  }
-  const tokens: TokenInfo[] = [
-    {
-      symbol: "STRK",
-      address: STRK_SEPOLIA,
-      icon: STRK,
-      decimals: 18,
-    },
-    {
-      symbol: "ETH",
-      address: ETH_SEPOLIA,
-      icon: ETH,
-      decimals: 18,
-    },
-  ];
 
-  // Read User Assets
+  // Contract Data Hooks
   const { address: user } = useAccount();
+
   const {
     data: userDeposits,
     isLoading: isLoadingUserDeposits,
-    refetch: refetchUserDeposits,
     isFetching: isFetchingUserDeposits,
   } = useContractRead(
     user
@@ -68,11 +75,9 @@ const Table: React.FC = () => {
       : ({} as any)
   );
 
-  // Read Transaction History
   const {
     data: transactions,
     isLoading: isLoadingTransactions,
-    refetch: refetchTransactions,
     isFetching: isFetchingTransactions,
   } = useContractRead(
     user
@@ -80,69 +85,29 @@ const Table: React.FC = () => {
           abi: protocolAbi,
           address: PROTOCOL_ADDRESS,
           functionName: "get_transaction_history",
-          args: [user, 1, rowsPerPage],
+          args: [user, 1, ROWS_PER_PAGE],
         }
       : ({} as any)
   );
 
-  // Read borrowed tokens
   const {
-    data: borrowedTokens,
-    isLoading: isLoadingTokens,
-    refetch: refetchTokens,
-    isFetching: isFetchingTokens,
+    data: borrowProposals,
+    isLoading: isLoadingProposals,
+    isFetching: isFetchingProposals,
   } = useContractRead(
     user
       ? {
           abi: protocolAbi,
           address: PROTOCOL_ADDRESS,
-          functionName: "get_borrowed_tokens",
-          args: [user],
+          functionName: "get_lending_proposal_details",
+          args: [],
         }
       : ({} as any)
   );
 
-  // Filter data based on the active tab
-  const getDataForActiveTab = () => {
-    switch (activeTab) {
-      case "Transaction History":
-        return Array.isArray(transactions) ? transactions : [];
-      case "Assets":
-        return Array.isArray(userDeposits) ? userDeposits : [];
-      case "":
-        // Return an empty array for tabs without data
-        return [];
-      default:
-        return [];
-    }
-  };
-
-  // Get the data for the current page
-  const dataForCurrentTab = getDataForActiveTab();
-  const totalPages = Math.ceil(dataForCurrentTab?.length / rowsPerPage);
-  const currentRows = dataForCurrentTab?.slice(
-    (currentPage - 1) * rowsPerPage,
-    currentPage * rowsPerPage
-  );
-
-  // Logic for pagination with 5 buttons visible
-  const maxVisibleButtons = 5;
-  const startPage =
-    Math.floor((currentPage - 1) / maxVisibleButtons) * maxVisibleButtons + 1;
-  const endPage = Math.min(startPage + maxVisibleButtons - 1, totalPages);
-
-  // Handle page change
-  const handlePageChange = (page: number) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
-  };
-
-  const [usdValues, setUsdValues] = useState({ eth: 0, strk: 0 });
-  const [isLoadingPrices, setIsLoadingPrices] = useState(false);
-  const [priceError, setPriceError] = useState<string | null>(null);
+  // Effects
   useEffect(() => {
-    async function fetch() {
+    const fetchPrices = async () => {
       setIsLoadingPrices(true);
       setPriceError(null);
       try {
@@ -154,71 +119,114 @@ const Table: React.FC = () => {
       } finally {
         setIsLoadingPrices(false);
       }
-    }
-    fetch();
+    };
+    fetchPrices();
   }, []);
 
-  const TRANSACTION_TYPE_MAP: { [key: string]: string } = {
-    "19216509646883156": "DEPOSIT",
-    "412198569506257514217804": "WITHDRAWAL",
+  // Data Processing
+  const getDataForActiveTab = () => {
+    switch (activeTab) {
+      case "Transaction History":
+        return Array.isArray(transactions) ? transactions : [];
+      case "Assets":
+        return Array.isArray(userDeposits) ? userDeposits : [];
+      case "Position Overview":
+        return Array.isArray(borrowProposals) ? borrowProposals : [];
+      default:
+        return [];
+    }
   };
 
-  function getTransactionTypeLabel(transactionTypeBigInt: bigint) {
-    const key = transactionTypeBigInt.toString();
-    return TRANSACTION_TYPE_MAP[key] || "Unknown";
-  }
+  console.log('borrowproposals', borrowProposals)
 
-  function onRepay(amount: number): void {
-    throw new Error("Function not implemented.");
-  }
+  const dataForCurrentTab = getDataForActiveTab();
+  const totalPages = Math.ceil(dataForCurrentTab?.length / ROWS_PER_PAGE);
+  const currentRows = dataForCurrentTab?.slice(
+    (currentPage - 1) * ROWS_PER_PAGE,
+    currentPage * ROWS_PER_PAGE
+  );
+
+  // Pagination Logic
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const maxVisibleButtons = 5;
+  const startPage =
+    Math.floor((currentPage - 1) / maxVisibleButtons) * maxVisibleButtons + 1;
+  const endPage = Math.min(startPage + maxVisibleButtons - 1, totalPages);
+
+  // Event Handlers
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+    setCurrentPage(1);
+  };
+
+  // Render Helper Functions
+  const renderTokenInfo = (tokenAddress: string) => {
+    let tokenAddressHex = "";
+    try {
+      tokenAddressHex = TokentoHex(tokenAddress);
+    } catch (error) {
+      console.error("Error converting token to hex:", error);
+      return null;
+    }
+
+    const token = tokens.find((t) => t.address === tokenAddressHex);
+    if (!token) return null;
+
+    return (
+      <div className="flex gap-3 items-center">
+        <Image
+          src={token.icon}
+          width={20}
+          height={20}
+          alt={`${token.symbol} Token`}
+        />
+        <span>{token.symbol}</span>
+      </div>
+    );
+  };
+
+  const renderLoadingState = (colSpan: number) => (
+    <tr>
+      <td colSpan={colSpan} className="p-4 text-center">
+        <AssetsLoader />
+      </td>
+    </tr>
+  );
+
+  const renderValue = (amount: string, token: TokenInfo | undefined) => {
+    if (!token || priceError) return priceError;
+    return (
+      usdValues[token.symbol.toLowerCase() as "eth" | "strk"] *
+      Number(formatCurrency(Number(amount)))
+    ).toFixed(3);
+  };
 
   return (
     <div className="p-6">
-      {/* Buttons: Assets, Position Overview, Transaction History, Filter */}
+      {/* Tab Navigation */}
       <div className="mb-6 flex justify-between mt-3 gap-4">
         <div className="flex flex-wrap md:flex-row space-x-2 md:space-x-4">
-          <button
-            className={`px-4 py-2 rounded-full ${
-              activeTab === "Assets"
-                ? "bg-black text-white"
-                : "bg-transparent text-black"
-            }`}
-            onClick={() => {
-              setActiveTab("Assets");
-              setCurrentPage(1); // Reset to first page when changing tabs
-            }}
-          >
-            Assets
-          </button>
-          <button
-            className={`px-4 py-2 rounded-full ${
-              activeTab === "Position Overview"
-                ? "bg-black text-white"
-                : "bg-transparent text-black"
-            }`}
-            onClick={() => {
-              setActiveTab("Position Overview");
-              setCurrentPage(1); // Reset to first page when changing tabs
-            }}
-          >
-            Position Overview
-          </button>
-          <button
-            className={`px-4 py-2 rounded-full ${
-              activeTab === "Transaction History"
-                ? "bg-black text-white"
-                : "bg-transparent text-black"
-            }`}
-            onClick={() => {
-              setActiveTab("Transaction History");
-              setCurrentPage(1); // Reset to first page when changing tabs
-            }}
-          >
-            Transaction History
-          </button>
+          {TABS.map((tab) => (
+            <button
+              key={tab}
+              className={`px-4 py-2 rounded-full ${
+                activeTab === tab
+                  ? "bg-black text-white"
+                  : "bg-transparent text-black"
+              }`}
+              onClick={() => handleTabChange(tab)}
+            >
+              {tab}
+            </button>
+          ))}
         </div>
         <div className="relative">
-          <select className="px-4 py-2 border rounded-full text-black  pr-8 appearance-none">
+          <select className="px-4 py-2 border rounded-full text-black pr-8 appearance-none">
             <option value="borrow">Borrow</option>
             <option value="lend">Lend</option>
           </select>
@@ -226,7 +234,7 @@ const Table: React.FC = () => {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Assets Table */}
       {activeTab === "Assets" && (
         <div className="overflow-x-auto text-black my-6">
           <table className="w-full border-collapse">
@@ -242,72 +250,33 @@ const Table: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white">
-              {!dataForCurrentTab || dataForCurrentTab.length === 0 ? (
+              {isLoadingUserDeposits ||
+              isFetchingUserDeposits ||
+              isLoadingPrices ? (
+                renderLoadingState(3)
+              ) : !currentRows || currentRows.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={5}
-                    className="p-4 text-center"
-                    style={{ minHeight: "100px" }}
-                  >
+                  <td colSpan={3} className="p-4 text-center">
                     No data available
                   </td>
                 </tr>
-              ) : isLoadingUserDeposits ||
-                isFetchingUserDeposits ||
-                isLoadingPrices ? (
-                <tr>
-                  <td colSpan={3} className="p-4 text-center">
-                    <AssetsLoader />
-                  </td>
-                </tr>
               ) : (
-                currentRows &&
-                currentRows.map((row, index: number) => {
-                  let tokenAddressHex = "";
-                  try {
-                    tokenAddressHex = TokentoHex(row.token?.toString());
-                  } catch (error) {
-                    if (error instanceof TypeError || error instanceof Error) {
-                      console.error(
-                        `Error converting token to hex: ${error.message}`
-                      );
-                    } else {
-                      console.error(
-                        "An unknown error occurred during token conversion."
-                      );
-                    }
-                  }
+                currentRows.map((row: any, index: number) => {
+                  const tokenInfo = renderTokenInfo(row.token?.toString());
                   const token = tokens.find(
-                    (token) => token.address == tokenAddressHex
+                    (t) => t.address === TokentoHex(row.token?.toString())
                   );
+
                   return (
                     <tr key={index}>
-                      <td className="p-4 border-b border-l flex gap-3 items-center">
-                        {token && (
-                          <>
-                            <Image
-                              src={token.icon}
-                              width={20}
-                              height={20}
-                              alt={`${token.symbol} Token`}
-                            />
-                            <span>{token.symbol}</span>
-                          </>
-                        )}
-                      </td>
+                      <td className="p-4 border-b border-l">{tokenInfo}</td>
                       <td className="p-4 border-b border-l">
                         {Number(formatCurrency(row.amount?.toString())).toFixed(
                           3
                         )}
                       </td>
                       <td className="p-4 border-b border-l">
-                        {token && !priceError
-                          ? (
-                              usdValues[
-                                token.symbol.toLowerCase() as "eth" | "strk"
-                              ] * Number(formatCurrency(Number(row.amount)))
-                            ).toFixed(3)
-                          : priceError}
+                        {renderValue(row.amount?.toString(), token)}
                       </td>
                     </tr>
                   );
@@ -318,6 +287,7 @@ const Table: React.FC = () => {
         </div>
       )}
 
+      {/* Transaction History Table */}
       {activeTab === "Transaction History" && (
         <div className="overflow-x-auto text-black my-6">
           <table className="w-full border-collapse">
@@ -339,66 +309,33 @@ const Table: React.FC = () => {
             </thead>
             <tbody className="bg-white">
               {isLoadingTransactions || isFetchingTransactions ? (
+                renderLoadingState(6)
+              ) : !currentRows || currentRows.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-4 text-center">
-                    <AssetsLoader />
+                  <td colSpan={6} className="p-4 text-center">
+                    No transaction history available
                   </td>
                 </tr>
-              ) : transactions ? (
-                currentRows &&
-                currentRows.map((row, index: number) => {
-                  let tokenAddressHex = "";
-                  try {
-                    tokenAddressHex = TokentoHex(row.token.toString());
-                  } catch (error) {
-                    if (error instanceof TypeError || error instanceof Error) {
-                      console.error(
-                        `Error converting token to hex: ${error.message}`
-                      );
-                    } else {
-                      console.error(
-                        "An unknown error occurred during token conversion."
-                      );
-                    }
-                  }
+              ) : (
+                currentRows.map((row: any, index: number) => {
+                  const tokenInfo = renderTokenInfo(row.token.toString());
                   const token = tokens.find(
-                    (token) => token.address == tokenAddressHex
+                    (t) => t.address === TokentoHex(row.token.toString())
                   );
 
-                  console.log('transaction type', row.transaction_type);
                   return (
                     <tr key={index}>
                       <td className="p-4 border-b border-l">
-                        {/* {getTransactionTypeLabel(row.transaction_type)} */}
                         {row.transaction_type[4]}
                       </td>
-                      <td className="p-4 border-b border-l flex gap-3 items-center">
-                        {token && (
-                          <>
-                            <Image
-                              src={token.icon}
-                              width={20}
-                              height={20}
-                              alt={`${token.symbol} Token`}
-                            />
-                            <span>{token.symbol}</span>
-                          </>
-                        )}
-                      </td>
+                      <td className="p-4 border-b border-l">{tokenInfo}</td>
                       <td className="p-4 border-b border-l">
                         {Number(formatCurrency(row.amount?.toString())).toFixed(
                           3
                         )}
                       </td>
                       <td className="p-4 border-b border-l">
-                        $
-                        {token && !priceError
-                          ? (
-                              usdValues[
-                                token.symbol.toLowerCase() as "eth" | "strk"
-                              ] * Number(formatCurrency(Number(row.amount)))
-                            ).toFixed(3)
-                          : priceError}
+                        ${renderValue(row.amount?.toString(), token)}
                       </td>
                       <td className="p-4 border-b border-l">
                         {formatDate1(row.timestamp?.toString())}
@@ -418,132 +355,86 @@ const Table: React.FC = () => {
                     </tr>
                   );
                 })
-              ) : (
-                <tr>
-                  <td colSpan={5} className="p-4 text-center">
-                    No transaction history available
-                  </td>
-                </tr>
               )}
             </tbody>
           </table>
         </div>
       )}
 
+      {/* Position Overview Table */}
       {activeTab === "Position Overview" && (
         <div className="overflow-x-auto text-black my-6">
           <table className="min-w-full border-collapse">
             <thead>
               <tr className="border bg-[#E5E5E5]">
-                <th className=" px-2 py-4 text-left border-b font-semibold">
+                <th className="px-2 py-4 text-left border-b font-semibold">
                   Asset
                 </th>
-                <th className="  text-left border-b font-semibold ">
-                  {" "}
-                  <p className="mx-10 xl:mx-0"> Expected Repayment Time</p>
+                <th className="text-left border-b font-semibold">
+                  <p className="mx-10 xl:mx-0">Expected Repayment Time</p>
                 </th>
-                <th className="  text-left border-b font-semibold">
+                <th className="text-left border-b font-semibold">
                   Interest Rate
                 </th>
-                <th className=" text-left border-b font-semibold ">
-                  {" "}
-                  <p className="mx-10 xl:mx-0">Amount</p>
+                <th className="text-left border-b font-semibold">
+                  <p className="mx-10 xl:mx-0">Borrowed</p>
                 </th>
-                <th className=" text-left border-b font-semibold">Action</th>
+                <th className="text-left border-b font-semibold">
+                  <p className="mx-10 xl:mx-0">Amount Repaid</p>
+                </th>
+                <th className="text-left border-b font-semibold">Action</th>
               </tr>
             </thead>
-            <tbody>
-              {isLoadingTokens || isFetchingTokens ? (
-                <tr>
-                  <td colSpan={5} className="p-4 text-center">
-                    <AssetsLoader />
-                  </td>
-                </tr>
-              ) : borrowedTokens ? (
-                currentRows &&
-                currentRows.map((row, index: number) => {
-                  let tokenAddressHex = "";
-                  try {
-                    tokenAddressHex = TokentoHex(row.token.toString());
-                  } catch (error) {
-                    if (error instanceof TypeError || error instanceof Error) {
-                      console.error(
-                        `Error converting token to hex: ${error.message}`
-                      );
-                    } else {
-                      console.error(
-                        "An unknown error occurred during token conversion."
-                      );
-                    }
-                  }
-                  const token = tokens.find(
-                    (token) => token.address == tokenAddressHex
-                  );
-                  return (
-                    <tr key={index}>
-                      <td className="p-4 border-b border-l">
-                        {getTransactionTypeLabel(row.transaction_type)}
-                      </td>
-                      <td className="p-4 border-b border-l flex gap-3 items-center">
-                        {token && (
-                          <>
-                            <Image
-                              src={token.icon}
-                              width={20}
-                              height={20}
-                              alt={`${token.symbol} Token`}
-                            />
-                            <span>{token.symbol}</span>
-                          </>
-                        )}
-                      </td>
-                      <td className="p-4 border-b border-l">
-                        {Number(formatCurrency(row.amount?.toString())).toFixed(
-                          3
-                        )}
-                      </td>
-                      <td className="p-4 border-b border-l">
-                        $
-                        {token && !priceError
-                          ? (
-                              usdValues[
-                                token.symbol.toLowerCase() as "eth" | "strk"
-                              ] * Number(formatCurrency(Number(row.amount)))
-                            ).toFixed(3)
-                          : priceError}
-                      </td>
-                      <td className="p-4 border-b border-l">
-                        {formatDate1(row.timestamp?.toString())}
-                      </td>
-                      {/* <td className="p-4 border-b border-l">
-                        <a
-                          href={`https://sepolia.voyager.online/tx/${felt252ToHex(
-                            row.tx_hash
-                          )}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-md"
-                        >
-                          See transaction...
-                        </a>
-                      </td> */}
-                      <td className="py-2 pr-2">
-                        <button
-                          className="h-9 w-24 text-white rounded-3xl flex justify-center items-center bg-black/70"
-                          onClick={() => {
-                            setShowModal(true);
-                          }}
-                        >
-                          Repay
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
+            <tbody className="bg-white">
+              {isLoadingProposals || isFetchingProposals ? (
+                renderLoadingState(5)
+              ) : borrowProposals && borrowProposals.length >= 0 ? (
+                borrowProposals
+                  .filter((proposal: any) => toHex(proposal.borrower.toString()) != user)
+                  .map((row: any, index: number) => {
+                    const tokenInfo = renderTokenInfo(row.token.toString());
+
+                    return (
+                      <tr key={index}>
+                        <td className="p-4 border-b border-l">{tokenInfo}</td>
+                        <td className="p-4 border-b border-l">
+                          {formatDate1(row.repayment_date?.toString())}
+                        </td>
+                        <td className="p-4 border-b border-l">
+                          {Number(row.interest_rate)}%
+                        </td>
+                        <td className="p-4 border-b border-l">
+                          {Number(
+                            formatCurrency(row.token_amount?.toString())
+                          ).toFixed(2)}
+                        </td>
+                        <td className="p-4 border-b border-l">
+                          {
+                            row.amount_repaid?.toString()
+                          }
+                        </td>
+                        <td className="p-4 border-b border-l">
+                          <button
+                            className="h-9 w-24 text-white rounded-3xl flex justify-center items-center bg-black/70"
+                            onClick={() => {
+                              setShowModal(true);
+                              setSelectedProposal({
+                                id: row.id,
+                                amount: (Number((row.amount?.toString())) - Number((row.amount_repaid?.toString())))
+                              });
+                            }}
+                            disabled={row.is_repaid}
+                          >
+                            {row.is_repaid ? "Repaid" : "Repay"}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
               ) : (
                 <tr>
                   <td colSpan={5} className="p-4 text-center">
-                    No transaction history available
+                    No position overview available
                   </td>
                 </tr>
               )}
@@ -600,9 +491,12 @@ const Table: React.FC = () => {
       {showModal && (
         <RepayModal
           isOpen={showModal}
-          onClose={() => setShowModal(false)}
-          amountBorrowed={500}
-          onRepay={onRepay}
+          onClose={() => {
+            setShowModal(false);
+            setSelectedProposal(null);
+          }}
+          amountBorrowed={selectedProposal?.amount ?? 0}
+          proposalId={selectedProposal?.id}
         />
       )}
     </div>

@@ -98,9 +98,11 @@ const Dashboard = () => {
         const availableBalanceInUsd = token ? 
           Number(formatCurrency(currentValue.available_balance?.toString())) * tokenPrice : 0;
         
+        const interestEarnedinUSD = token ? Number (formatCurrency(currentValue.interest_earned?.toString())) * tokenPrice : 0;
+        
         return {
           available_balance: pValue.available_balance + BigInt(Math.floor(availableBalanceInUsd * 100)), // Store as cents
-          interest_earned: pValue.interest_earned + BigInt(currentValue.interest_earned || 0),
+          interest_earned: pValue.interest_earned + BigInt(Math.floor(interestEarnedinUSD * 100)|| 0),
           total_borrowed: pValue.total_borrowed + BigInt(currentValue.total_borrowed || 0),
           total_lent: pValue.total_lent + BigInt(currentValue.total_lent || 0),
         };

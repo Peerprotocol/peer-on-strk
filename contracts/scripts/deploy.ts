@@ -33,7 +33,7 @@ async function main() {
     const constructor = myCallData.compile("constructor", {
         owner: process.env.DEPLOYER_ADDRESS ?? "",
         protocol_fee_address: process.env.DEPLOYER_ADDRESS ?? "",
-        spok_nft: "0x043b7c922c21069ddda8c1381e93c45f6ae51a508872dc8e15f3d6583c2c5361",
+        spok_nft: "0x74678167396fae83bcd5d15d62bce6355d23a0083d2c1478437b81596868a63",
         //mainnet  pragma_address: "0x2a85bd616f912537c50a49a4076db02c00b29b2cdc8a197ce92ed1837fa875b"
         pragma_address: "0x36031daa264c24520b11d93af622c848b2499b66b41d611bac95e13cfca131a"
     });
@@ -45,7 +45,7 @@ async function main() {
         salt: stark.randomAddress(),
     });
 
-    // console.log('deploy response', deployResponse.declare.class_hash);
+     //console.log('contract class hash', deployResponse.declare.class_hash);
 
     // Connect the new contract instance :
     const peerProtocolContract = new Contract(

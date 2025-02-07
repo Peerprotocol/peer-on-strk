@@ -126,7 +126,7 @@ const PositionControls: React.FC<PositionControlsProps> = ({
         isOpen={isRepayModalOpen}
         onClose={() => setIsRepayModalOpen(false)}
         amountBorrowed={500} // Replace with actual borrowed amount
-        onRepay={onRepay}
+        proposalId={123} // Replace with actual proposal ID
       />
     </>
   );

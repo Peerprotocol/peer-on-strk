@@ -1579,17 +1579,7 @@ pub mod PeerProtocol {
             // Mint SPOK
             let borrower_token_id = self.mint_spoks(proposal.id, proposal.borrower);
 
-            let current_locked = self.locked_funds.entry((lender, proposal.accepted_collateral_token)).read();
-            self.locked_funds.entry((lender, proposal.accepted_collateral_token)).write(current_locked - proposal.token_amount);
-
-            let borrowed = self.borrowed_assets.entry((lender, proposal.token)).read();
-
-            self.borrowed_assets.entry((lender, proposal.token)).write(borrowed + current_locked);
-
-            let new_lender_balance = lender_balance - current_locked;
-
-            self.token_deposits.entry((lender, proposal.token)).write(new_lender_balance);
-
+            
             // Record Transaction
             self
                 .record_transaction(

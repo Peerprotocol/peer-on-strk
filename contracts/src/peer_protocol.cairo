@@ -1125,7 +1125,7 @@ pub mod PeerProtocol {
             );
 
             IERC20Dispatcher { contract_address: proposal.token }
-                .transfer(proposal.lender, repayment_amount_with_interest_in_tokens);
+                .transfer_from(caller, proposal.lender, repayment_amount_with_interest_in_tokens);
 
             // Calculate collateral release amount
             let (_, collateral_decimals) = self.get_token_price(proposal.accepted_collateral_token);

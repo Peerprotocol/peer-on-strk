@@ -966,7 +966,7 @@ pub mod PeerProtocol {
                     * fast_power(10_u32, collateral_decimals).into()
                     * COLLATERAL_RATIO_NUMERATOR)
                     / (collateral_token_price * COLLATERAL_RATIO_DENOMINATOR);
-    
+
 
             let available_collateral = borrower_collateral_balance - borrower_locked_funds;
 
@@ -1123,7 +1123,7 @@ pub mod PeerProtocol {
                 borrower_balance >= repayment_amount_with_interest_in_tokens,
                 'insufficient borrower balance'
             );
-            
+
             IERC20Dispatcher { contract_address: proposal.token }
                 .transfer(proposal.lender, repayment_amount_with_interest_in_tokens);
 
@@ -1564,9 +1564,13 @@ pub mod PeerProtocol {
             net_amount: u256,
             fee_amount: u256
         ) {
-            // Check if acceptor (lender) has sufficient funds
-            let lender_balance = self.token_deposits.entry((lender, proposal.token)).read();
-            assert(lender_balance >= net_amount + fee_amount, 'insufficient lender balance');
+            let lender_token_balance = self.token_deposits.entry((lender, proposal.token)).read();
+            let locked_funds = self.locked_funds.entry((lender, proposal.token)).read();
+            let available_lending_funds = lender_token_balance - locked_funds;
+            assert(
+                available_lending_funds >= net_amount + fee_amount,
+                'insufficient lender balance'
+            );
 
             // Transfer net amount to borrower
             IERC20Dispatcher { contract_address: proposal.token }
@@ -1575,6 +1579,9 @@ pub mod PeerProtocol {
             // Transfer protocol fee to protocol fee address
             IERC20Dispatcher { contract_address: proposal.token }
                 .transfer(self.protocol_fee_address.read(), fee_amount);
+
+            // Lock lender's tokens
+            self.locked_funds.entry((lender, proposal.token)).write(locked_funds + net_amount);
 
             // Mint SPOK
             let borrower_token_id = self.mint_spoks(proposal.id, proposal.borrower);
@@ -1770,7 +1777,7 @@ pub mod PeerProtocol {
                     token,
                     20_000, // 2% base rate (Rbase)
                     800_000, // 80% optimal utilization (Ukink)
-                    80_000, // 8% slope1 
+                    80_000, // 8% slope1
                     400_000 // 40% slope2 (steeper after kink)
                 );
 

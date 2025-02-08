@@ -1179,14 +1179,14 @@ pub mod PeerProtocol {
                 spok.burn(proposal.borrower_nft_id);
 
                 // Unlock lenders locked tokens
-             let locked_funds = self
-             .locked_funds
-             .entry((proposal.lender, proposal.token))
-             .read();
-         self
-             .locked_funds
-             .entry((proposal.lender, proposal.token))
-             .write(locked_funds - proposal.token_amount);
+                let locked_funds = self
+                    .locked_funds
+                    .entry((proposal.lender, proposal.token))
+                    .read();
+                self
+                    .locked_funds
+                    .entry((proposal.lender, proposal.token))
+                    .write(locked_funds - net_amount_in_tokens);
 
                 self
                     .emit(

@@ -168,10 +168,12 @@ pub mod PeerProtocol {
 
 
     #[abi(embed_v0)]
-    impl AccessControlImpl = AccessControlComponent::AccessControlImpl<ContractState>;
+    impl AccessControlImpl =
+        AccessControlComponent::AccessControlImpl<ContractState>;
 
     #[abi(embed_v0)]
-    impl AccessControlCamelImpl = AccessControlComponent::AccessControlCamelImpl<ContractState>;
+    impl AccessControlCamelImpl =
+        AccessControlComponent::AccessControlCamelImpl<ContractState>;
 
     impl AccessControlInternalImpl = AccessControlComponent::InternalImpl<ContractState>;
 
@@ -895,7 +897,10 @@ pub mod PeerProtocol {
             let net_amount = token_amount - fee_amount;
 
             let proposal_type = proposal.proposal_type;
-            assert(proposal_type == ProposalType::BORROWING || proposal_type == ProposalType::LENDING, 'Invalid proposal type');
+            assert(
+                proposal_type == ProposalType::BORROWING || proposal_type == ProposalType::LENDING,
+                'Invalid proposal type'
+            );
 
             match proposal_type {
                 ProposalType::BORROWING => {
@@ -956,17 +961,16 @@ pub mod PeerProtocol {
                 .entry((caller, accepted_collateral_token))
                 .read();
 
-                let (token_price, token_decimals) = self.get_token_price(proposal.token);
-                let (collateral_token_price, collateral_decimals) = self
-                    .get_token_price(accepted_collateral_token);
-                let token_amount = (amount * ONE_E18 * fast_power(10_u32, token_decimals).into())
-                    / token_price;
-                let required_collateral_value: u256 = (amount
-                    * ONE_E18
-                    * fast_power(10_u32, collateral_decimals).into()
-                    * COLLATERAL_RATIO_NUMERATOR)
-                    / (collateral_token_price * COLLATERAL_RATIO_DENOMINATOR);
-    
+            let (token_price, token_decimals) = self.get_token_price(proposal.token);
+            let (collateral_token_price, collateral_decimals) = self
+                .get_token_price(accepted_collateral_token);
+            let token_amount = (amount * ONE_E18 * fast_power(10_u32, token_decimals).into())
+                / token_price;
+            let required_collateral_value: u256 = (amount
+                * ONE_E18
+                * fast_power(10_u32, collateral_decimals).into()
+                * COLLATERAL_RATIO_NUMERATOR)
+                / (collateral_token_price * COLLATERAL_RATIO_DENOMINATOR);
 
             let available_collateral = borrower_collateral_balance - borrower_locked_funds;
 
@@ -1123,7 +1127,7 @@ pub mod PeerProtocol {
                 borrower_balance >= repayment_amount_with_interest_in_tokens,
                 'insufficient borrower balance'
             );
-            
+
             IERC20Dispatcher { contract_address: proposal.token }
                 .transfer(proposal.lender, repayment_amount_with_interest_in_tokens);
 
@@ -1179,14 +1183,14 @@ pub mod PeerProtocol {
                 spok.burn(proposal.borrower_nft_id);
 
                 // Unlock lenders locked tokens
-             let locked_funds = self
-             .locked_funds
-             .entry((proposal.lender, proposal.token))
-             .read();
-         self
-             .locked_funds
-             .entry((proposal.lender, proposal.token))
-             .write(locked_funds - proposal.token_amount);
+                let locked_funds = self
+                    .locked_funds
+                    .entry((proposal.lender, proposal.token))
+                    .read();
+                self
+                    .locked_funds
+                    .entry((proposal.lender, proposal.token))
+                    .write(locked_funds - proposal.token_amount);
 
                 self
                     .emit(
@@ -1557,7 +1561,7 @@ pub mod PeerProtocol {
             contract_address_const::<0>()
         }
 
-         fn handle_borrower_acceptance(
+        fn handle_borrower_acceptance(
             ref self: ContractState,
             proposal: Proposal,
             lender: ContractAddress,
@@ -1579,7 +1583,23 @@ pub mod PeerProtocol {
             // Mint SPOK
             let borrower_token_id = self.mint_spoks(proposal.id, proposal.borrower);
 
-            
+            let current_locked = self
+                .locked_funds
+                .entry((lender, proposal.accepted_collateral_token))
+                .read();
+            self
+                .locked_funds
+                .entry((lender, proposal.accepted_collateral_token))
+                .write(current_locked - proposal.token_amount);
+
+            let borrowed = self.borrowed_assets.entry((lender, proposal.token)).read();
+
+            self.borrowed_assets.entry((lender, proposal.token)).write(borrowed + current_locked);
+
+            let new_lender_balance = lender_balance - current_locked;
+
+            self.token_deposits.entry((lender, proposal.token)).write(new_lender_balance);
+
             // Record Transaction
             self
                 .record_transaction(
@@ -1606,6 +1626,10 @@ pub mod PeerProtocol {
             net_amount: u256,
             fee_amount: u256
         ) {
+            let lender = proposal.lender;
+            let token = proposal.token;
+
+
             // Check if acceptor (borrower) has sufficient collateral with 1.3x ratio
             let required_collateral = proposal.required_collateral_value;
             let borrower_collateral_balance = self
@@ -1628,6 +1652,16 @@ pub mod PeerProtocol {
 
             // Mint SPOK
             let borrower_token_id = self.mint_spoks(proposal.id, borrower);
+
+            let borrowed = self.borrowed_assets.entry((borrower, token)).read();
+            self.borrowed_assets.entry((borrower, token)).write(borrowed + net_amount);
+
+            let lender_balance = self.token_deposits.entry((lender, token)).read();
+            let new_lender_balance = lender_balance - net_amount - fee_amount;
+            self.token_deposits.entry((lender, token)).write(new_lender_balance);
+
+            let total_lent = self.lent_assets.entry((lender, token)).read();
+            self.lent_assets.entry((lender, token)).write(total_lent + net_amount);
 
             // Record Transaction
             self
@@ -1658,9 +1692,7 @@ pub mod PeerProtocol {
         }
 
         fn mint_spoks(
-            ref self: ContractState,
-            proposal_id: u256,
-            borrower: ContractAddress
+            ref self: ContractState, proposal_id: u256, borrower: ContractAddress
         ) -> u256 {
             let spok = IPeerSPOKNFTDispatcher { contract_address: self.spok_nft.read() };
 

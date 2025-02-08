@@ -819,7 +819,7 @@ fn test_get_borrow_proposal_details() {
     let borrower: ContractAddress = starknet::contract_address_const::<0x122226789>();
 
     let mint_amount: u256 = 4000 * ONE_E18;
-    let borrow_amount: u256 = 500;
+    let borrow_amount: u256 = 50;
     let interest_rate: u64 = 5;
     let duration: u64 = 10;
 
@@ -850,7 +850,7 @@ fn test_get_borrow_proposal_details() {
         );
 
     // Create another borrow proposal with different parameters
-    let another_borrow_amount = 250;
+    let another_borrow_amount = 25;
     let another_interest_rate: u64 = 3;
     let another_duration: u64 = 7;
     peer_protocol
@@ -1190,7 +1190,7 @@ fn test_get_lending_proposal_details() {
     let lender: ContractAddress = starknet::contract_address_const::<0x122226789>();
 
     let mint_amount: u256 = 3000 * ONE_E18;
-    let lending_amount: u256 = 500;
+    let lending_amount: u256 = 50;
     let interest_rate: u64 = 5;
     let duration: u64 = 10;
 
@@ -1226,7 +1226,7 @@ fn test_get_lending_proposal_details() {
         );
 
     // Create another lending proposal with different parameters
-    let another_lending_amount: u256 = 250;
+    let another_lending_amount: u256 = 25;
     let another_interest_rate: u64 = 3;
     let another_duration: u64 = 7;
     peer_protocol
@@ -1325,7 +1325,7 @@ fn test_repay_proposal() {
     start_cheat_caller_address(peer_protocol_address, borrower);
     start_cheat_block_timestamp(peer_protocol_address, get_block_timestamp() + duration * 86400);
     let mut spy = spy_events();
-    let first_installment_amount = 5;
+    let first_installment_amount = 10;
     peer_protocol.repay_proposal(proposal_id, first_installment_amount);
     stop_cheat_caller_address(peer_protocol_address);
 
@@ -1355,7 +1355,7 @@ fn test_repay_proposal() {
 
     // Check borrower balance after repayment
     let token_balance_after_first_installment = token.balance_of(borrower);
-    let first_installment_amount: u256 = 5;
+    let first_installment_amount: u256 = 10;
     assert_eq!(
         token_balance_before_first_installment - token_balance_after_first_installment,
         net_amount_in_tokens + interests_amount_over_duration

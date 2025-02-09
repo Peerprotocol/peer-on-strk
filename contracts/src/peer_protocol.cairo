@@ -1192,6 +1192,31 @@ pub mod PeerProtocol {
                     .entry((proposal.lender, proposal.token))
                     .write(locked_funds - proposal.token_amount);
 
+                let borrower_available_balance = self
+                    .token_deposits
+                    .entry((caller, proposal.token))
+                    .read();
+                self
+                    .token_deposits
+                    .entry((caller, proposal.token))
+                    .write(borrower_available_balance + repayment_amount_with_interest_in_tokens);
+
+                let borrowed_amount = self.borrowed_assets.entry((caller, proposal.token)).read();
+                self
+                    .borrowed_assets
+                    .entry((caller, proposal.token))
+                    .write(borrowed_amount - repayment_amount_with_interest_in_tokens);
+
+                // Update Lender's Available Balance
+                let lender_available_balance = self
+                    .token_deposits
+                    .entry((proposal.lender, proposal.token))
+                    .read();
+                self
+                    .token_deposits
+                    .entry((proposal.lender, proposal.token))
+                    .write(lender_available_balance + repayment_amount_with_interest_in_tokens);
+
                 self
                     .emit(
                         ProposalRepaid {
@@ -1628,7 +1653,6 @@ pub mod PeerProtocol {
         ) {
             let lender = proposal.lender;
             let token = proposal.token;
-
 
             // Check if acceptor (borrower) has sufficient collateral with 1.3x ratio
             let required_collateral = proposal.required_collateral_value;

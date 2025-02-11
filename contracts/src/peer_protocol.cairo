@@ -896,6 +896,12 @@ pub mod PeerProtocol {
 
             let proposal_type = proposal.proposal_type;
             assert(proposal_type == ProposalType::BORROWING || proposal_type == ProposalType::LENDING, 'Invalid proposal type');
+            if (proposal_type == ProposalType::BORROWING){
+                let locked_funds = self.locked_funds.entry((caller, proposal.token)).read();
+                // lock the lenders funds
+
+                self.locked_funds.entry((caller, proposal.token)).write(locked_funds + token_amount);
+            };
 
             match proposal_type {
                 ProposalType::BORROWING => {
@@ -1188,6 +1194,10 @@ pub mod PeerProtocol {
              .entry((proposal.lender, proposal.token))
              .write(locked_funds - proposal.token_amount);
 
+             let after_locked_funds = self
+             .locked_funds
+             .entry((proposal.lender, proposal.token))
+             .read();
                 self
                     .emit(
                         ProposalRepaid {

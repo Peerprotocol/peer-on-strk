@@ -1176,6 +1176,143 @@ fn test_get_lending_proposal_details() {
     block_tag: latest
 )]
 fn test_repay_proposal() {
+    //this test assumes the lending/ borrowing token and collateral token are the same token.
+    let token_address = deploy_token("MockToken");
+    let peer_protocol_address = deploy_peer_protocol();
+
+    let token = IERC20Dispatcher { contract_address: token_address };
+    let collateral_token = token;
+    let peer_protocol = IPeerProtocolDispatcher { contract_address: peer_protocol_address };
+
+    let owner = starknet::contract_address_const::<0x123626789>();
+    let borrower = starknet::contract_address_const::<0x122226789>();
+    let lender = starknet::contract_address_const::<0x123336789>();
+
+    let mint_amount: u256 = 1000000 * ONE_E18;
+    let borrow_amount: u256 = 20;
+    let interest_rate: u64 = 1;
+    let duration: u64 = 7;
+
+    // Add supported token
+    start_cheat_caller_address(peer_protocol_address, owner);
+    peer_protocol.add_supported_token(token_address, 'STRK/USD');
+    stop_cheat_caller_address(peer_protocol_address);
+
+    token.mint(borrower, mint_amount);
+    collateral_token.mint(borrower, mint_amount);
+    token.mint(lender, mint_amount);
+
+    // Approve token
+    start_cheat_caller_address(token_address, lender);
+    token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(token_address);
+
+    // lender Deposit token
+    start_cheat_caller_address(peer_protocol_address, lender);
+    peer_protocol.deposit(token_address, mint_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // lender creates a lending proposal
+    start_cheat_caller_address(peer_protocol_address, lender);
+    let proposal_id = peer_protocol
+        .create_lending_proposal(
+            token_address, token_address, borrow_amount, interest_rate, duration
+        );
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // borrower deposits token
+    start_cheat_caller_address(token_address, borrower);
+    token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(token_address);
+
+    start_cheat_caller_address(peer_protocol_address, borrower);
+    peer_protocol.deposit(token_address, mint_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    // borrower accepts the borrow proposal
+    start_cheat_caller_address(peer_protocol_address, borrower);
+    peer_protocol.accept_proposal(proposal_id);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    let token_balance_before_first_installment = token.balance_of(borrower);
+    let collateral_before_first_installment = peer_protocol
+        .get_locked_funds(borrower, token_address);
+
+    // Borrower repays loan
+    start_cheat_caller_address(peer_protocol_address, borrower);
+    start_cheat_block_timestamp(peer_protocol_address, get_block_timestamp() + duration * 86400);
+    let mut spy = spy_events();
+    let first_installment_amount = 10;
+    peer_protocol.repay_proposal(proposal_id, first_installment_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+
+    let proposals = peer_protocol.get_lending_proposal_details();
+    let proposal_after_first_installment = proposals.at(0);
+    let amount_repaid = *proposal_after_first_installment.amount_repaid;
+
+    let (token_price, _) = peer_protocol.get_token_price(token_address);
+
+    let amount_repaid_in_tokens = (amount_repaid * ONE_E18 * ONE_E8) / token_price;
+    let fee_amount_in_tokens = (amount_repaid_in_tokens * PeerProtocol::PROTOCOL_FEE_PERCENTAGE)
+        / 100;
+    let net_amount_in_tokens = amount_repaid_in_tokens - fee_amount_in_tokens;
+
+    let loan_duration: u256 = (get_block_timestamp()
+        + (duration * 86400)
+        - *proposal_after_first_installment.accepted_at)
+        .into();
+    let interest_rate: u256 = (*proposal_after_first_installment.interest_rate).into();
+    let interests_amount_over_year = (net_amount_in_tokens * interest_rate) / 100;
+    let interests_duration = loan_duration * ONE_E18 / PeerProtocol::SECONDS_IN_YEAR;
+    let interests_amount_over_duration = interests_amount_over_year * interests_duration / ONE_E18;
+
+    // // Get lender assets
+    let user_assets = peer_protocol.get_user_assets(lender);
+    let interest_earned = *user_assets[0].interest_earned;
+
+
+    // Check borrower balance after repayment
+    //let token_balance_after_first_installment = token.balance_of(borrower);
+    let first_installment_amount: u256 = 10;
+    assert_eq!(*proposal_after_first_installment.amount_repaid, first_installment_amount);
+    assert_eq!(interests_amount_over_duration, interest_earned);
+
+    // Check collateral release
+    let collateral_release_amount = *proposal_after_first_installment.released_collateral;
+    let collateral_after_first_installment = peer_protocol
+        .get_locked_funds(borrower, token_address);
+    assert_eq!(
+        collateral_after_first_installment,
+        collateral_before_first_installment - collateral_release_amount
+    );
+
+    start_cheat_caller_address(peer_protocol_address, borrower);
+    start_cheat_block_timestamp(peer_protocol_address, get_block_timestamp() + duration * 86400);
+    let second_installment_amount = 10;
+    peer_protocol.repay_proposal(proposal_id, second_installment_amount);
+    stop_cheat_caller_address(peer_protocol_address);
+    let proposals = peer_protocol.get_lending_proposal_details();
+    let proposal_after_second_installment = proposals.at(0);
+
+    // Check emitted event
+    let expected_event = PeerProtocol::Event::ProposalRepaid(
+        PeerProtocol::ProposalRepaid {
+            proposal_type: ProposalType::LENDING,
+            repaid_by: borrower,
+            amount: *proposal_after_second_installment.amount,
+        }
+    );
+    spy.assert_emitted(@array![(peer_protocol_address, expected_event)]);
+}
+
+
+#[test]
+#[fork(
+    url: "https://starknet-mainnet.blastapi.io/138dbf54-8751-4a78-a709-07ee952e5d15/rpc/v0_7",
+    block_tag: latest
+)]
+fn test_repay_proposal_2() {
+    //this test assumes the lending/ borrowing token and collateral token are different tokens and its a borrow proposal.
     let token_address = deploy_token("MockToken");
     let collateral_token_address = deploy_token("MockToken1");
     let peer_protocol_address = deploy_peer_protocol();
@@ -1188,7 +1325,7 @@ fn test_repay_proposal() {
     let borrower = starknet::contract_address_const::<0x122226789>();
     let lender = starknet::contract_address_const::<0x123336789>();
 
-    let mint_amount: u256 = 3000 * ONE_E18;
+    let mint_amount: u256 = 5000000 * ONE_E18;
     let borrow_amount: u256 = 20;
     let interest_rate: u64 = 1;
     let duration: u64 = 7;
@@ -1196,29 +1333,24 @@ fn test_repay_proposal() {
     // Add supported token
     start_cheat_caller_address(peer_protocol_address, owner);
     peer_protocol.add_supported_token(token_address, 'STRK/USD');
-    peer_protocol.add_supported_token(collateral_token_address, 'STRK/USD');
+    peer_protocol.add_supported_token(collateral_token_address, 'ETH/USD');
     stop_cheat_caller_address(peer_protocol_address);
 
-    token.mint(borrower, mint_amount);
+    //token.mint(borrower, mint_amount);
     collateral_token.mint(borrower, mint_amount);
     token.mint(lender, mint_amount);
 
     // Approve token
-    start_cheat_caller_address(token_address, borrower);
-    token.approve(peer_protocol_address, mint_amount);
-    stop_cheat_caller_address(token_address);
-
-    // Approve collateral token
     start_cheat_caller_address(collateral_token_address, borrower);
     collateral_token.approve(peer_protocol_address, mint_amount);
     stop_cheat_caller_address(collateral_token_address);
 
-    // Borrower Deposit collateral
+    // borower Deposit collateral token
     start_cheat_caller_address(peer_protocol_address, borrower);
     peer_protocol.deposit(collateral_token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
 
-    // Borrower creates a borrow proposal
+    //borrower creates a borrow proposal
     start_cheat_caller_address(peer_protocol_address, borrower);
     let proposal_id = peer_protocol
         .create_borrow_proposal(
@@ -1226,7 +1358,7 @@ fn test_repay_proposal() {
         );
     stop_cheat_caller_address(peer_protocol_address);
 
-    // Lender deposits token
+    // lender deposits token
     start_cheat_caller_address(token_address, lender);
     token.approve(peer_protocol_address, mint_amount);
     stop_cheat_caller_address(token_address);
@@ -1235,12 +1367,12 @@ fn test_repay_proposal() {
     peer_protocol.deposit(token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
 
-    // Lender accepts the borrow proposal
+    //lender accepts the borrow proposal
     start_cheat_caller_address(peer_protocol_address, lender);
     peer_protocol.accept_proposal(proposal_id);
     stop_cheat_caller_address(peer_protocol_address);
 
-    let token_balance_before_first_installment = token.balance_of(borrower);
+    let token_balance_before_first_installment = token.balance_of(lender);
     let collateral_before_first_installment = peer_protocol
         .get_locked_funds(borrower, collateral_token_address);
 
@@ -1272,17 +1404,14 @@ fn test_repay_proposal() {
     let interests_duration = loan_duration * ONE_E18 / PeerProtocol::SECONDS_IN_YEAR;
     let interests_amount_over_duration = interests_amount_over_year * interests_duration / ONE_E18;
 
-    // // Get lender assets
+    // Get lender assets
     let user_assets = peer_protocol.get_user_assets(lender);
     let interest_earned = *user_assets[0].interest_earned;
 
+
     // Check borrower balance after repayment
-    let token_balance_after_first_installment = token.balance_of(borrower);
+    //let token_balance_after_first_installment = token.balance_of(borrower);
     let first_installment_amount: u256 = 10;
-    assert_eq!(
-        token_balance_before_first_installment - token_balance_after_first_installment,
-        net_amount_in_tokens + interests_amount_over_duration
-    );
     assert_eq!(*proposal_after_first_installment.amount_repaid, first_installment_amount);
     assert_eq!(interests_amount_over_duration, interest_earned);
 

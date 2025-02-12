@@ -9,12 +9,13 @@ import Sidebar from "../../../components/custom/sidebar";
 import { PROTOCOL_ADDRESS } from "@/components/internal/helpers/constant";
 import { useContractRead } from "@starknet-react/core";
 import protocolAbi from "../../../../public/abi/protocol.json";
-import { toHex } from "@/components/internal/helpers";
+import { normalizeAddress, toHex } from "@/components/internal/helpers";
 import { useAccount } from "@starknet-react/core";
 import { useContractWrite } from "@starknet-react/core";
 import { toast as toastify } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import NewProposalModal from "@/components/proposalModal";
+import { TokentoHex } from '../../../components/internal/helpers/index';
 
 type ModalType = "borrow" | "counter" | 'lend';
 
@@ -159,7 +160,7 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
           const tokenHex = toHex(item.token.toString());
           let lenderHex = toHex(item.lender.toString());
 
-          if (item.lender == address) {
+          if (item.borrower == address) {
             lenderHex = 'Me'
           }
 
@@ -225,9 +226,9 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
                     }`}
                   onClick={() => !loading && !proposalsLoading && onCounterProposal()}
                 />
-                {/* {item.lender == address && ( */}
-                <X onClick={() => cancelProposal(item.id.toString())} />
-                {/* )} */}
+                 {TokentoHex(item.borrower.toString()) == normalizeAddress(address) && (
+                 <X onClick={() => cancelProposal(item.id.toString())} />
+                )}
               </div>
             </div>
           );

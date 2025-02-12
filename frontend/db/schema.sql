@@ -9,7 +9,7 @@ CREATE TABLE users (
 
 CREATE TABLE transactions (
     id SERIAL PRIMARY KEY,
-    user VARCHAR NOT NULL,
+    user_address VARCHAR NOT NULL,
     token VARCHAR NOT NULL,
     amount VARCHAR NOT NULL,
     transaction_type VARCHAR NOT NULL,

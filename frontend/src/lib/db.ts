@@ -24,14 +24,14 @@ export async function createUser(userData: {
 }
 
 export async function createTransaction(txData: {
-  user: string;
+  user_address: string;
   token: string;
   amount: string;
   transaction_type: string;
 }) {
   return sql`
-    INSERT INTO transactions (user, token, amount, transaction_type)
-    VALUES (${txData.user}, ${txData.token}, ${txData.amount}, ${txData.transaction_type})
+    INSERT INTO transactions (user_address, token, amount, transaction_type)
+    VALUES (${txData.user_address}, ${txData.token}, ${txData.amount}, ${txData.transaction_type})
     RETURNING *
   `;
 }

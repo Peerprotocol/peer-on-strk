@@ -64,7 +64,6 @@ const RepayModal: React.FC<RepayModalProps> = ({
 
       if (transaction?.transaction_hash) {
         toastify.success("Transaction submitted");
-        console.log("Transaction submitted:", transaction.transaction_hash);
 
         // Wait for transaction
         await transaction.wait();

@@ -171,62 +171,86 @@ export default function DepositWithdrawPeer() {
 
   const handleDeposit = async () => {
     if (!protocolContract || !account) {
-      hotToast.error('Address space is empty')
-      return
+      hotToast.error('Address space is empty');
+      return;
     }
-
+  
     try {
-      setLoading(true)
-
-      const isApproved = await handleApprove()
-      if (!isApproved) return
-
-      const amountUint256 = getUint256FromDecimal(amount)
-
+      setLoading(true);
+  
+      const isApproved = await handleApprove();
+      if (!isApproved) return;
+  
+      const amountUint256 = getUint256FromDecimal(amount);
       const depositCall = protocolContract.populate('deposit', [
         selectedToken.address,
         amountUint256
-      ])
-
-      const depositTx = await account.execute(depositCall)
-
-      await account.waitForTransaction(depositTx.transaction_hash)
-      toastify.success('Deposit successful')
-      setAmount('') // Reset amount after successful deposit
+      ]);
+  
+      const depositTx = await account.execute(depositCall);
+      await account.waitForTransaction(depositTx.transaction_hash);
+  
+      // Record transaction in DB
+      await fetch('/api/database/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_address: account.address,
+          token: selectedToken.address,
+          amount: amount,
+          transaction_type: 'deposit'
+        })
+      });
+  
+      toastify.success('Deposit successful');
+      setAmount(''); // Reset amount after successful deposit
     } catch (err: any) {
-      hotToast.error(`Deposit failed: ${err.message}`)
+      hotToast.error(`Deposit failed: ${err.message}`);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
+  
 
   const handleWithdraw = async () => {
     if (!protocolContract || !account) {
-      hotToast.error('Wallet not connected')
-      return
+      hotToast.error('Wallet not connected');
+      return;
     }
-
+  
     try {
-      setLoading(true)
-
-      const amountUint256 = getUint256FromDecimal(amount)
-
+      setLoading(true);
+  
+      const amountUint256 = getUint256FromDecimal(amount);
       const withdrawCall = protocolContract.populate('withdraw', [
         selectedToken.address,
         amountUint256
-      ])
-
-      const withdrawTx = await account.execute(withdrawCall)
-
-      await account.waitForTransaction(withdrawTx.transaction_hash)
-      toastify.success('Withdrawal successful')
-      setAmount('') // Reset amount after successful withdrawal
+      ]);
+  
+      const withdrawTx = await account.execute(withdrawCall);
+      await account.waitForTransaction(withdrawTx.transaction_hash);
+  
+      // Record transaction in DB
+      await fetch('/api/database/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_address: account.address,
+          token: selectedToken.address,
+          amount: amount,
+          transaction_type: 'withdraw'
+        })
+      });
+  
+      toastify.success('Withdrawal successful');
+      setAmount(''); // Reset amount after successful withdrawal
     } catch (err: any) {
-      hotToast.error(`Withdrawal failed: ${err.message}`)
+      hotToast.error(`Withdrawal failed: ${err.message}`);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
+  
 
   const handleActionSelect = (option: string) => {
     setSelectedOption(option)

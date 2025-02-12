@@ -1234,7 +1234,7 @@ fn test_repay_proposal() {
     peer_protocol.accept_proposal(proposal_id);
     stop_cheat_caller_address(peer_protocol_address);
 
-    let token_balance_before_first_installment = token.balance_of(borrower);
+    //let token_balance_before_first_installment = token.balance_of(borrower);
     let collateral_before_first_installment = peer_protocol
         .get_locked_funds(borrower, token_address);
 
@@ -1372,7 +1372,7 @@ fn test_repay_proposal_2() {
     peer_protocol.accept_proposal(proposal_id);
     stop_cheat_caller_address(peer_protocol_address);
 
-    let token_balance_before_first_installment = token.balance_of(lender);
+    //let token_balance_before_first_installment = token.balance_of(lender);
     let collateral_before_first_installment = peer_protocol
         .get_locked_funds(borrower, collateral_token_address);
 

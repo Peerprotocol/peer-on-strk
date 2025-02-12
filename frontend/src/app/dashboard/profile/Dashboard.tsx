@@ -99,12 +99,14 @@ const Dashboard = () => {
           Number(formatCurrency(currentValue.available_balance?.toString())) * tokenPrice : 0;
         
         const interestEarnedinUSD = token ? Number (formatCurrency(currentValue.interest_earned?.toString())) * tokenPrice : 0;
-        
+        const totalLentinUSD = token ? Number (formatCurrency(currentValue.total_lent?.toString()) * tokenPrice) : 0;
+        const totalBorrowedinUSD = token ? Number (formatCurrency(currentValue.total_borrowed?.toString()) * tokenPrice) : 0;
+
         return {
           available_balance: pValue.available_balance + BigInt(Math.floor(availableBalanceInUsd * 100)), // Store as cents
           interest_earned: pValue.interest_earned + BigInt(Math.floor(interestEarnedinUSD * 100)|| 0),
-          total_borrowed: pValue.total_borrowed + BigInt(currentValue.total_borrowed || 0),
-          total_lent: pValue.total_lent + BigInt(currentValue.total_lent || 0),
+          total_borrowed: pValue.total_borrowed + BigInt(Math.floor(totalBorrowedinUSD * 100) || 0),
+          total_lent: pValue.total_lent + BigInt(Math.floor(totalLentinUSD * 100) || 0),
         };
       }, {
         available_balance: BigInt(0),
@@ -123,7 +125,7 @@ const Dashboard = () => {
 
   return (
     <div className="border border-gray-200 rounded-[1rem] flex flex-col gap-6 md:p-6 p-2 bg-white w-full">
-      <div className="flex flex-col lg:flex-row lg:flex-wrap gap-4 3xl:gap-[2rem] w-full">
+      <div className="flex flex-col md:flex-row md:flex-wrap gap-4 3xl:gap-[2rem] w-full">
         {AllAssetsOverview.map((item, index) => (
           <div
             key={index}

@@ -21,7 +21,6 @@ import {
 import AssetsLoader from "../loaders/assetsloader";
 import RepayModal from "@/components/custom/RepayModal";
 
-
 // Types
 interface TokenInfo {
   symbol: string;
@@ -31,7 +30,7 @@ interface TokenInfo {
 }
 
 // Constants
-const ROWS_PER_PAGE = 5;
+const ROWS_PER_PAGE = 15;
 const TABS = ["Assets", "Position Overview", "Transaction History"] as const;
 type TabType = (typeof TABS)[number];
 
@@ -45,7 +44,6 @@ const TRANSACTION_TYPE_MAP: { [key: string]: string } = {
   "412198569506257514217804": "WITHDRAWAL",
 };
 
-
 const Table: React.FC = () => {
   // State Management
   const [activeTab, setActiveTab] = useState<TabType>("Transaction History");
@@ -54,8 +52,11 @@ const Table: React.FC = () => {
   const [usdValues, setUsdValues] = useState({ eth: 0, strk: 0 });
   const [isLoadingPrices, setIsLoadingPrices] = useState(false);
   const [priceError, setPriceError] = useState<string | null>(null);
-  const [selectedProposal, setSelectedProposal] = useState<{ id: any, amount: number } | null>(null);
-
+  const [selectedProposal, setSelectedProposal] = useState<{
+    id: any;
+    amount: number;
+  } | null>(null);
+  const [positionType, setPositionType] = useState<"borrow" | "lend">("borrow");
 
   // Contract Data Hooks
   const { address: user } = useAccount();
@@ -99,6 +100,21 @@ const Table: React.FC = () => {
       ? {
           abi: protocolAbi,
           address: PROTOCOL_ADDRESS,
+          functionName: "get_borrow_proposal_details",
+          args: [],
+        }
+      : ({} as any)
+  );
+
+  const {
+    data: lendingProposals,
+    isLoading: isLoadinglendProposals,
+    isFetching: isFetchinglendProposals,
+  } = useContractRead(
+    user
+      ? {
+          abi: protocolAbi,
+          address: PROTOCOL_ADDRESS,
           functionName: "get_lending_proposal_details",
           args: [],
         }
@@ -137,11 +153,14 @@ const Table: React.FC = () => {
     }
   };
 
-  console.log('borrowproposals', borrowProposals)
-
   const dataForCurrentTab = getDataForActiveTab();
   const totalPages = Math.ceil(dataForCurrentTab?.length / ROWS_PER_PAGE);
-  const currentRows = dataForCurrentTab?.slice(
+  const currentRows = getDataForActiveTab()
+  ?.sort((a: any, b: any) => {
+    // Convert timestamps to numbers and sort in descending order (latest first)
+    return Number(b.timestamp) - Number(a.timestamp);
+  })
+  ?.slice(
     (currentPage - 1) * ROWS_PER_PAGE,
     currentPage * ROWS_PER_PAGE
   );
@@ -225,13 +244,20 @@ const Table: React.FC = () => {
             </button>
           ))}
         </div>
-        <div className="relative">
-          <select className="px-4 py-2 border rounded-full text-black pr-8 appearance-none">
-            <option value="borrow">Borrow</option>
-            <option value="lend">Lend</option>
-          </select>
-          <ChevronDown className="cursor-pointer absolute top-3 right-2 w-5 h-5 text-gray-500" />
-        </div>
+        {activeTab === "Position Overview" && (
+          <div className="relative">
+            <select
+              className="px-4 py-2 border rounded-full text-black pr-8 appearance-none"
+              onChange={(e) =>
+                setPositionType(e.target.value as "borrow" | "lend")
+              } // Add this state handler
+            >
+              <option value="borrow">Borrow</option>
+              <option value="lend">Lend</option>
+            </select>
+            <ChevronDown className="cursor-pointer absolute top-3 right-2 w-5 h-5 text-gray-500" />
+          </div>
+        )}
       </div>
 
       {/* Assets Table */}
@@ -322,11 +348,18 @@ const Table: React.FC = () => {
                   const token = tokens.find(
                     (t) => t.address === TokentoHex(row.token.toString())
                   );
+                  const transaction_type = Object.keys(
+                    row.transaction_type.variant
+                  ).filter(
+                    (key) =>
+                      typeof row.transaction_type.variant[key] === "object" &&
+                      row.transaction_type.variant[key] !== null
+                  );
 
                   return (
                     <tr key={index}>
                       <td className="p-4 border-b border-l">
-                        {row.transaction_type[4]}
+                        {transaction_type.toString()}
                       </td>
                       <td className="p-4 border-b border-l">{tokenInfo}</td>
                       <td className="p-4 border-b border-l">
@@ -386,57 +419,113 @@ const Table: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white">
-              {isLoadingProposals || isFetchingProposals ? (
+              {isLoadingProposals ||
+              isLoadinglendProposals ||
+              isFetchinglendProposals ||
+              isFetchingProposals ? (
                 renderLoadingState(5)
-              ) : borrowProposals && borrowProposals.length >= 0 ? (
-                borrowProposals
-                  .filter((proposal: any) => toHex(proposal.borrower.toString()) != user)
-                  .map((row: any, index: number) => {
-                    const tokenInfo = renderTokenInfo(row.token.toString());
-
-                    return (
-                      <tr key={index}>
-                        <td className="p-4 border-b border-l">{tokenInfo}</td>
-                        <td className="p-4 border-b border-l">
-                          {formatDate1(row.repayment_date?.toString())}
-                        </td>
-                        <td className="p-4 border-b border-l">
-                          {Number(row.interest_rate)}%
-                        </td>
-                        <td className="p-4 border-b border-l">
-                          {Number(
-                            formatCurrency(row.token_amount?.toString())
-                          ).toFixed(2)}
-                        </td>
-                        <td className="p-4 border-b border-l">
-                          {
-                            row.amount_repaid?.toString()
-                          }
-                        </td>
-                        <td className="p-4 border-b border-l">
-                          <button
-                            className="h-9 w-24 text-white rounded-3xl flex justify-center items-center bg-black/70"
-                            onClick={() => {
-                              setShowModal(true);
-                              setSelectedProposal({
-                                id: row.id,
-                                amount: (Number((row.amount?.toString())) - Number((row.amount_repaid?.toString())))
-                              });
-                            }}
-                            disabled={row.is_repaid}
-                          >
-                            {row.is_repaid ? "Repaid" : "Repay"}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
               ) : (
-                <tr>
-                  <td colSpan={5} className="p-4 text-center">
-                    No position overview available
-                  </td>
-                </tr>
+                <>
+                  {positionType === "borrow"
+                    ? borrowProposals
+                        .filter(
+                          (proposal: any) =>
+                            toHex(proposal.borrower.toString()) === user
+                        )
+                        .map((row: any, index: number) => {
+                          const tokenInfo = renderTokenInfo(
+                            row.token.toString()
+                          );
+
+                          return (
+                            <tr key={index}>
+                              <td className="p-4 border-b border-l">
+                                {tokenInfo}
+                              </td>
+                              <td className="p-4 border-b border-l">
+                                {formatDate1(row.repayment_date?.toString())}
+                              </td>
+                              <td className="p-4 border-b border-l">
+                                {Number(row.interest_rate)}%
+                              </td>
+                              <td className="p-4 border-b border-l">
+                                {Number(
+                                  formatCurrency(row.token_amount?.toString())
+                                ).toFixed(2)}
+                              </td>
+                              <td className="p-4 border-b border-l">
+                                {row.amount_repaid?.toString()}
+                              </td>
+                              <td className="p-4 border-b border-l">
+                                <button
+                                  className="h-9 w-24 text-white rounded-3xl flex justify-center items-center bg-black/70"
+                                  onClick={() => {
+                                    setShowModal(true);
+                                    setSelectedProposal({
+                                      id: row.id,
+                                      amount:
+                                        Number(row.amount?.toString()) -
+                                        Number(row.amount_repaid?.toString()),
+                                    });
+                                  }}
+                                  disabled={row.is_repaid}
+                                >
+                                  {row.is_repaid ? "Repaid" : "Repay"}
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                    : lendingProposals
+                        .filter(
+                          (proposal: any) =>
+                            toHex(proposal.lender.toString()) === user
+                        )
+                        .map((row: any, index: number) => {
+                          const tokenInfo = renderTokenInfo(
+                            row.token.toString()
+                          );
+
+                          return (
+                            <tr key={index}>
+                              <td className="p-4 border-b border-l">
+                                {tokenInfo}
+                              </td>
+                              <td className="p-4 border-b border-l">
+                                {formatDate1(row.repayment_date?.toString())}
+                              </td>
+                              <td className="p-4 border-b border-l">
+                                {Number(row.interest_rate)}%
+                              </td>
+                              <td className="p-4 border-b border-l">
+                                {Number(
+                                  formatCurrency(row.token_amount?.toString())
+                                ).toFixed(2)}
+                              </td>
+                              <td className="p-4 border-b border-l">
+                                {row.amount_repaid?.toString()}
+                              </td>
+                              <td className="p-4 border-b border-l">
+                                <button
+                                  className="h-9 w-24 text-white rounded-3xl flex justify-center items-center bg-black/70"
+                                  onClick={() => {
+                                    setShowModal(true);
+                                    setSelectedProposal({
+                                      id: row.id,
+                                      amount:
+                                        Number(row.amount?.toString()) -
+                                        Number(row.amount_repaid?.toString()),
+                                    });
+                                  }}
+                                  disabled={row.is_repaid}
+                                >
+                                  {row.is_repaid ? "Repaid" : "Repay"}
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                </>
               )}
             </tbody>
           </table>

@@ -20,9 +20,9 @@ const Profile = () => {
           <Nav />
           {address ? (
             <>
-          <div className='flex flex-col xl:flex-row gap-6 py-6 px-3 md:px-8'>
+          <div className='flex flex-col lg:flex-row gap-6 py-6 px-3 md:px-8'>
            
-            <div className="w-full md:flex-wrap md:basis-[70%] flex">
+            <div className="w-full">
               <Dashboard />
             </div>
             <div className="w-full md:flex-grow md:basis-[30%] flex">

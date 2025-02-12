@@ -6,6 +6,7 @@ import ConnectButton from "@/components/lib/Connect";
 import AddressBar from "@/components/lib/AddressBar";
 import { useAccount } from "@starknet-react/core";
 import { FileText, X } from "lucide-react";
+import EmailTwitterModal from "./completeProfileModal";
 
 const CHAINS = {
   SOLANA: {
@@ -25,6 +26,23 @@ const Nav = () => {
   const { address } = useAccount();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isChainModalOpen, setIsChainModalOpen] = useState(false);
+  const [showEmailTwitterModal, setShowEmailTwitterModal] = useState(false);
+ 
+ useEffect(() => {
+   const fetchData = async () => {
+     if (address) {
+       try {
+         const checkRes = await fetch(`/api/database/user?wallet=${address}`);
+         if (!checkRes.ok) {
+           setShowEmailTwitterModal(true);
+         }
+       } catch (error: any) {
+         console.error('Failed to fetch user data');
+       }
+     }
+   };
+   fetchData();
+ }, [address]);
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -165,6 +183,12 @@ const Nav = () => {
           </button>
         )}
       </div>
+
+      <EmailTwitterModal 
+       isOpen={showEmailTwitterModal}
+       onClose={() => setShowEmailTwitterModal(false)}
+       walletAddress={address}
+     />
 
       {/* Mobile nav toggle */}
       <div className="lg:hidden flex items-center gap-4">

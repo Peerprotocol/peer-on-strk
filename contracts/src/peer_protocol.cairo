@@ -1194,10 +1194,6 @@ pub mod PeerProtocol {
              .entry((proposal.lender, proposal.token))
              .write(locked_funds - proposal.token_amount);
 
-             let after_locked_funds = self
-             .locked_funds
-             .entry((proposal.lender, proposal.token))
-             .read();
                 self
                     .emit(
                         ProposalRepaid {
@@ -1589,6 +1585,10 @@ pub mod PeerProtocol {
             // Mint SPOK
             let borrower_token_id = self.mint_spoks(proposal.id, proposal.borrower);
 
+            //update total lent in user assets
+          let total_lent = self.lent_assets.entry((lender, proposal.token)).read();
+            self.lent_assets.entry((lender, proposal.token)).write(total_lent + net_amount);
+
             // Record Transaction
             self
                 .record_transaction(
@@ -1637,6 +1637,10 @@ pub mod PeerProtocol {
 
             // Mint SPOK
             let borrower_token_id = self.mint_spoks(proposal.id, borrower);
+
+            //update user assets
+            let total_borrowed = self.borrowed_assets.entry((borrower, proposal.token)).read();
+            self.borrowed_assets.entry((borrower, proposal.token)).write(total_borrowed + net_amount);
 
             // Record Transaction
             self

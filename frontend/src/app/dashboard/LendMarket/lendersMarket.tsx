@@ -9,11 +9,12 @@ import Sidebar from "../../../components/custom/sidebar";
 import { PROTOCOL_ADDRESS } from "@/components/internal/helpers/constant";
 import { useContractRead } from "@starknet-react/core";
 import protocolAbi from "../../../../public/abi/protocol.json";
-import { toHex } from "@/components/internal/helpers";
+import { normalizeAddress, toHex } from "@/components/internal/helpers";
 import { toast as toastify } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import NewProposalModal from "@/components/proposalModal";
 import { CallData } from "starknet";
+import { TokentoHex } from '../../../components/internal/helpers/index';
 
 // Constants
 const ITEMS_PER_PAGE = 7;
@@ -271,7 +272,9 @@ const TableRow = ({ onCounter }: TableRowProps) => {
                   onClick={() => !loading && !proposalsLoading && onCounter()}
                 />
 
-                <X onClick={() => cancelProposal(item.id.toString())} />
+                  {TokentoHex(item.lender.toString()) === normalizeAddress(address) && (
+      <X onClick={() => cancelProposal(item.id.toString())} />
+                  )}
               </div>
             </div>
           );

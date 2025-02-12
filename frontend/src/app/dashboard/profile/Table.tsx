@@ -17,6 +17,7 @@ import {
   formatDate1,
   felt252ToHex,
   toHex,
+  normalizeAddress,
 } from "@/components/internal/helpers";
 import AssetsLoader from "../loaders/assetsloader";
 import RepayModal from "@/components/custom/RepayModal";
@@ -430,7 +431,7 @@ const Table: React.FC = () => {
                     ? borrowProposals
                         .filter(
                           (proposal: any) =>
-                            TokentoHex(proposal.lender.toString()) === user
+                            TokentoHex(proposal.lender.toString()) === normalizeAddress(user)
                         )
                         .map((row: any, index: number) => {
                           const tokenInfo = renderTokenInfo(
@@ -478,8 +479,8 @@ const Table: React.FC = () => {
                         })
                     : lendingProposals
                         .filter(
-                          (proposal: any) =>
-                            TokentoHex(proposal.borrower.toString()) === user
+                          (proposal: any) =>                          
+                            TokentoHex(proposal.borrower.toString()) === normalizeAddress(user)
 )
                         .map((row: any, index: number) => {
                           const tokenInfo = renderTokenInfo(

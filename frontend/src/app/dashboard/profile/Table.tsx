@@ -430,7 +430,7 @@ const Table: React.FC = () => {
                     ? borrowProposals
                         .filter(
                           (proposal: any) =>
-                            toHex(proposal.borrower.toString()) === user
+                            TokentoHex(proposal.lender.toString()) === user
                         )
                         .map((row: any, index: number) => {
                           const tokenInfo = renderTokenInfo(
@@ -479,8 +479,8 @@ const Table: React.FC = () => {
                     : lendingProposals
                         .filter(
                           (proposal: any) =>
-                            toHex(proposal.lender.toString()) === user
-                        )
+                            TokentoHex(proposal.borrower.toString()) === user
+)
                         .map((row: any, index: number) => {
                           const tokenInfo = renderTokenInfo(
                             row.token.toString()

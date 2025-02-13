@@ -82,18 +82,42 @@ export default function NewProposalModal({
         toastify.error("Wallet not connected");
         return;
       }
+  
+      // Execute contract write
       await createProposal();
+  
+      // Construct transaction payload
+      const transactionData = {
+        user_address: account.address,
+        token: formData.token,
+        amount: formData.quantity,
+        transaction_type: type, // lend, borrow, counter
+        timestamp: new Date().toISOString(),
+      };
+  
+      // Send transaction data to backend
+      await fetch("/api/database/transactions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(transactionData),
+      });
+  
+      // Success message
       toastify.success(
         `${
           type === "lend" ? "Lending" : type === "borrow" ? "Borrow" : "Counter"
         } proposal created successfully`
       );
+  
       onClose();
     } catch (error) {
       console.error("Error creating proposal:", error);
       toastify.error("Failed to create proposal. Try again.");
     }
   };
+  
 
   return (
     <Modal show={show} onClose={onClose} title={title}>

@@ -1,8 +1,8 @@
-use starknet::ContractAddress;
+use starknet::{ContractAddress, ClassHash};
 
 use peer_protocol::peer_protocol::{
     Transaction, UserAssets, UserDeposit, BorrowedDetails, Proposal, LiquidationInfo,
-    CounterProposal, PoolData
+    CounterProposal, PoolData, PoolRates
 };
 
 use core::array::Array;
@@ -29,7 +29,7 @@ pub trait IPeerProtocol<TContractState> {
         ref self: TContractState,
         proposal_id: u256,
         amount: u256,
-        required_collateral_value: u256,
+        accepted_collateral_token: ContractAddress,
         interest_rate: u64,
         duration: u64
     );
@@ -79,4 +79,29 @@ pub trait IPeerProtocol<TContractState> {
     );
 
     fn get_liquidity_pool_data(self: @TContractState, token: ContractAddress) -> PoolData;
+
+    fn calculate_rates(
+        self: @TContractState, token: ContractAddress, total_borrows: u256, total_deposits: u256
+    ) -> (u256, u256);
+
+    fn update_pool_rates(
+        ref self: TContractState,
+        token: ContractAddress,
+        base_rate: u256,
+        utilization_optimal: u256,
+        slope1: u256,
+        slope2: u256
+    );
+
+    fn get_pool_rates(self: @TContractState, token: ContractAddress) -> PoolRates;
+
+    fn deposit_to_pool(ref self: TContractState, token: ContractAddress, amount: u256);
+
+    fn withdraw_from_pool(ref self: TContractState, token: ContractAddress, amount: u256);
+
+    fn borrow_from_pool(
+        ref self: TContractState, token: ContractAddress, collateral: ContractAddress, amount: u256
+    );
+
+    fn upgrade(ref self: TContractState, new_class_hash: ClassHash);
 }

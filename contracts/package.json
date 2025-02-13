@@ -7,7 +7,8 @@
     "test": "tests"
   },
   "scripts": {
-    "deploy": "ts-node scripts/deploy.ts"
+    "deploy": "ts-node scripts/deploy.ts",
+    "upgrade": "ts-node scripts/upgrade.ts"
   },
   "keywords": [],
   "author": "",

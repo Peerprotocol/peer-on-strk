@@ -45,17 +45,8 @@ async function main() {
         salt: stark.randomAddress(),
     });
 
-     //console.log('contract class hash', deployResponse.declare.class_hash);
+    console.log('contract class hash', deployResponse.declare.class_hash);
 
-    // Connect the new contract instance :
-    const peerProtocolContract = new Contract(
-        sierraCode.abi,
-        deployResponse.deploy.contract_address,
-        provider
-    );
-    console.log(
-        `✅ Contract has been deploy with the address: ${peerProtocolContract.address}`
-    );
 }
 main()
     .then(() => process.exit(0))

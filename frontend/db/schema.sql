@@ -25,3 +25,8 @@ CREATE TABLE protocol_data (
     total_value_locked VARCHAR NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+INSERT INTO protocol_data 
+    (total_borrow, total_lend, total_p2p_deals, total_interest_earned, total_value_locked)
+VALUES 
+    ('1245678', '2890123', '1567', '156789', '413580235');

@@ -19,9 +19,11 @@ type ProposalModalProps = {
   onClose: () => void;
   title?: string;
   type: "lend" | "counter" | "borrow";
+  proposalId?: string;
 };
 
 interface ProposalData {
+  proposalId: string;
   token: string;
   collateral: string;
   quantity: string;
@@ -34,10 +36,12 @@ export default function NewProposalModal({
   onClose,
   title,
   type,
+  proposalId,
 }: ProposalModalProps) {
   const { account } = useAccount();
 
   const [formData, setFormData] = useState<ProposalData>({
+    proposalId: "",
     token: "",
     collateral: "",
     quantity: "",
@@ -54,22 +58,34 @@ export default function NewProposalModal({
       ? "create_counter_proposal"
       : null;
 
-  const { writeAsync: createProposal, isLoading } = useContractWrite({
-    calls: [
-      {
-        contractAddress: PROTOCOL_ADDRESS,
-        entrypoint: entrypoint,
-        calldata: CallData.compile([
-          TokentoHex(formData.token || "0x0"),
-          TokentoHex(formData.collateral || "0x0"),
-          formData.quantity || "0",
-          "0",
-          formData.interestRate || "0",
-          formData.duration || "0",
-        ]),
-      },
-    ],
-  });
+      const { writeAsync: createProposal, isLoading } = useContractWrite({
+        calls: [
+          {
+            contractAddress: PROTOCOL_ADDRESS,
+            entrypoint: entrypoint,
+            calldata: CallData.compile(
+              type === "counter" 
+                ? [
+                    proposalId || "0",
+                    "0",
+                    formData.quantity || "0",
+                    "0",
+                    TokentoHex(formData.collateral || "0x0"),
+                    formData.interestRate || "0",
+                    formData.duration || "0"
+                  ]
+                : [
+                    TokentoHex(formData.token || "0x0"),
+                    TokentoHex(formData.collateral || "0x0"),
+                    formData.quantity || "0",
+                    "0",
+                    formData.interestRate || "0",
+                    formData.duration || "0"
+                  ]
+            ),
+          },
+        ],
+      });
 
   const handleChange = (field: keyof ProposalData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -125,7 +141,7 @@ export default function NewProposalModal({
         className="w-full flex flex-col gap-5 px-8 mb-4"
         onSubmit={handleSubmit}
       >
-        <div>
+        {type != 'counter' && (<div>
           <label className="text-md text-black">Token to Lend</label>
           <Dropdown
             options={tokenOptions}
@@ -135,6 +151,7 @@ export default function NewProposalModal({
             placeholder="Select a token"
           />
         </div>
+        )}
         <div>
           <label className="text-md text-black">Collateral</label>
           <Dropdown

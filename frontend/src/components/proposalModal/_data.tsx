@@ -11,8 +11,8 @@ export const tokenOptions = [
   { label: <span className='flex items-center gap-2'><Image src="/icons/eth.svg" alt='ETH' width={size} height={size} /> ETH</span>, value: TOKEN_ADDRESSES.ETH },
 ];
 
-// Interest rate options from 1% to 10%
-export const interestRateOptions = Array.from({ length: 10 }, (_, i) => ({
+// Interest rate options from 1% to 7%
+export const interestRateOptions = Array.from({ length: 7 }, (_, i) => ({
   label: `${1 + i}%`,
   value: `${1 + i}`,
 }));
@@ -25,6 +25,7 @@ export const durationOptions = [
   { label: '28 days', value: '28' },
   { label: '35 days', value: '35' },
   { label: '42 days', value: '42' },
+  { label: '45 days', value: '45' },
 ];
 
 

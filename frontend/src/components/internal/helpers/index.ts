@@ -45,8 +45,7 @@ export const formatDate1 = (timestamp: number): string => {
     year: "numeric",     
     hour: "2-digit",      
     minute: "2-digit",   
-    hour12: true,        
-    timeZone: "UTC",     
+    hour12: true,           
     timeZoneName: "short" 
   };
 

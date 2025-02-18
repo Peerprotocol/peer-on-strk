@@ -48,7 +48,7 @@ const tokens: TokenInfo[] = [
 const Market = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedOption, setSelectedOption] = useState("Main Market");
-  const [Protocol, setProtocol] = useState<"Protocol" | "P2P">("Protocol");
+  const [Protocol, setProtocol] = useState<"Protocol" | "P2P">("P2P");
   const [tokenData, setTokenData] = useState<TokenMarketData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
@@ -195,8 +195,8 @@ const Market = () => {
           <p className="text-center font-semibold w-auto md:w-1/5">Asset</p> 
           <p className="text-center font-semibold w-auto md:w-1/5"> Total Supply</p>
           <p className="text-center font-semibold w-auto md:w-1/5">Price</p>
-          <p className="text-center font-semibold w-auto md:w-1/5">Supply APY</p>
-          <p className="text-center font-semibold w-auto md:w-1/5">Borrow APY</p>
+          <p className="text-center font-semibold w-auto md:w-1/5"></p>
+          <p className="text-center font-semibold w-auto md:w-1/5"></p>
         </div>
 
         <MarketContent

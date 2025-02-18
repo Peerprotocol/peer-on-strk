@@ -95,7 +95,7 @@ const RepayModal: React.FC<RepayModalProps> = ({
             Amount Borrowed / Remaining
           </span>
           <div className="text-4xl font-semibold text-gray-800">
-            ${(amountBorrowed ?? 0).toFixed(2)}
+            ${(amountBorrowed ?? 0)}
           </div>
         </div>
 

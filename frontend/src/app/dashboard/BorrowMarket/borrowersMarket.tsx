@@ -41,7 +41,7 @@ const TableHeader = () => (
 );
 
 interface TableRowProps {
-  onCounterProposal: () => void;
+  onCounterProposal: (item: string) => void;
 }
 
 const TableRow = ({ onCounterProposal }: TableRowProps) => {
@@ -216,16 +216,7 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
                 >
                   {loading ? "..." : "Lend"}
                 </button>
-
-                <Image
-                  src="/images/edit.svg"
-                  alt="counter-proposal"
-                  width={20}
-                  height={20}
-                  className={`cursor-pointer ${loading || proposalsLoading ? "opacity-50" : "hover:opacity-80"
-                    }`}
-                  onClick={() => !loading && !proposalsLoading && onCounterProposal()}
-                />
+                    {/* can only counter lending proposals */}
                  {TokentoHex(item.borrower.toString()) == normalizeAddress(address) && (
                  <X onClick={() => cancelProposal(item.id.toString())} />
                 )}
@@ -274,17 +265,21 @@ const BorrowersMarket = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [isModalOpen, setModalOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [selectedProposalId, setSelectedProposalId] = useState<string>("");
   const [modalType, setModalType] = useState<ModalType>("lend");
   const [title, setTitle] = useState('Create a Lending Proposal');
 
   const totalPages = Math.ceil(5 / ITEMS_PER_PAGE);
 
   const handlePageChange = (page: number) => setCurrentPage(page);
-  const openModal = (type: ModalType) => {
+  const openModal = (type: ModalType, proposalId?: string) => {
     setModalType(type);
+    if (proposalId) {
+      setSelectedProposalId(proposalId);
+  }
     setModalOpen(true);
     if (type === 'counter') {
-      setTitle('Create a Counter Proposal')
+      setTitle('Counter this Proposal')
     }
   };
 
@@ -310,7 +305,7 @@ const BorrowersMarket = () => {
             <TableHeader />
             <div>
 
-              <TableRow onCounterProposal={() => openModal("counter")} />
+            <TableRow onCounterProposal={(proposalId) => openModal("counter", proposalId)} />
 
             </div>
           </div>
@@ -329,7 +324,7 @@ const BorrowersMarket = () => {
             />
           </button>
           <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
-          <NewProposalModal type={modalType} show={isModalOpen} onClose={() => setModalOpen(prev => !prev)} title={title} />
+          <NewProposalModal type={modalType} show={isModalOpen} onClose={() => setModalOpen(prev => !prev)} title={title} proposalId={selectedProposalId}  />
         </div>
       </div>
     </main>

@@ -72,7 +72,7 @@ const TableHeader = () => (
 );
 
 interface TableRowProps {
-  onCounter: () => void;
+  onCounter: (item: string) => void;
 }
 
 const TableRow = ({ onCounter }: TableRowProps) => {
@@ -106,7 +106,6 @@ const TableRow = ({ onCounter }: TableRowProps) => {
   });
 
   const handleLend = async (proposalId: bigint) => {
-    console.log("proposal id", proposalId);
     setLoading(true);
     try {
       const transaction = await lend({
@@ -269,7 +268,7 @@ const TableRow = ({ onCounter }: TableRowProps) => {
                       ? "opacity-50"
                       : "hover:opacity-80"
                   }`}
-                  onClick={() => !loading && !proposalsLoading && onCounter()}
+                  onClick={() => !loading && !proposalsLoading && onCounter(item.id.toString())}
                 />
 
                   {TokentoHex(item.lender.toString()) === normalizeAddress(address) && (
@@ -317,17 +316,20 @@ const Lender = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [isModalOpen, setModalOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [selectedProposalId, setSelectedProposalId] = useState<string>("");
   const [modalType, setModalType] = useState<ModalType>("borrow");
   const [title, setTitle] = useState("Create a Borrow Proposal");
 
   const totalPages = Math.ceil(5 / ITEMS_PER_PAGE);
 
-  const handleOpenModal = (type: ModalType) => {
+  const handleOpenModal = (type: ModalType, proposalId?: string) => {
     setModalType(type);
     setModalOpen(true);
-
+    if (proposalId) {
+      setSelectedProposalId(proposalId);
+  }
     if (type === "counter") {
-      setTitle("Create a Counter Proposal");
+      setTitle("Counter this Proposal");
     }
   };
 
@@ -341,7 +343,7 @@ const Lender = () => {
           <div className="overflow-x-auto text-black border border-gray-300 mx-4 mb-4">
             <TableHeader />
             <div className="w-full">
-              <TableRow onCounter={() => handleOpenModal("counter")} />
+            <TableRow onCounter={(proposalId) => handleOpenModal("counter", proposalId)} />
             </div>
           </div>
 
@@ -371,6 +373,7 @@ const Lender = () => {
             show={isModalOpen}
             onClose={() => setModalOpen((prev) => !prev)}
             title={title}
+            proposalId={selectedProposalId}
           />
         </div>
       </div>

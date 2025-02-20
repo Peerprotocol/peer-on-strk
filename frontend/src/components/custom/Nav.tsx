@@ -8,132 +8,29 @@ import { useAccount } from "@starknet-react/core";
 import { FileText, X } from "lucide-react";
 import EmailTwitterModal from "./completeProfileModal";
 
-const CHAINS = {
-  SOLANA: {
-    name: "SOLANA",
-    redirectUrl: "https://peerprotocol.xyz/dashboard",
-  },
-  STARKNET: {
-    name: "STARKNET",
-  },
-  XION: {
-    name: "XION",
-    redirectUrl: "https://peerprotocol.xyz/dashboard",
-  },
-};
-
 const Nav = () => {
   const { address } = useAccount();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isChainModalOpen, setIsChainModalOpen] = useState(false);
   const [showEmailTwitterModal, setShowEmailTwitterModal] = useState(false);
  
- useEffect(() => {
-   const fetchData = async () => {
-     if (address) {
-       try {
-         const checkRes = await fetch(`/api/database/user?wallet=${address}`);
-         if (!checkRes.ok) {
-           setShowEmailTwitterModal(true);
-         }
-       } catch (error: any) {
-         console.error('Failed to fetch user data');
-       }
-     }
-   };
-   fetchData();
- }, [address]);
+  useEffect(() => {
+    const fetchData = async () => {
+      if (address) {
+        try {
+          const checkRes = await fetch(`/api/database/user?wallet=${address}`);
+          if (!checkRes.ok) {
+            setShowEmailTwitterModal(true);
+          }
+        } catch (error: any) {
+          console.error('Failed to fetch user data');
+        }
+      }
+    };
+    fetchData();
+  }, [address]);
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
-  };
-
-  useEffect(() => {
-    if (address === undefined || address === null) {
-      setIsChainModalOpen(true);
-    } else {
-      setIsChainModalOpen(false);
-    }
-  }, [address]);
-
-  const handleChainSelect = (chainName: keyof typeof CHAINS) => {
-    if (chainName === "STARKNET") {
-      setIsChainModalOpen(false);
-    } else {
-      window.location.href = CHAINS[chainName].redirectUrl;
-    }
-  };
-
-  const ChainSelectionModal = () => {
-    if (!isChainModalOpen) return null;
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="w-full max-w-md relative bg-white text-black rounded-3xl px-8 py-4">
-          <button
-            onClick={() => setIsChainModalOpen(false)}
-            className="absolute right-4 top-4"
-          >
-            <X className="h-6 w-6" />
-          </button>
-          <div className="pt-3 pb-4 w-full">
-            <div className="flex flex-col items-center justify-center gap-2 w-full">
-              <h2 className="text-xl font-semibold text-center mb-6">
-                Choose Blockchain
-              </h2>
-              {Object.entries(CHAINS).map(([id, chain]) => {
-                if (id === "STARKNET") {
-                  return (
-                    <div
-                      key={id}
-                      className="flex items-center justify-center gap-4 bg-white border text-black px-6 py-4 rounded-lg w-full hover:bg-black hover:text-white relative"
-                    >
-                      <ConnectButton
-                        text={chain.name}
-                        className="w-full text-center text-[14px] font-medium cursor-pointer"
-                      />
-                      <Image
-                        src="/icons/strk.svg"
-                        height={30}
-                        width={30}
-                        alt="Logo"
-                        className="cursor-pointer h-[20px] w-[20px] absolute md:right-1/3 right-[20%]"
-                      />
-                    </div>
-                  );
-                }
-                return (
-                  <div
-                    key={id}
-                    onClick={() => handleChainSelect(id as keyof typeof CHAINS)}
-                    className="flex items-center justify-center gap-4 bg-white border text-black text-[14px] px-6 py-4 rounded-lg w-full hover:bg-black hover:text-white"
-                  >
-                    {chain.name}
-                    {id === "SOLANA" ? (
-                      <Image
-                        src="/icons/solanaLogoMark.svg"
-                        height={80}
-                        width={80}
-                        alt="SolanaLogo"
-                        className="cursor-pointer h-[20px] w-[20px]"
-                      />
-                    ) : (
-                      <Image
-                        src="/icons/xionLogo.png"
-                        height={80}
-                        width={80}
-                        alt="XionLogo"
-                        className="cursor-pointer h-[20px] w-[20px]"
-                      />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
   };
 
   return (
@@ -160,7 +57,6 @@ const Nav = () => {
         />
       </div>
 
-
       <div className="relative flex items-center gap-3">
         <Link href={'/dashboard/positions'}>
           <Image 
@@ -175,20 +71,18 @@ const Nav = () => {
             <AddressBar />
           </div>
         ) : (
-          <button
-            onClick={() => setIsChainModalOpen(true)}
+          <ConnectButton 
+            text="Connect Wallet"
             className="bg-black px-6 py-2 rounded-3xl text-white"
-          >
-            Connect Wallet
-          </button>
+          />
         )}
       </div>
 
       <EmailTwitterModal 
-       isOpen={showEmailTwitterModal}
-       onClose={() => setShowEmailTwitterModal(false)}
-       walletAddress={address}
-     />
+        isOpen={showEmailTwitterModal}
+        onClose={() => setShowEmailTwitterModal(false)}
+        walletAddress={address}
+      />
 
       {/* Mobile nav toggle */}
       <div className="lg:hidden flex items-center gap-4">
@@ -204,7 +98,7 @@ const Nav = () => {
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="top-2 fixed mx-auto w-[98%] h-[fit-content] bg-white text-black  z-50 flex flex-col rounded-md p-2">
+        <div className="top-2 fixed mx-auto w-[98%] h-[fit-content] bg-white text-black z-50 flex flex-col rounded-md p-2">
           <div className="w-full bg-[#efefef] flex flex-col gap-4 p-4 items-start text-left rounded-lg">
             <button onClick={toggleMobileMenu} className="self-end mb-4">
               <Image
@@ -256,9 +150,6 @@ const Nav = () => {
           </div>
         </div>
       )}
-
-      {/* Chain Selection Modal */}
-      <ChainSelectionModal />
     </nav>
   );
 };

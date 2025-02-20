@@ -35,7 +35,7 @@ const Sidebar = () => {
             />
             <p>Portfolio</p>
           </Link>
-          <Link href='/dashboard/reserve' className="flex gap-3 items-center cursor-pointer">
+          {/* <Link href='/dashboard/reserve' className="flex gap-3 items-center cursor-pointer">
             <Image
               src="/icons/liquidity.svg"
               width={30}
@@ -43,8 +43,8 @@ const Sidebar = () => {
               alt="Market"
             />
             <p>Reserve</p>
-          </Link>
-          <Link href='' type="disabled" className="flex gap-3 items-center cursor-pointer">
+          </Link> */}
+          {/* <Link href='' type="disabled" className="flex gap-3 items-center cursor-pointer">
             <Image
               src="/images/institution.svg"
               width={30}
@@ -52,10 +52,10 @@ const Sidebar = () => {
               alt="Business"
             />
             <p>B2B</p>
-          </Link>
+          </Link> */}
 
-          <Link href="/dashboard/quests">
-                <li className="flex gap-2">
+          {/* <Link href="/dashboard/quests"> */}
+                <li className="flex gap-2 ">
                   <Image
                     src="/icons/quests.svg"
                     height={30}
@@ -65,7 +65,7 @@ const Sidebar = () => {
                   />
                   Quests
                 </li>
-              </Link>
+              {/* </Link> */}
 
           {showQuestLinks && (
             <>

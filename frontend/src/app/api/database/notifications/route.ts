@@ -110,17 +110,3 @@ export async function DELETE(req: NextRequest) {
     );
   }
 }
-
-// Helper function to create system notifications
-export async function createSystemNotification(userAddress: string, message: string) {
-  try {
-    await sql`
-      INSERT INTO notifications (user_address, message)
-      VALUES (${userAddress}, ${message});
-    `;
-    return true;
-  } catch (error) {
-    console.error("Error creating system notification:", error);
-    return false;
-  }
-}

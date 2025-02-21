@@ -1,6 +1,6 @@
 "use client";
 import BackButton from "../../../../public/images/back-button.svg";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Plus, X } from "lucide-react";
@@ -15,9 +15,10 @@ import { useContractWrite } from "@starknet-react/core";
 import { toast as toastify } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import NewProposalModal from "@/components/proposalModal";
-import { TokentoHex } from "../../../components/internal/helpers/index";
+import { TokentoHex } from '../../../components/internal/helpers/index';
+import FilterBar from "@/components/custom/FilterBar"; 
 
-type ModalType = "borrow" | "counter" | "lend";
+type ModalType = "borrow" | "counter" | 'lend';
 
 //Constants
 const ITEMS_PER_PAGE = 7;
@@ -339,7 +340,90 @@ const BorrowersMarket = () => {
   const [modalType, setModalType] = useState<ModalType>("lend");
   const [title, setTitle] = useState("Create a Lending Proposal");
 
-  const totalPages = Math.ceil(5 / ITEMS_PER_PAGE);
+  // Filters state
+  const [filters, setFilters] = useState({
+    token: "",
+    amount: "",
+    interestRate: "",
+    duration: ""
+  });
+
+  // Handle filter changes
+  const handleFilterChange = (field: keyof typeof filters, value: string) => {
+    setFilters((prev) => ({ ...prev, [field]: value }));
+  };
+
+    // Read proposals from the contract
+    const { address } = useAccount();
+    const { data, isLoading: proposalsLoading } = useContractRead(
+      address
+        ? {
+            abi: protocolAbi,
+            address: PROTOCOL_ADDRESS,
+            functionName: "get_borrow_proposal_details",
+            args: [],
+            watch: true,
+          }
+        : ({} as any)
+    );
+
+
+  const allProposals = Array.isArray(data) ? data : [];
+    // Filter out canceled or accepted
+    const validProposals = allProposals.filter(
+      (item: any) => item.is_cancelled !== true && item.is_accepted !== true
+    );
+
+      // Utility to convert token address to short symbol
+      const getTokenSymbol = (tokenAddress: string): string => {
+        const normalizedAddress = tokenAddress.toLowerCase();
+        for (const [symbol, address] of Object.entries(TOKEN_ADDRESSES)) {
+          if (address.toLowerCase() === normalizedAddress) {
+            return symbol;
+          }
+        }
+        return "Unknown";
+      };
+
+
+      // Apply filters
+  const filteredProposals = useMemo(() => {
+    return validProposals.filter((item: any) => {
+      const tokenHex = toHex(item.token.toString());
+      const tokenStr = getTokenSymbol(tokenHex); // We'll define getTokenSymbol below
+
+      // Filter by token
+      if (filters.token && tokenStr !== filters.token) return false;
+
+      // Filter by min amount
+      if (filters.amount) {
+        const minAmount = parseFloat(filters.amount);
+        const itemAmount = parseFloat(item.amount.toString());
+        if (itemAmount < minAmount) return false;
+      }
+
+      // Filter by min interest rate
+      if (filters.interestRate) {
+        const minRate = parseFloat(filters.interestRate);
+        const itemRate = parseFloat(item.interest_rate.toString());
+        if (itemRate < minRate) return false;
+      }
+            // Filter by min duration
+            if (filters.duration) {
+              const minDuration = parseFloat(filters.duration);
+              const itemDuration = parseFloat(item.duration.toString());
+              if (itemDuration < minDuration) return false;
+            }
+      
+            return true;
+          });
+
+        }, [validProposals, filters]);
+
+    // Calculate pagination (dummy for demonstration)
+    const totalPages = Math.ceil(filteredProposals.length / ITEMS_PER_PAGE);
+
+  //totalPages = Math.ceil(5 / ITEMS_PER_PAGE);
 
   const handlePageChange = (page: number) => setCurrentPage(page);
   const openModal = (type: ModalType, proposalId?: string) => {
@@ -353,79 +437,94 @@ const BorrowersMarket = () => {
     }
   };
 
-  return (
-    <main className="bg-[#F5F5F5]">
-      <div className="flex flex-col md:flex-row h-screen">
-        <Sidebar />
-        <div className="flex-1 flex flex-col h-full max-h-screen overflow-auto">
-          <Nav />
-          <div className="flex justify-left items-center gap-3 p-4">
-            <Link href="/dashboard">
-              <Image
-                src={BackButton}
-                height={40}
-                width={40}
-                alt="back-button"
-                className="cursor-pointer"
-              />
-            </Link>
-            <div className="flex items-center gap-2">
-              <h1 className="text-black text-2xl md:text-4xl">
-                Borrowers Market
-              </h1>
-              <div className="flex gap-2 border rounded-3xl text-black border-gray-500 px-3 py-1 items-center">
+    // Proposals for current page
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const currentPageProposals = filteredProposals.slice(startIndex, endIndex);
+
+    return (
+      <main className="bg-[#F5F5F5]">
+        <div className="flex flex-col md:flex-row h-screen">
+          <Sidebar />
+          <div className="flex-1 flex flex-col h-full max-h-screen overflow-auto">
+            <Nav />
+  
+            {/* Page Title & Back Button */}
+            <div className="flex justify-left items-center gap-3 p-4">
+              <Link href="/dashboard">
                 <Image
-                  src="/images/starknet.png"
-                  height={20}
-                  width={20}
-                  alt="starknet-logo"
+                  src={BackButton}
+                  height={40}
+                  width={40}
+                  alt="back-button"
+                  className="cursor-pointer"
                 />
-                <p className="text-xs">Starknet</p>
+              </Link>
+              <div className="flex items-center gap-2">
+                <h1 className="text-black text-2xl md:text-4xl">Borrowers Market</h1>
+                <div className="flex gap-2 border rounded-3xl text-black border-gray-500 px-3 py-1 items-center">
+                  <Image
+                    src="/images/starknet.png"
+                    height={20}
+                    width={20}
+                    alt="starknet-logo"
+                  />
+                  <p className="text-xs">Starknet</p>
+                </div>
               </div>
             </div>
-          </div>
-          <div className="overflow-x-auto text-black border mx-4 mb-4 rounded-xl">
-            <TableHeader />
-            <div>
+  
+            {/* Filter Bar */}
+            <FilterBar filters={filters} onFilterChange={handleFilterChange} />
+  
+            {/* Table */}
+            <div className="overflow-x-auto text-black border mx-4 mb-4 rounded-xl">
+              <TableHeader />
               <TableRow
-                onCounterProposal={(proposalId) =>
-                  openModal("counter", proposalId)
-                }
+                proposals={currentPageProposals}
+                onCounterProposal={(proposalId) => openModal("counter", proposalId)}
               />
             </div>
-          </div>
-          <button
-            onClick={() => openModal("lend")}
-            className="relative flex items-center gap-2 px-6 py-3 rounded-3xl bg-[#F5F5F5] text-black border border-[rgba(0,0,0,0.8)] mx-auto font-light hover:bg-[rgba(0,0,0,0.8)] hover:text-white"
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-          >
-            <p>Create a Lending Proposal</p>
-            <Plus
-              size={22}
-              strokeWidth={3}
-              absoluteStrokeWidth
-              className={`transition-colors duration-300 ease-in-out ${
-                isHovered ? "text-white" : "text-black"
-              }`}
+  
+            {/* Create a Lending Proposal Button */}
+            <button
+              onClick={() => openModal("lend")}
+              className="relative flex items-center gap-2 px-6 py-3 rounded-3xl bg-[#F5F5F5] text-black border border-[rgba(0,0,0,0.8)] mx-auto font-light hover:bg-[rgba(0,0,0,0.8)] hover:text-white"
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
+            >
+              <p>Create a Lending Proposal</p>
+              <Plus
+                size={22}
+                strokeWidth={3}
+                absoluteStrokeWidth
+                className={`transition-colors duration-300 ease-in-out ${
+                  isHovered ? "text-white" : "text-black"
+                }`}
+              />
+            </button>
+  
+            {/* Pagination */}
+            {filteredProposals.length > ITEMS_PER_PAGE && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
+            )}
+  
+            {/* Modal */}
+            <NewProposalModal
+              type={modalType}
+              show={isModalOpen}
+              onClose={() => setModalOpen(prev => !prev)}
+              title={title}
+              proposalId={selectedProposalId}
             />
-          </button>
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={handlePageChange}
-          />
-          <NewProposalModal
-            type={modalType}
-            show={isModalOpen}
-            onClose={() => setModalOpen((prev) => !prev)}
-            title={title}
-            proposalId={selectedProposalId}
-          />
+          </div>
         </div>
-      </div>
-    </main>
-  );
+      </main>
+    );
 };
 
 export default BorrowersMarket;

@@ -14,7 +14,7 @@ import { toast as toastify } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import NewProposalModal from "@/components/proposalModal";
 import { CallData } from "starknet";
-import { TokentoHex } from '../../../components/internal/helpers/index';
+import { TokentoHex } from "../../../components/internal/helpers/index";
 
 // Constants
 const ITEMS_PER_PAGE = 7;
@@ -114,12 +114,22 @@ const TableRow = ({ onCounter }: TableRowProps) => {
             abi: protocolAbi,
             contractAddress: PROTOCOL_ADDRESS,
             entrypoint: "accept_proposal",
-            calldata: CallData.compile([proposalId, '0']),
+            calldata: CallData.compile([proposalId, "0"]),
           },
         ],
       });
 
       if (transaction?.transaction_hash) {
+        // Add notification
+        await fetch("/api/database/notifications", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_address: address,
+            message: `Your lending proposal ${proposalId} has been accepted`,
+          }),
+        });
+
         toastify.success("Proposal Accepted");
         console.log("Transaction submitted:", transaction.transaction_hash);
 
@@ -162,6 +172,16 @@ const TableRow = ({ onCounter }: TableRowProps) => {
 
       if (transaction?.transaction_hash) {
         console.log("Transaction submitted:", transaction.transaction_hash);
+
+        // Add notification
+        await fetch("/api/database/notifications", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_address: address,
+            message: `Your lending proposal ${proposalId} has been cancelled`,
+          }),
+        });
         toastify.success("Proposal Cancelled");
 
         // Wait for transaction
@@ -224,14 +244,14 @@ const TableRow = ({ onCounter }: TableRowProps) => {
 
               {/* Quantity Column */}
               <div className="text-center px-4 py-6">
-                <p className="font-medium">{Number(item.token_amount / BigInt(10 ** 18)).toFixed(2)}</p>
+                <p className="font-medium">
+                  {Number(item.token_amount / BigInt(10 ** 18)).toFixed(2)}
+                </p>
               </div>
 
               {/* Net Value Column */}
               <div className="text-center px-4 py-6">
-                <p className="font-medium">
-                $ {item.amount.toString()}  
-                </p>
+                <p className="font-medium">$ {item.amount.toString()}</p>
               </div>
 
               {/* Interest Rate Column */}
@@ -252,7 +272,9 @@ const TableRow = ({ onCounter }: TableRowProps) => {
                       ? "bg-gray-400 cursor-not-allowed"
                       : "bg-black hover:bg-opacity-90 transition"
                   }`}
-                  onClick={() =>{console.log('item id', item.id), handleLend(item.id)}}
+                  onClick={() => {
+                    console.log("item id", item.id), handleLend(item.id);
+                  }}
                   disabled={loading || proposalsLoading}
                 >
                   {loading ? "..." : "Borrow"}
@@ -274,7 +296,8 @@ const TableRow = ({ onCounter }: TableRowProps) => {
                   Counter
                 </button>
 
-                  {TokentoHex(item.lender.toString()) === normalizeAddress(address) && (
+                {TokentoHex(item.lender.toString()) ===
+                  normalizeAddress(address) && (
                   <X onClick={() => cancelProposal(item.id.toString())} />
                 )}
               </div>
@@ -346,7 +369,11 @@ const Lender = () => {
           <div className="overflow-x-auto text-black border border-gray-300 mx-4 mb-4">
             <TableHeader />
             <div className="w-full">
-            <TableRow onCounter={(proposalId) => handleOpenModal("counter", proposalId)} />
+              <TableRow
+                onCounter={(proposalId) =>
+                  handleOpenModal("counter", proposalId)
+                }
+              />
             </div>
           </div>
 

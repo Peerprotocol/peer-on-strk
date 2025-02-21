@@ -178,10 +178,7 @@ const Table: React.FC = () => {
       //I Converted timestamps to numbers and sorted it in descending order (latest first)
       return Number(b.timestamp) - Number(a.timestamp);
     })
-    ?.slice(
-      (currentPage - 1) * ROWS_PER_PAGE,
-      currentPage * ROWS_PER_PAGE
-    );
+    ?.slice((currentPage - 1) * ROWS_PER_PAGE, currentPage * ROWS_PER_PAGE);
 
   // Pagination Logic
   const handlePageChange = (page: number) => {
@@ -264,13 +261,14 @@ const Table: React.FC = () => {
             ))}
           </div>
 
-          {
-          activeTab === "Position Overview" &&(
-            <Link href="/dashboard/positions" className="text-black font-medium">
-            View All
-          </Link>
-          )
-        }
+          {activeTab === "Position Overview" && (
+            <Link
+              href="/dashboard/positions"
+              className="text-black font-medium"
+            >
+              View All
+            </Link>
+          )}
         </div>
         {/* commented out the remove the borrow and lending toggle */}
         {/* {activeTab === "Position Overview" && (
@@ -287,8 +285,8 @@ const Table: React.FC = () => {
             <ChevronDown className="cursor-pointer absolute top-3 right-2 w-5 h-5 text-gray-500" />
           </div>
         )} */}
-       
-      </div>...
+      </div>
+      ...
       {/* Assets Table */}
       {activeTab === "Assets" && (
         <div className="overflow-x-auto text-black my-6">
@@ -420,7 +418,8 @@ const Table: React.FC = () => {
             </tbody>
           </table>
         </div>
-      )}...
+      )}
+      ...
       {/* Position Overview Table */}
       {activeTab === "Position Overview" && (
         <div className="overflow-x-auto text-black my-6">

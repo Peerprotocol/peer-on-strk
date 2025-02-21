@@ -105,7 +105,7 @@ const TableRow = ({ onCounter }: TableRowProps) => {
     ],
   });
 
-  const handleLend = async (proposalId: bigint) => {
+  const handleLend = async (proposalId: bigint, amount: any) => {
     setLoading(true);
     try {
       const transaction = await lend({
@@ -125,6 +125,22 @@ const TableRow = ({ onCounter }: TableRowProps) => {
 
         // Wait for transaction
         await transaction.wait();
+
+        // Record transaction in DB
+        await fetch('/api/database/protocol-data', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            total_borrow: 0,
+            total_lend: amount,
+            total_p2p_deals: 1,
+            total_interest_earned: 0,
+            total_value_locked: 0
+          })
+        })
+
         console.log("Transaction completed!");
       }
     } catch (error) {
@@ -146,7 +162,7 @@ const TableRow = ({ onCounter }: TableRowProps) => {
     ],
   });
 
-  const cancelProposal = async (proposalId: any) => {
+  const cancelProposal = async (proposalId: any, amount: any) => {
     setLoading(true);
     try {
       const transaction = await cancel({
@@ -166,6 +182,22 @@ const TableRow = ({ onCounter }: TableRowProps) => {
 
         // Wait for transaction
         await transaction.wait();
+
+        // Record transaction in DB
+        await fetch('/api/database/protocol-data', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            total_borrow: 0,
+            total_lend: -amount,
+            total_p2p_deals: -1,
+            total_interest_earned: 0,
+            total_value_locked: 0
+          })
+        })
+
         console.log("Transaction completed!");
       }
     } catch (error) {
@@ -230,7 +262,7 @@ const TableRow = ({ onCounter }: TableRowProps) => {
               {/* Net Value Column */}
               <div className="text-center px-4 py-6">
                 <p className="font-medium">
-                $ {item.amount.toString()}  
+                $ {item.amount.toString()}
                 </p>
               </div>
 
@@ -252,7 +284,7 @@ const TableRow = ({ onCounter }: TableRowProps) => {
                       ? "bg-gray-400 cursor-not-allowed"
                       : "bg-black hover:bg-opacity-90 transition"
                   }`}
-                  onClick={() =>{console.log('item id', item.id), handleLend(item.id)}}
+                  onClick={() =>{console.log('item id', item.id), handleLend(item.id, item.amount.toString())}}
                   disabled={loading || proposalsLoading}
                 >
                   {loading ? "..." : "Borrow"}

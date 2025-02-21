@@ -290,22 +290,25 @@ const TableRow = ({ onCounter }: TableRowProps) => {
                   {loading ? "..." : "Borrow"}
                 </button>
 
-                <Image
-                  src="/images/edit.svg"
-                  alt="counter-proposal"
-                  width={20}
-                  height={20}
-                  className={`cursor-pointer ${
+                <button
+                  className={`px-3 py-2 text-sm rounded-full border border-black text-black bg-white hover:bg-gray-100 transition ${
                     loading || proposalsLoading
-                      ? "opacity-50"
-                      : "hover:opacity-80"
+                      ? "opacity-50 cursor-not-allowed"
+                      : ""
                   }`}
-                  onClick={() => !loading && !proposalsLoading && onCounter(item.id.toString())}
-                />
+                  onClick={() =>
+                    !loading &&
+                    !proposalsLoading &&
+                    onCounter(item.id.toString())
+                  }
+                  disabled={loading || proposalsLoading}
+                >
+                  Counter
+                </button>
 
                   {TokentoHex(item.lender.toString()) === normalizeAddress(address) && (
-      <X onClick={() => cancelProposal(item.id.toString(), item.amount.toString())} />
-                  )}
+                  <X onClick={() => cancelProposal(item.id.toString())} />
+                )}
               </div>
             </div>
           );
@@ -359,7 +362,7 @@ const Lender = () => {
     setModalOpen(true);
     if (proposalId) {
       setSelectedProposalId(proposalId);
-  }
+    }
     if (type === "counter") {
       setTitle("Counter this Proposal");
     }

@@ -7,12 +7,14 @@ import AddressBar from "@/components/lib/AddressBar";
 import { useAccount } from "@starknet-react/core";
 import { FileText, X } from "lucide-react";
 import EmailTwitterModal from "./completeProfileModal";
+import NotificationModal from "./NotificationModal";
 
 const Nav = () => {
   const { address } = useAccount();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showEmailTwitterModal, setShowEmailTwitterModal] = useState(false);
- 
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
+
   useEffect(() => {
     const fetchData = async () => {
       if (address) {
@@ -22,7 +24,7 @@ const Nav = () => {
             setShowEmailTwitterModal(true);
           }
         } catch (error: any) {
-          console.error('Failed to fetch user data');
+          console.error("Failed to fetch user data");
         }
       }
     };
@@ -53,14 +55,15 @@ const Nav = () => {
           height={40}
           width={40}
           alt="Notification icon"
-          className="ml-4"
+          className="ml-4 cursor-pointer"
+          onClick={() => setShowNotificationModal(true)}
         />
       </div>
 
       <div className="relative flex items-center gap-3">
-        <Link href={'/dashboard/positions'}>
-          <Image 
-            src={'/images/position_icon.png'}
+        <Link href={"/dashboard/positions"}>
+          <Image
+            src={"/images/position_icon.png"}
             alt="Position Icon"
             height={40}
             width={40}
@@ -71,16 +74,22 @@ const Nav = () => {
             <AddressBar />
           </div>
         ) : (
-          <ConnectButton 
+          <ConnectButton
             text="Connect Wallet"
             className="bg-black px-6 py-2 rounded-3xl text-white"
           />
         )}
       </div>
 
-      <EmailTwitterModal 
+      <EmailTwitterModal
         isOpen={showEmailTwitterModal}
         onClose={() => setShowEmailTwitterModal(false)}
+        walletAddress={address}
+      />
+
+      <NotificationModal
+        isOpen={showNotificationModal}
+        onClose={() => setShowNotificationModal(false)}
         walletAddress={address}
       />
 

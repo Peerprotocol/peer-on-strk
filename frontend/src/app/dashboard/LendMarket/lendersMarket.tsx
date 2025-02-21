@@ -12,6 +12,7 @@ import { normalizeAddress, toHex } from "@/components/internal/helpers";
 import { toast as toastify } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import NewProposalModal from "@/components/proposalModal";
+import DepositTokenModal from "@/components/custom/DepositTokenModal";
 import { CallData } from "starknet";
 import { TokentoHex } from "../../../components/internal/helpers/index";
 import FilterBar from "@/components/custom/FilterBar";
@@ -22,6 +23,13 @@ const TOKEN_ADDRESSES = {
   STRK: "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
   ETH: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
 };
+
+// Types
+type ModalType = "lend" | "counter" | "borrow";
+
+interface PendingAction {
+  callback: () => void;
+}
 
 // Component for the header section
 const Header = () => (
@@ -69,14 +77,33 @@ const TableHeader = () => (
 
 interface TableRowProps {
   onCounter: (item: string) => void;
-  proposals: any[];
+  onBorrowWithCheck: (
+    proposalId: string,
+    amount: string,
+    action: (proposalId: bigint, amount: any) => void
+  ) => void;
 }
 
-const TableRow = ({ proposals, onCounter }: TableRowProps) => {
+const TableRow = ({ onCounter, onBorrowWithCheck }: TableRowProps) => {
   const [loading, setLoading] = useState(false);
   const { address } = useAccount();
 
-  const { write: lend, isLoading: isLendLoading } = useContractWrite({
+  const { data, isLoading: proposalsLoading } = useContractRead(
+    address
+      ? {
+          abi: protocolAbi,
+          address: PROTOCOL_ADDRESS,
+          functionName: "get_lending_proposal_details",
+          args: [],
+          watch: true,
+        }
+      : ({} as any)
+  );
+
+  // Ensure data is an array
+  const lendingProposals = Array.isArray(data) ? data : [];
+
+  const { write: lend } = useContractWrite({
     calls: [
       {
         abi: protocolAbi,
@@ -115,9 +142,12 @@ const TableRow = ({ proposals, onCounter }: TableRowProps) => {
         toastify.success("Proposal Accepted");
         await transaction.wait();
 
+        // Record transaction in DB
         await fetch("/api/database/protocol-data", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify({
             total_borrow: 0,
             total_lend: amount,
@@ -225,70 +255,109 @@ const TableRow = ({ proposals, onCounter }: TableRowProps) => {
 
   return (
     <div className="border-t border-gray-300 min-w-[800px] w-full">
-      {proposals.map((item: any, index: number) => {
-        const tokenHex = toHex(item.token.toString());
-        let lenderHex = toHex(item.lender.toString());
-        if (item.lender === address) {
-          lenderHex = "Me";
-        }
-        return (
-          <div key={index} className="grid grid-cols-7">
-            {/* Lender */}
-            <div className="flex items-center justify-center px-4 py-6">
-              <Image
-                src="/images/phantom-icon.svg"
-                height={20}
-                width={20}
-                alt="phantomicon"
-                className="h-5 w-5"
-              />
-              <p className="font-medium ml-2">{`${lenderHex.slice(0, 5)}..`}</p>
+      {lendingProposals
+        .filter(
+          (item: any) =>
+            item.is_cancelled !== true && item.is_accepted !== true
+        )
+        .map((item: any, index: number) => {
+          const tokenHex = toHex(item.token.toString());
+          let lenderHex = toHex(item.lender.toString());
+
+          if (item.lender == address) {
+            lenderHex = "Me";
+          }
+
+          return (
+            <div key={index} className="grid grid-cols-7">
+              {/* Merchant Column */}
+              <div className="flex items-center justify-center px-4 py-6">
+                <Image
+                  src="/images/phantom-icon.svg"
+                  height={20}
+                  width={20}
+                  alt="phantomicon"
+                  className="h-5 w-5"
+                />
+                <p className="font-medium ml-2">{`${lenderHex.slice(
+                  0,
+                  5
+                )}..`}</p>
+              </div>
+
+              {/* Token Column */}
+              <div className="text-center px-4 py-6">
+                <p className="font-medium">{getTokenName(tokenHex)}</p>
+              </div>
+
+              {/* Quantity Column */}
+              <div className="text-center px-4 py-6">
+                <p className="font-medium">
+                  {Number(item.token_amount / BigInt(10 ** 18)).toFixed(2)}
+                </p>
+              </div>
+
+              {/* Net Value Column */}
+              <div className="text-center px-4 py-6">
+                <p className="font-medium">$ {item.amount.toString()}</p>
+              </div>
+
+              {/* Interest Rate Column */}
+              <div className="text-center px-4 py-6">
+                <p className="font-medium">
+                  {item.interest_rate.toString()}%
+                </p>
+              </div>
+
+              {/* Duration Column */}
+              <div className="text-center px-4 py-6">
+                <p className="font-medium">
+                  {item.duration.toString()} days
+                </p>
+              </div>
+
+              {/* Actions Column */}
+              <div className="flex gap-4 justify-center items-center py-6">
+                <button
+                  className={`px-4 py-2 text-sm rounded-full text-white ${
+                    loading || proposalsLoading
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-black hover:bg-opacity-90 transition"
+                  }`}
+                  onClick={() => {
+                    console.log("item id", item.id);
+                    onBorrowWithCheck(
+                      item.id.toString(),
+                      item.amount.toString(),
+                      handleLend
+                    );
+                  }}
+                  disabled={loading || proposalsLoading}
+                >
+                  {loading ? "..." : "Borrow"}
+                </button>
+
+                <button
+                  className={`px-3 py-2 text-sm rounded-full border border-black text-black bg-white hover:bg-gray-100 transition ${
+                    loading || proposalsLoading
+                      ? "opacity-50 cursor-not-allowed"
+                      : ""
+                  }`}
+                  onClick={() =>
+                    !loading &&
+                    !proposalsLoading &&
+                    onCounter(item.id.toString())
+                  }
+                  disabled={loading || proposalsLoading}
+                >
+                  Counter
+                </button>
+
+                {TokentoHex(item.lender.toString()) === normalizeAddress(address) && (
+                  <X onClick={() => cancelProposal(item.id.toString(), item.amount.toString())} />
+                )}
+              </div>
             </div>
-            {/* Token */}
-            <div className="text-center px-4 py-6">
-              <p className="font-medium">{getTokenName(tokenHex)}</p>
-            </div>
-            {/* Quantity */}
-            <div className="text-center px-4 py-6">
-              <p className="font-medium">{Number(item.token_amount / BigInt(10 ** 18)).toFixed(2)}</p>
-            </div>
-            {/* Net Value */}
-            <div className="text-center px-4 py-6">
-              <p className="font-medium">$ {item.amount.toString()}</p>
-            </div>
-            {/* Interest Rate */}
-            <div className="text-center px-4 py-6">
-              <p className="font-medium">{item.interest_rate.toString()}%</p>
-            </div>
-            {/* Duration */}
-            <div className="text-center px-4 py-6">
-              <p className="font-medium">{item.duration.toString()} days</p>
-            </div>
-            {/* Actions */}
-            <div className="flex gap-4 justify-center items-center py-6">
-              <button
-                className={`px-4 py-2 text-sm rounded-full text-white ${
-                  loading ? "bg-gray-400 cursor-not-allowed" : "bg-black hover:bg-opacity-90 transition"
-                }`}
-                onClick={() => handleLend(item.id, item.amount.toString())}
-                disabled={loading}
-              >
-                {loading ? "..." : "Lend"}
-              </button>
-              <button
-                className={`px-3 py-2 text-sm rounded-full border border-black text-black bg-white hover:bg-gray-100 transition ${
-                  loading ? "opacity-50 cursor-not-allowed" : ""
-                }`}
-                onClick={() => !loading && onCounter(item.id.toString())}
-                disabled={loading}
-              >
-                Counter
-              </button>
-              {TokentoHex(item.lender.toString()) === normalizeAddress(address) && (
-                <X onClick={() => cancelProposal(item.id.toString(), item.amount.toString())} />
-              )}
-            </div>
-          </div>
         );
       })}
     </div>
@@ -303,6 +372,9 @@ const Lender = () => {
   const [selectedProposalId, setSelectedProposalId] = useState<string>("");
   const [modalType, setModalType] = useState<"lend" | "counter" | "borrow">("borrow");
   const [title, setTitle] = useState("Create a Borrow Proposal");
+  const [isDepositModalOpen, setDepositModalOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const { address } = useAccount();
 
   // Filter states
   const [filterOption, setFilterOption] = useState("token");
@@ -310,15 +382,25 @@ const Lender = () => {
 
   const totalPages = Math.ceil(5 / ITEMS_PER_PAGE);
 
-  // Read lending proposals from contract
-  const { address } = useAccount();
   const { data, isLoading: proposalsLoading } = useContractRead(
+    address
+    ? {
+        abi: protocolAbi,
+        address: PROTOCOL_ADDRESS,
+        functionName: "get_lending_proposal_details",
+        args: [],
+        watch: true,
+      }
+    : ({} as any)
+  );
+
+  const { data: lockedFunds } = useContractRead(
     address
       ? {
           abi: protocolAbi,
           address: PROTOCOL_ADDRESS,
-          functionName: "get_lending_proposal_details",
-          args: [],
+          functionName: "get_locked_funds",
+          args: [address, TOKEN_ADDRESSES.STRK],
           watch: true,
         }
       : ({} as any)
@@ -379,14 +461,44 @@ const Lender = () => {
   }, [validProposals, filterOption, filterValue]);
 
   const handleOpenModal = (type: "lend" | "counter" | "borrow", proposalId?: string) => {
+  const checkBalanceAndProceed = (actionCallback: () => void) => {
+    if (!lockedFunds || lockedFunds.toString() === "0") {
+      setPendingAction({ callback: actionCallback });
+      setDepositModalOpen(true);
+    } else {
+      actionCallback();
+    }
+  };
+
+  const handleDepositSuccess = () => {
+    setDepositModalOpen(false);
+    if (pendingAction) {
+      pendingAction.callback();
+      setPendingAction(null);
+    }
+  };
+
+  const handlePageChange = (page: number) => setCurrentPage(page);
+
+  const openModal = (type: ModalType, proposalId?: string) => {
     setModalType(type);
-    setModalOpen(true);
     if (proposalId) {
       setSelectedProposalId(proposalId);
     }
     if (type === "counter") {
       setTitle("Counter this Proposal");
     }
+    setModalOpen(true);
+    if (type === "counter") {
+      // change title if needed
+    }
+  };
+
+  const handleOpenModal = (type: ModalType, proposalId?: string) => {
+    // Wrap modal open in balance check
+    checkBalanceAndProceed(() => {
+      openModal(type, proposalId);
+    });
   };
 
   return (
@@ -410,14 +522,21 @@ const Lender = () => {
           {/* Table */}
           <div className="overflow-x-auto text-black border mx-4 mb-4 rounded-xl">
             <TableHeader />
-            <TableRow
+            <div className="w-full">
+              <TableRow
               proposals={filteredProposals}
-              onCounter={(proposalId) => handleOpenModal("counter", proposalId)}
-            />
+                onCounter={(proposalId) => handleOpenModal("counter", proposalId)}
+                onBorrowWithCheck={(proposalId, amount, action) =>
+                  checkBalanceAndProceed(() =>
+                    action(BigInt(proposalId), amount)
+                  )
+                }
+              />
+            </div>
           </div>
 
           <button
-            onClick={() => handleOpenModal("borrow")}
+            onClick={() => checkBalanceAndProceed(() => handleOpenModal("borrow"))}
             className="relative flex items-center gap-2 px-6 py-3 rounded-3xl bg-[#F5F5F5] text-black border border-[rgba(0,0,0,0.8)] mx-auto font-light hover:bg-[rgba(0,0,0,0.8)] hover:text-white"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
@@ -452,14 +571,27 @@ const Lender = () => {
           <NewProposalModal
             type={modalType}
             show={isModalOpen}
-            onClose={() => setModalOpen(false)}
-            title={title}
+            onClose={() => setModalOpen((prev) => !prev)}
+            title={"Create a Borrow Proposal"}
             proposalId={selectedProposalId}
+          />
+          <DepositTokenModal
+            isOpen={isDepositModalOpen}
+            onClose={() => setDepositModalOpen(false)}
+            walletAddress={address || ""}
+            availableBalance={0}
+            onDeposit={async (amount: number) => {
+              // Call deposit function here.
+              // On successful deposit, show success message and resume pending action.
+              toastify.success("Deposit successful");
+              handleDepositSuccess();
+            }}
           />
         </div>
       </div>
     </main>
   );
 };
+}
 
 export default Lender;

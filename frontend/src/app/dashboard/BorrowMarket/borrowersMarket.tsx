@@ -73,7 +73,7 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
     ],
   });
 
-  const handleLend = async (proposalId: any) => {
+  const handleLend = async (proposalId: any, amount: any) => {
     console.log("proposal id", proposalId);
     setLoading(true);
     try {
@@ -89,6 +89,27 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
       });
 
       if (transaction?.transaction_hash) {
+        toastify.success("Proposal Accepted");
+        console.log("Transaction submitted:", transaction.transaction_hash);
+
+        // Wait for transaction
+        await transaction.wait();
+
+        // Record transaction in DB
+        await fetch("/api/database/protocol-data", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            total_borrow: amount,
+            total_lend: 0,
+            total_p2p_deals: 1,
+            total_interest_earned: 0,
+            total_value_locked: 0,
+          }),
+        });
+
         // Add notification
         await fetch("/api/database/notifications", {
           method: "POST",
@@ -98,12 +119,6 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
             message: `Your borrowing proposal ${proposalId} has been accepted`,
           }),
         });
-
-        toastify.success("Proposal Accepted");
-        console.log("Transaction submitted:", transaction.transaction_hash);
-
-        // Wait for transaction
-        await transaction.wait();
 
         console.log("Transaction completed!");
       }
@@ -126,7 +141,7 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
     ],
   });
 
-  const cancelProposal = async (proposalId: any) => {
+  const cancelProposal = async (proposalId: any, amount: any) => {
     setLoading(true);
     try {
       const transaction = await cancel({
@@ -143,6 +158,26 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
       if (transaction?.transaction_hash) {
         console.log("Transaction submitted:", transaction.transaction_hash);
 
+        toastify.success("Proposal Cancelled");
+
+        // Wait for transaction
+        await transaction.wait();
+
+        // Record transaction in DB
+        await fetch("/api/database/protocol-data", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            total_borrow: -amount,
+            total_lend: 0,
+            total_p2p_deals: -1,
+            total_interest_earned: 0,
+            total_value_locked: 0,
+          }),
+        });
+
         // Add notification
         await fetch("/api/database/notifications", {
           method: "POST",
@@ -152,10 +187,7 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
             message: `Your borrowing proposal ${proposalId} has been cancelled`,
           }),
         });
-        toastify.success("Proposal Cancelled");
 
-        // Wait for transaction
-        await transaction.wait();
         console.log("Transaction completed!");
       }
     } catch (error) {
@@ -244,7 +276,7 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
                   }`}
                   onClick={() => {
                     console.log("item id", item.id),
-                      handleLend(item.id.toString());
+                      handleLend(item.id.toString(), item.amount.toString());
                   }}
                   disabled={loading || proposalsLoading}
                 >
@@ -253,7 +285,11 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
                 {/* can only counter lending proposals */}
                 {TokentoHex(item.borrower.toString()) ==
                   normalizeAddress(address) && (
-                  <X onClick={() => cancelProposal(item.id.toString())} />
+                  <X
+                    onClick={() =>
+                      cancelProposal(item.id.toString(), item.amount.toString())
+                    }
+                  />
                 )}
               </div>
             </div>

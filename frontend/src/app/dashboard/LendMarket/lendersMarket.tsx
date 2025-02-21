@@ -105,7 +105,7 @@ const TableRow = ({ onCounter }: TableRowProps) => {
     ],
   });
 
-  const handleLend = async (proposalId: bigint) => {
+  const handleLend = async (proposalId: bigint, amount: any) => {
     setLoading(true);
     try {
       const transaction = await lend({
@@ -135,6 +135,32 @@ const TableRow = ({ onCounter }: TableRowProps) => {
 
         // Wait for transaction
         await transaction.wait();
+
+        // Record transaction in DB
+        await fetch("/api/database/protocol-data", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            total_borrow: 0,
+            total_lend: amount,
+            total_p2p_deals: 1,
+            total_interest_earned: 0,
+            total_value_locked: 0,
+          }),
+        });
+
+        // Add notification
+        await fetch("/api/database/notifications", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_address: address,
+            message: `Your lending proposal ${proposalId} has been cancelled`,
+          }),
+        });
+
         console.log("Transaction completed!");
       }
     } catch (error) {
@@ -156,7 +182,7 @@ const TableRow = ({ onCounter }: TableRowProps) => {
     ],
   });
 
-  const cancelProposal = async (proposalId: any) => {
+  const cancelProposal = async (proposalId: any, amount: any) => {
     setLoading(true);
     try {
       const transaction = await cancel({
@@ -173,6 +199,26 @@ const TableRow = ({ onCounter }: TableRowProps) => {
       if (transaction?.transaction_hash) {
         console.log("Transaction submitted:", transaction.transaction_hash);
 
+        toastify.success("Proposal Cancelled");
+
+        // Wait for transaction
+        await transaction.wait();
+
+        // Record transaction in DB
+        await fetch("/api/database/protocol-data", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            total_borrow: 0,
+            total_lend: -amount,
+            total_p2p_deals: -1,
+            total_interest_earned: 0,
+            total_value_locked: 0,
+          }),
+        });
+
         // Add notification
         await fetch("/api/database/notifications", {
           method: "POST",
@@ -182,10 +228,7 @@ const TableRow = ({ onCounter }: TableRowProps) => {
             message: `Your lending proposal ${proposalId} has been cancelled`,
           }),
         });
-        toastify.success("Proposal Cancelled");
 
-        // Wait for transaction
-        await transaction.wait();
         console.log("Transaction completed!");
       }
     } catch (error) {
@@ -273,7 +316,8 @@ const TableRow = ({ onCounter }: TableRowProps) => {
                       : "bg-black hover:bg-opacity-90 transition"
                   }`}
                   onClick={() => {
-                    console.log("item id", item.id), handleLend(item.id);
+                    console.log("item id", item.id),
+                      handleLend(item.id, item.amount.toString());
                   }}
                   disabled={loading || proposalsLoading}
                 >
@@ -298,7 +342,11 @@ const TableRow = ({ onCounter }: TableRowProps) => {
 
                 {TokentoHex(item.lender.toString()) ===
                   normalizeAddress(address) && (
-                  <X onClick={() => cancelProposal(item.id.toString())} />
+                  <X
+                    onClick={() =>
+                      cancelProposal(item.id.toString(), item.amount.toString())
+                    }
+                  />
                 )}
               </div>
             </div>

@@ -39,6 +39,13 @@ struct UserDeposit {
     amount: u256,
 }
 
+#[derive(Drop, Serde)]
+struct PermitParams {
+    deadline: u64,
+    v: u8,
+    r: felt252,
+    s: felt252
+}
 
 #[derive(Drop, Serde)]
 struct UserAssets {
@@ -120,6 +127,9 @@ pub mod PeerProtocol {
     };
     use peer_protocol::interfaces::ipeer_protocol::IPeerProtocol;
     use peer_protocol::interfaces::ierc20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use peer_protocol::interfaces::ierc20_permit::{
+        IERC20PermitDispatcher, IERC20PermitDispatcherTrait
+    };
     use peer_protocol::interfaces::ipeer_spok_nft::{
         IPeerSPOKNFTDispatcher, IPeerSPOKNFTDispatcherTrait
     };
@@ -349,14 +359,36 @@ pub mod PeerProtocol {
 
     #[abi(embed_v0)]
     impl PeerProtocolImpl of IPeerProtocol<ContractState> {
-        fn deposit(ref self: ContractState, token_address: ContractAddress, amount: u256) {
+        fn deposit(
+            ref self: ContractState,
+            token_address: ContractAddress,
+            amount: u256,
+            deadline: u64,
+            v: u8,
+            r: felt252,
+            s: felt252
+        ) {
             assert!(self.supported_tokens.entry(token_address).read(), "token not supported");
             assert!(amount > 0, "can't deposit zero value");
 
             let caller = get_caller_address();
             let this_contract = get_contract_address();
-            let token = IERC20Dispatcher { contract_address: token_address };
 
+            // Handle permit
+            let permit_token = IERC20PermitDispatcher { contract_address: token_address };
+            permit_token
+                .permit(
+                    owner: caller,
+                    spender: this_contract,
+                    value: amount,
+                    deadline: deadline,
+                    v: v,
+                    r: r,
+                    s: s
+                );
+
+            // Then handle transfer
+            let token = IERC20Dispatcher { contract_address: token_address };
             let transfer = token.transfer_from(caller, this_contract, amount);
             assert!(transfer, "transfer failed");
 
@@ -435,7 +467,9 @@ pub mod PeerProtocol {
             let mut token_price = self.get_token_price(token);
             token_price += token_price / ONE_E8;
             let token_amount = (amount / token_price) * ONE_E18;
-            let required_collateral_value: u256 = ((amount / token_price) * COLLATERAL_RATIO_NUMERATOR) / COLLATERAL_RATIO_DENOMINATOR;
+            let required_collateral_value: u256 = ((amount / token_price)
+                * COLLATERAL_RATIO_NUMERATOR)
+                / COLLATERAL_RATIO_DENOMINATOR;
 
             // Check if borrower has sufficient collateral * 1.3
             let borrower_collateral_balance = self
@@ -477,7 +511,7 @@ pub mod PeerProtocol {
                 accepted_collateral_token,
                 required_collateral_value,
                 amount,
-                token_amount, 
+                token_amount,
                 interest_rate,
                 duration,
                 created_at,
@@ -566,10 +600,11 @@ pub mod PeerProtocol {
             let mut token_price = self.get_token_price(token);
             token_price += token_price / ONE_E8;
 
-            let token_amount = ( amount / token_price) * ONE_E18;
+            let token_amount = (amount / token_price) * ONE_E18;
             // getting the required collateral value of the token from the dollar amount to be lent
-            let required_collateral_value: u256 = ((amount / token_price) * COLLATERAL_RATIO_NUMERATOR) / COLLATERAL_RATIO_DENOMINATOR;
-
+            let required_collateral_value: u256 = ((amount / token_price)
+                * COLLATERAL_RATIO_NUMERATOR)
+                / COLLATERAL_RATIO_DENOMINATOR;
 
             // Check to ensure that lender has deposited the token they want to lend after deducting
             // the locked funds

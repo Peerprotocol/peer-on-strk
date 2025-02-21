@@ -2,7 +2,7 @@ use starknet::ContractAddress;
 
 use peer_protocol::peer_protocol::{
     Transaction, UserAssets, UserDeposit, BorrowedDetails, Proposal, LiquidationInfo,
-    CounterProposal, PoolData
+    CounterProposal, PoolData, PermitParams
 };
 
 use core::array::Array;
@@ -10,7 +10,10 @@ use core::array::SpanTrait;
 
 #[starknet::interface]
 pub trait IPeerProtocol<TContractState> {
-    fn deposit(ref self: TContractState, token_address: ContractAddress, amount: u256);
+    fn deposit(ref self: TContractState, token_address: ContractAddress, amount: u256, deadline: u64,
+        v: u8,
+        r: felt252,
+        s: felt252);
     fn add_supported_token(
         ref self: TContractState, token_address: ContractAddress, asset_id: felt252
     );

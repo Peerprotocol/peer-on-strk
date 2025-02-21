@@ -1,5 +1,5 @@
 "use client";
-import { ChevronDown, X } from "lucide-react";
+import { ChevronDown, MoveDown, X } from "lucide-react";
 import { Raleway } from "next/font/google";
 import React, { useEffect, useRef, useState } from "react";
 
@@ -23,7 +23,6 @@ const NotificationModal = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  
   useEffect(() => {
     if (isOpen) {
       fetchNotifications();
@@ -54,7 +53,6 @@ const NotificationModal = ({
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   );
 
-
   const today = new Date();
   const yesterday = new Date();
   yesterday.setDate(today.getDate() - 1);
@@ -78,7 +76,6 @@ const NotificationModal = ({
     return formatDate(dateString); // If it's older than a week, show the full date
   };
 
-  
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -145,7 +142,10 @@ const NotificationModal = ({
 
         <p className="font-medium text-2xl py-6 text-black">Notification</p>
 
-        <div ref={scrollRef}  className="space-y-4 w-full  max-h-[500px] overflow-y-auto scrollbar-hide">
+        <div
+          ref={scrollRef}
+          className="space-y-4 w-full  max-h-[350px] overflow-y-auto scrollbar-hide"
+        >
           {Object.entries(groupedNotifications).map(([group, items]) =>
             items.length > 0 ? (
               <div key={group}>
@@ -171,10 +171,8 @@ const NotificationModal = ({
         </div>
 
         {showScrollHint && (
-          <div
-           
-          >
-            <ChevronDown className="h-6 w-6 text-gray-400 animate-bounce" />
+          <div>
+            <MoveDown className="h-6 w-6 text-gray-400 animate-bounce" />
           </div>
         )}
       </div>

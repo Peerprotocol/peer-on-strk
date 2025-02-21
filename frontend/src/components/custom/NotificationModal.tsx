@@ -1,5 +1,5 @@
 "use client";
-import { ChevronDown, CircleArrowDown, MoveDown, X } from "lucide-react";
+import { CircleArrowDown, X } from "lucide-react";
 import { Raleway } from "next/font/google";
 import React, { useEffect, useRef, useState } from "react";
 

@@ -71,17 +71,19 @@ const DepositTokenModal = ({
           {/* Percentage Buttons */}
           <div className='flex flex-col w-full'>
           <div className='justify-end'>
-          <div className="flex justify-between gap-2 mt-2">
-            {[25, 50, 75, 100].map((percentage) => (
-              <button
-                key={percentage}
-                type="button"
-                onClick={() => handlePercentageClick(percentage)}
-                className="flex-1 h-[40px] bg-[#D9D9D9] rounded-full text-black text-sm hover:bg-[#C0C0C0] transition-colors"
-              >
-                {percentage}%
-              </button>
-            ))}
+          <div className="flex justify-end mt-2">
+            <div className="flex gap-2">
+              {[25, 50, 75, 100].map((percentage) => (
+                <button
+                  key={percentage}
+                  type="button"
+                  onClick={() => handlePercentageClick(percentage)}
+                  className="h-[40px] bg-[#D9D9D9] rounded-full text-black text-sm hover:bg-[#C0C0C0] transition-colors px-4"
+                >
+                  {percentage}%
+                </button>
+              ))}
+            </div>
           </div>
           </div>
           </div>

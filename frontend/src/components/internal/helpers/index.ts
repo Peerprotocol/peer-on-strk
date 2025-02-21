@@ -45,8 +45,7 @@ export const formatDate1 = (timestamp: number): string => {
     year: "numeric",     
     hour: "2-digit",      
     minute: "2-digit",   
-    hour12: true,        
-    timeZone: "UTC",     
+    hour12: true,           
     timeZoneName: "short" 
   };
 
@@ -113,6 +112,30 @@ export function toHex(value: string) {
     }
     return asciiToHex(value);
   }
+
+  export function normalizeAddress(address: string) {
+    if (typeof address !== 'string') {
+      throw new TypeError('Address must be a string');
+    }
+  
+    // Ensure it starts with "0x"
+    if (!address.startsWith('0x')) {
+      throw new Error('Address must start with "0x"');
+    }
+  
+    // Remove "0x" for processing
+    let hexPart = address.slice(2);
+  
+    // Remove unnecessary leading zeros but keep at least one '0'
+    hexPart = hexPart.replace(/^0+/, '') || '0';
+  
+    // Pad back to 64 characters
+    hexPart = hexPart.padStart(64, '0');
+  
+    // Ensure it starts with "0x0"
+    return `0x0${hexPart.slice(1)}`; // Force the second character to be '0'
+  }
+  
 
   export function TokentoHex(value: string) {
     if (typeof value !== 'string') {

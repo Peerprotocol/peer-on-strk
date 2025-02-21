@@ -33,8 +33,9 @@ async function main() {
     const constructor = myCallData.compile("constructor", {
         owner: process.env.DEPLOYER_ADDRESS ?? "",
         protocol_fee_address: process.env.DEPLOYER_ADDRESS ?? "",
-        spok_nft: "0x687a30e52d79ff38ff205d97276935d56b21b5da0d092d4e4a0b485ff43f5b3",
-        pragma_address: "0x2a85bd616f912537c50a49a4076db02c00b29b2cdc8a197ce92ed1837fa875b"
+        spok_nft: "0x75b695aa9c1b327214b46cc5f51857713b9ea7f6e762fef1098140d10a05ca9",
+        //mainnet  pragma_address: "0x2a85bd616f912537c50a49a4076db02c00b29b2cdc8a197ce92ed1837fa875b"
+        pragma_address: "0x36031daa264c24520b11d93af622c848b2499b66b41d611bac95e13cfca131a"
     });
 
     const deployResponse = await account0.declareAndDeploy({
@@ -43,6 +44,8 @@ async function main() {
         constructorCalldata: constructor,
         salt: stark.randomAddress(),
     });
+
+     //console.log('contract class hash', deployResponse.declare.class_hash);
 
     // Connect the new contract instance :
     const peerProtocolContract = new Contract(

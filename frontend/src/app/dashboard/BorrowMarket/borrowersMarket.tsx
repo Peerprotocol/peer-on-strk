@@ -74,7 +74,7 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
     ],
   });
 
-  const handleLend = async (proposalId: any) => {
+  const handleLend = async (proposalId: any, amount: any) => {
     console.log('proposal id', proposalId);
     setLoading(true);
     try {
@@ -101,9 +101,9 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            total_borrow: 1,
+            total_borrow: amount,
             total_lend: 0,
-            total_p2p_deals: 0,
+            total_p2p_deals: 1,
             total_interest_earned: 0,
             total_value_locked: 0
           })
@@ -130,7 +130,7 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
     ],
   });
 
-  const cancelProposal = async (proposalId: any) => {
+  const cancelProposal = async (proposalId: any, amount: any) => {
     setLoading(true);
     try {
       const transaction = await cancel({
@@ -156,9 +156,9 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            total_borrow: -1,
+            total_borrow: -amount,
             total_lend: 0,
-            total_p2p_deals: 0,
+            total_p2p_deals: -1,
             total_interest_earned: 0,
             total_value_locked: 0
           })
@@ -243,14 +243,14 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
                       : "bg-black hover:bg-opacity-90 transition"
                     }`}
 
-                  onClick={() => {console.log('item id', item.id), handleLend(item.id.toString())}}
+                  onClick={() => {console.log('item id', item.id), handleLend(item.id.toString(), item.amount.toString())}}
                   disabled={loading || proposalsLoading}
                 >
                   {loading ? "..." : "Lend"}
                 </button>
                     {/* can only counter lending proposals */}
                  {TokentoHex(item.borrower.toString()) == normalizeAddress(address) && (
-                 <X onClick={() => cancelProposal(item.id.toString())} />
+                 <X onClick={() => cancelProposal(item.id.toString(), item.amount.toString())} />
                 )}
               </div>
             </div>

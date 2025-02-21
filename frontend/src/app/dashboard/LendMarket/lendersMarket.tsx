@@ -105,7 +105,7 @@ const TableRow = ({ onCounter }: TableRowProps) => {
     ],
   });
 
-  const handleLend = async (proposalId: bigint) => {
+  const handleLend = async (proposalId: bigint, amount: any) => {
     setLoading(true);
     try {
       const transaction = await lend({
@@ -134,8 +134,8 @@ const TableRow = ({ onCounter }: TableRowProps) => {
           },
           body: JSON.stringify({
             total_borrow: 0,
-            total_lend: 1,
-            total_p2p_deals: 0,
+            total_lend: amount,
+            total_p2p_deals: 1,
             total_interest_earned: 0,
             total_value_locked: 0
           })
@@ -162,7 +162,7 @@ const TableRow = ({ onCounter }: TableRowProps) => {
     ],
   });
 
-  const cancelProposal = async (proposalId: any) => {
+  const cancelProposal = async (proposalId: any, amount: any) => {
     setLoading(true);
     try {
       const transaction = await cancel({
@@ -191,8 +191,8 @@ const TableRow = ({ onCounter }: TableRowProps) => {
           },
           body: JSON.stringify({
             total_borrow: 0,
-            total_lend: -1,
-            total_p2p_deals: 0,
+            total_lend: -amount,
+            total_p2p_deals: -1,
             total_interest_earned: 0,
             total_value_locked: 0
           })
@@ -284,7 +284,7 @@ const TableRow = ({ onCounter }: TableRowProps) => {
                       ? "bg-gray-400 cursor-not-allowed"
                       : "bg-black hover:bg-opacity-90 transition"
                   }`}
-                  onClick={() =>{console.log('item id', item.id), handleLend(item.id)}}
+                  onClick={() =>{console.log('item id', item.id), handleLend(item.id, item.amount.toString())}}
                   disabled={loading || proposalsLoading}
                 >
                   {loading ? "..." : "Borrow"}
@@ -304,7 +304,7 @@ const TableRow = ({ onCounter }: TableRowProps) => {
                 />
 
                   {TokentoHex(item.lender.toString()) === normalizeAddress(address) && (
-      <X onClick={() => cancelProposal(item.id.toString())} />
+      <X onClick={() => cancelProposal(item.id.toString(), item.amount.toString())} />
                   )}
               </div>
             </div>

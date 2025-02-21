@@ -307,7 +307,7 @@ const TableRow = ({ onCounter }: TableRowProps) => {
                 </button>
 
                   {TokentoHex(item.lender.toString()) === normalizeAddress(address) && (
-                  <X onClick={() => cancelProposal(item.id.toString())} />
+                  <X onClick={() => cancelProposal(item.id.toString(), item.amount.toString())} />
                 )}
               </div>
             </div>

@@ -1,10 +1,19 @@
-import { positionData } from "@/lib/data";
+'use client'
+
+// import { positionData } from "@/lib/data";
 import { Raleway } from "next/font/google";
 import Image from "next/image";
+import { GroupedPositions } from "./page";
 
 const raleway = Raleway({ subsets: ['latin'] })
 
-export default function PositionTable(){
+type PositionTableProps = {
+    positionData: any[]
+}
+
+export default function PositionTable({ positionData }: PositionTableProps){
+
+    // const { address } = useAccount()
 
     const shortenAddress = (address: string) => {
         return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -12,7 +21,7 @@ export default function PositionTable(){
 
     return (
         <div className={`${raleway.className} text-black my-8 overflow-x-auto`}>
-            <h1 className="font-semibold">{positionData[0].month}</h1>
+            <h1 className="font-semibold">{positionData[0]?.month}</h1>
             <table className="w-full md:basis-[100%] text-[10px] md:text-base bg-white-100 text-left min-w-[500px] divide-y divide-gray-700 my-4">
                 <thead className="bg-white-100 text-gray-450 py-4 font-light rounded-t-lg">
                     <tr className="bg-[#bebbbb] px-2">
@@ -27,7 +36,7 @@ export default function PositionTable(){
                 </thead>
 
                 {
-                    positionData.map((pos, index) => {
+                    positionData.map((pos: GroupedPositions, index: number) => {
                         return (
                             <tbody key={index} className="py-10">
                                 <p className={`font-semibold ${index !== 0 && 'mt-7'}`}>
@@ -60,7 +69,7 @@ export default function PositionTable(){
                                                 <td className="py-4 px-4 text-gray-350 tracking-wider whitespace-nowrap capitalize font-semibold">
                                                     {shortenAddress(p.merchant)}
                                                 </td>
-                                                <td className={`py-4 px-4 ${p.status.toLowerCase().includes('pending')? 'text-[#FF5348]' : p.status.toLowerCase().includes('ongoing')?'text-[#11D984]' : ''} tracking-wider whitespace-nowrap capitalize`}>
+                                                <td className={`py-4 px-4 ${p.status.toLowerCase().includes('pending')? 'text-[#FF9900]' : p.status.toLowerCase().includes('ongoing')?'text-[#11D984]' : 'text-[#FF5348]'} tracking-wider whitespace-nowrap capitalize`}>
                                                     {p.status}
                                                 </td>
                                                 <td className="py-4 px-4 text-gray-350 tracking-wider whitespace-nowrap capitalize font-semibold">

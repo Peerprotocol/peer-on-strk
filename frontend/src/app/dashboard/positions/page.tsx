@@ -7,7 +7,7 @@ import PositionTable from "./PositionTable";
 import { useContractRead } from "@starknet-react/core";
 import ABI from '../../../../public/abi/protocol.json'
 import { PROTOCOL_ADDRESS } from "@/components/internal/helpers/constant";
-import { toHex } from "@/components/internal/helpers";
+import { normalizeAddress, toHex } from "@/components/internal/helpers";
 
 export type FormattedPosition = {
     asset: string;
@@ -36,7 +36,6 @@ export default function AllPositions() {
     }
 
     const getTokenName = (tokenAddress: string): string => {
-        const normalizedAddress = tokenAddress.toLowerCase();
         const strippedAddress = tokenAddress.slice(-63)
         for (const [name, address] of Object.entries(TOKEN_ADDRESSES)) {
           if (address.toLowerCase().slice(-63) === strippedAddress) {
@@ -100,7 +99,7 @@ export default function AllPositions() {
         const lender = toHex(proposal?.lender?.toString());
         const borrower = toHex(proposal?.borrower?.toString());
 
-        return address?.slice(-63) === lender.slice(-63) || address.slice(-63) === borrower.slice(-63)
+        return normalizeAddress(address) === normalizeAddress(lender) || normalizeAddress(address) === normalizeAddress(borrower)
     })
 
     const formattedUserPositions: FormattedPosition[] = userPositions.map((position, index) => {
@@ -115,11 +114,12 @@ export default function AllPositions() {
         const amount = Number(position?.token_amount / BigInt(10 ** 18)).toFixed(2)
         const price = position?.amount?.toString();
         const month = timeStampToMonth((position?.created_at?.toString()))
+        const lender = toHex(position?.lender?.toString());
         
         return {
             asset, 
             position_type,
-            merchant: address,
+            merchant: lender,
             created_at,
             status,
             timestamp,

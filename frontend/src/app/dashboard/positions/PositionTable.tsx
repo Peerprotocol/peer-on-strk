@@ -1,6 +1,4 @@
 'use client'
-
-// import { positionData } from "@/lib/data";
 import { Raleway } from "next/font/google";
 import Image from "next/image";
 import { GroupedPositions } from "./page";
@@ -12,8 +10,6 @@ type PositionTableProps = {
 }
 
 export default function PositionTable({ positionData }: PositionTableProps){
-
-    // const { address } = useAccount()
 
     const shortenAddress = (address: string) => {
         return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -48,12 +44,12 @@ export default function PositionTable({ positionData }: PositionTableProps){
                                             <tr key={i} className={`border-b ${i === pos.data.length && 'mb-7'}`}>
                                                 <td className="py-4 px-4 text-gray-350 tracking-wider whitespace-nowrap capitalize font-semibold">
                                                     <div className="flex gap-1 font-bold">
-                                                        <Image 
-                                                            src={'/images/usdc_icon.png'}
-                                                            alt="USDC Icon"
+                                                            <Image 
+                                                            src={`/icons/${p.asset}.svg`}
+                                                            alt="STRK Icon"
                                                             width={20}
                                                             height={5}
-                                                        />
+                                                        />                                
                                                         {p.asset}
                                                     </div>
                                                 </td>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import Image from "next/image";
-import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useAccount, useContractRead } from "@starknet-react/core";
 import protocolAbi from "../../../../public/abi/protocol.json";
 import {
@@ -16,7 +16,6 @@ import {
   getCryptoPrices,
   formatDate1,
   felt252ToHex,
-  toHex,
   normalizeAddress,
 } from "@/components/internal/helpers";
 import AssetsLoader from "../loaders/assetsloader";
@@ -41,13 +40,8 @@ const tokens: TokenInfo[] = [
   { symbol: "ETH", address: ETH_SEPOLIA, icon: ETH, decimals: 18 },
 ];
 
-const TRANSACTION_TYPE_MAP: { [key: string]: string } = {
-  "19216509646883156": "DEPOSIT",
-  "412198569506257514217804": "WITHDRAWAL",
-};
 
 const Table: React.FC = () => {
-  // State Management
   const [activeTab, setActiveTab] = useState<TabType>("Transaction History");
   const [showModal, setShowModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -58,7 +52,7 @@ const Table: React.FC = () => {
     id: any;
     amount: number;
   } | null>(null);
-  // const [positionType, setPositionType] = useState<"borrow" | "lend">("borrow");
+
 
   // Contract Data Hooks
   const { address: user } = useAccount();
@@ -152,9 +146,9 @@ const Table: React.FC = () => {
     allProposals.sort((a: any, b: any) => {
       return Number(b.timestamp) - Number(a.timestamp);
     });
-    // Take the top 5
-    return allProposals.slice(0, 5);
+    return allProposals;
   }, [borrowProposals, lendingProposals]);
+
 
   // Data Processing
   const getDataForActiveTab = () => {
@@ -164,7 +158,6 @@ const Table: React.FC = () => {
       case "Assets":
         return Array.isArray(userDeposits) ? userDeposits : [];
       case "Position Overview":
-
         return mergedProposals;
       default:
         return [];
@@ -270,7 +263,7 @@ const Table: React.FC = () => {
         </div>
 
       </div>
-      ...
+
       {/* Assets Table */}
       {activeTab === "Assets" && (
         <div className="overflow-x-auto text-black my-6">
@@ -403,7 +396,7 @@ const Table: React.FC = () => {
           </table>
         </div>
       )}
-      ...
+
       {/* Position Overview Table */}
       {activeTab === "Position Overview" && (
         <div className="overflow-x-auto text-black my-6">
@@ -414,7 +407,7 @@ const Table: React.FC = () => {
                   Asset
                 </th>
                 <th className="text-left border-b font-semibold">
-                  <p className="mx-10 xl:mx-0">Expected Repayment Time</p>
+                  <p className="mx-10 xl:mx-0">Expected Repayment Date</p>
                 </th>
                 <th className="text-left border-b font-semibold">
                   Interest Rate
@@ -424,7 +417,7 @@ const Table: React.FC = () => {
                   <p className="mx-10 xl:mx-0">Borrowed</p>
                 </th>
                 <th className="text-left border-b font-semibold">
-                  <p className="mx-10 xl:mx-0">Amount</p>
+                  <p className="mx-10 xl:mx-0">Amount Repaid</p>
                 </th>
                 <th className="text-left border-b font-semibold">Action</th>
               </tr>
@@ -440,8 +433,8 @@ const Table: React.FC = () => {
                   {mergedProposals
                     .filter(
                       (proposal: any) =>
-                        TokentoHex(proposal.lender.toString()) ===
-                        normalizeAddress(user)
+                         TokentoHex(proposal.borrower.toString()) ===
+                         normalizeAddress(user)
                     )
                     .map((row: any, index: number) => {
                       const tokenInfo = renderTokenInfo(row.token.toString());
@@ -456,24 +449,32 @@ const Table: React.FC = () => {
                             {Number(row.interest_rate)}%
                           </td>
                           <td className="p-4 border-b border-l">
-                            {Number(
-                              formatCurrency(row.token_amount?.toString())
+                            ${Number
+                              (row.amount?.toString())
+                            .toFixed(2)}
+                          </td>
+                          <td className="p-4 border-b border-l">
+                            ${Number(
+                              row.amount_repaid?.toString()
                             ).toFixed(2)}
                           </td>
                           <td className="p-4 border-b border-l">
-                            <button
-                              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-                              onClick={() => {
-                                setSelectedProposal({
-                                  id: row.proposal_id,
-                                  amount: row.token_amount,
-                                });
-                                setShowModal(true);
-                              }}
-                            >
-                              Repay
-                            </button>
-                          </td>
+                                <button
+                                  className="h-9 w-24 text-white rounded-3xl flex justify-center items-center bg-black"
+                                  onClick={() => {
+                                    setShowModal(true);
+                                    setSelectedProposal({
+                                      id: row.id,
+                                      amount:
+                                        Number(row.amount?.toString()) -
+                                        Number(row.amount_repaid?.toString()),
+                                    });
+                                  }}
+                                  disabled={row.is_repaid}
+                                >
+                                  {row.is_repaid ? "Repaid" : "Repay"}
+                                </button>
+                              </td>
                         </tr>
                       );
                     })}
@@ -484,7 +485,7 @@ const Table: React.FC = () => {
         </div>
       )}
       {/* Pagination Component */}
-      {dataForCurrentTab.length > 0 && (
+       {dataForCurrentTab.length > 0 && (
         <div className="flex justify-end mt-4 items-center">
           {/* Previous button */}
           <button
@@ -526,7 +527,7 @@ const Table: React.FC = () => {
             <ChevronRight size={20} color="#000000" strokeWidth={2.5} />
           </button>
         </div>
-      )}
+      )} 
       {showModal && (
         <RepayModal
           isOpen={showModal}

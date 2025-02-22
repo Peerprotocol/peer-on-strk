@@ -7,20 +7,19 @@ import { Plus, X } from "lucide-react";
 import Nav from "../../../components/custom/Nav";
 import Sidebar from "../../../components/custom/sidebar";
 import { PROTOCOL_ADDRESS } from "@/components/internal/helpers/constant";
-import { useContractRead } from "@starknet-react/core";
+import { useContractRead, useContractWrite, useAccount } from "@starknet-react/core";
 import protocolAbi from "../../../../public/abi/protocol.json";
 import { normalizeAddress, toHex } from "@/components/internal/helpers";
-import { useAccount } from "@starknet-react/core";
-import { useContractWrite } from "@starknet-react/core";
 import { toast as toastify } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import NewProposalModal from "@/components/proposalModal";
-import { TokentoHex } from "../../../components/internal/helpers/index";
 import FilterBar from "@/components/custom/FilterBar";
+import { TokentoHex } from '../../../components/internal/helpers/index';
+import DepositTokenModal from "@/components/custom/DepositTokenModal";
 
 type ModalType = "borrow" | "counter" | "lend";
 
-//Constants
+// Constants
 const ITEMS_PER_PAGE = 7;
 const TOKEN_ADDRESSES = {
   STRK: "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
@@ -69,7 +68,7 @@ const TableRow = ({ proposals, onCounterProposal }: TableRowProps) => {
   // Ensure data is an array
   const lendingProposals = Array.isArray(data) ? data : [];
 
-  const { write: lend, isLoading: isLendLoading } = useContractWrite({
+  const { write: lend } = useContractWrite({
     calls: [
       {
         abi: protocolAbi,
@@ -96,6 +95,7 @@ const TableRow = ({ proposals, onCounterProposal }: TableRowProps) => {
 
       if (transaction?.transaction_hash) {
         toastify.success("Proposal Accepted");
+        console.log("Transaction submitted:", transaction.transaction_hash);
         await transaction.wait();
 
         // Record transaction in DB
@@ -271,21 +271,21 @@ const TableRow = ({ proposals, onCounterProposal }: TableRowProps) => {
               <div className="flex gap-4 justify-center items-center py-6">
                 <button
                   className={`px-4 py-2 text-sm rounded-full text-white ${
-                    loading
+                    loading || proposalsLoading
                       ? "bg-gray-400 cursor-not-allowed"
                       : "bg-black hover:bg-opacity-90 transition"
                   }`}
-                  onClick={() => handleLend(item.id.toString(), item.amount.toString())}
-                  disabled={loading}
+                  onClick={() => {
+                    console.log("item id", item.id);
+                    handleLend(item.id.toString(), item.amount.toString())
+                  }}
+                  disabled={loading || proposalsLoading}
                 >
                   {loading ? "..." : "Lend"}
                 </button>
-                {/* Cancel only if I'm the borrower */}
-                {TokentoHex(item.borrower.toString()) === normalizeAddress(address) && (
-                  <X
-                    className="cursor-pointer"
-                    onClick={() => cancelProposal(item.id.toString(), item.amount.toString())}
-                  />
+                {TokentoHex(item.borrower.toString()) ==
+                  normalizeAddress(address) && (
+                  <X onClick={() =>  cancelProposal(item.id.toString(), item.amount.toString())} />
                 )}
               </div>
             </div>
@@ -337,14 +337,33 @@ const BorrowersMarket = () => {
   const [selectedProposalId, setSelectedProposalId] = useState<string>("");
   const [modalType, setModalType] = useState<ModalType>("lend");
   const [title, setTitle] = useState("Create a Lending Proposal");
+  const [isDepositModalOpen, setDepositModalOpen] = useState(false);
+
+  interface PendingAction {
+    type: ModalType;
+    proposalId?: string;
+  }
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
 
   // SINGLE-TOGGLE FILTER:
   const [filterOption, setFilterOption] = useState("token");       // "token" | "amount" | "interestRate" | "duration"
   const [filterValue, setFilterValue] = useState("");              // user-typed value
 
-  // Read proposals from contract
   const { address } = useAccount();
-  const { data } = useContractRead(
+
+  const { data: userAssets } = useContractRead(
+    address
+      ? {
+          abi: protocolAbi,
+          address: PROTOCOL_ADDRESS,
+          functionName: "get_user_assets",
+          args: [address],
+          watch: true,
+        }
+      : ({} as any)
+  );
+
+  const { data, isLoading: proposalsLoading } = useContractRead(
     address
       ? {
           abi: protocolAbi,
@@ -416,13 +435,39 @@ const BorrowersMarket = () => {
 
   // Pagination
   const totalPages = Math.ceil(filteredProposals.length / ITEMS_PER_PAGE);
+  const checkBalanceAndProceed = (actionType: ModalType, proposalId?: string) => {
+    const strkBalance =
+      userAssets && userAssets[TOKEN_ADDRESSES.STRK]
+        ? userAssets[TOKEN_ADDRESSES.STRK].toString()
+        : "0";
+
+    if (strkBalance === "0") {
+      setPendingAction({ type: actionType, proposalId });
+      setDepositModalOpen(true);
+    } else {
+      openModal(actionType, proposalId);
+    }
+  };
+
+  const handleDepositSuccess = () => {
+    setDepositModalOpen(false);
+    if (pendingAction) {
+      openModal(pendingAction.type, pendingAction.proposalId);
+      setPendingAction(null);
+    }
+  };
+
   const handlePageChange = (page: number) => setCurrentPage(page);
 
   const openModal = (type: ModalType, proposalId?: string) => {
     setModalType(type);
-    setSelectedProposalId(proposalId || "");
+    if (proposalId) {
+      setSelectedProposalId(proposalId);
+    }
     setModalOpen(true);
-    setTitle(type === "counter" ? "Counter this Proposal" : "Create a Lending Proposal");
+    if (type === "counter") {
+      setTitle("Counter this Proposal");
+    }
   };
 
   // Slice for current page
@@ -475,18 +520,22 @@ const BorrowersMarket = () => {
           {/* Table */}
           <div className="overflow-x-auto text-black border mx-4 mb-4 rounded-xl">
             <TableHeader />
+            <div>
+
             <TableRow
-              proposals={currentPageProposals}
-              onCounterProposal={(proposalId) => openModal("counter", proposalId)}
-            />
+            proposals={currentPageProposals}
+        onCounterProposal={(proposalId: string) =>
+          checkBalanceAndProceed("counter", proposalId)
+        }
+      />
+
+            </div>
           </div>
 
           {/* Create a Lending Proposal Button */}
           <button
-            onClick={() => openModal("lend")}
-            className="relative flex items-center gap-2 px-6 py-3 rounded-3xl 
-                       bg-[#F5F5F5] text-black border border-[rgba(0,0,0,0.8)] 
-                       mx-auto font-light hover:bg-[rgba(0,0,0,0.8)] hover:text-white"
+            onClick={() => checkBalanceAndProceed("lend")}
+            className="relative flex items-center gap-2 px-6 py-3 rounded-3xl bg-[#F5F5F5] text-black border border-[rgba(0,0,0,0.8)] mx-auto font-light hover:bg-[rgba(0,0,0,0.8)] hover:text-white"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
           >
@@ -500,23 +549,23 @@ const BorrowersMarket = () => {
               }`}
             />
           </button>
-
-          {/* Pagination */}
-          {filteredProposals.length > ITEMS_PER_PAGE && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={handlePageChange}
-            />
-          )}
-
-          {/* Modal */}
+          <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
           <NewProposalModal
             type={modalType}
             show={isModalOpen}
-            onClose={() => setModalOpen(false)}
+            onClose={() => setModalOpen((prev) => !prev)}
             title={title}
             proposalId={selectedProposalId}
+          />
+          <DepositTokenModal
+            isOpen={isDepositModalOpen}
+            onClose={() => setDepositModalOpen(false)}
+            walletAddress={address || ""}
+            availableBalance={0}
+            onDeposit={async (amount: number) => {
+              // Call deposit function here; on success:
+              handleDepositSuccess();
+            }}
           />
         </div>
       </div>

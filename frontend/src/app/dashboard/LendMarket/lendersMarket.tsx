@@ -82,9 +82,10 @@ interface TableRowProps {
     amount: string,
     action: (proposalId: bigint, amount: any) => void
   ) => void;
+  proposals: any[];
 }
 
-const TableRow = ({ onCounter, onBorrowWithCheck }: TableRowProps) => {
+const TableRow = ({ proposals, onCounter, onBorrowWithCheck }: TableRowProps) => {
   const [loading, setLoading] = useState(false);
   const { address } = useAccount();
 
@@ -256,10 +257,7 @@ const TableRow = ({ onCounter, onBorrowWithCheck }: TableRowProps) => {
   return (
     <div className="border-t border-gray-300 min-w-[800px] w-full">
       {lendingProposals
-        .filter(
-          (item: any) =>
-            item.is_cancelled !== true && item.is_accepted !== true
-        )
+        .filter((item: any) => item.is_cancelled !== true && item.is_accepted !== true)
         .map((item: any, index: number) => {
           const tokenHex = toHex(item.token.toString());
           let lenderHex = toHex(item.lender.toString());
@@ -279,10 +277,7 @@ const TableRow = ({ onCounter, onBorrowWithCheck }: TableRowProps) => {
                   alt="phantomicon"
                   className="h-5 w-5"
                 />
-                <p className="font-medium ml-2">{`${lenderHex.slice(
-                  0,
-                  5
-                )}..`}</p>
+                <p className="font-medium ml-2">{`${lenderHex.slice(0, 5)}..`}</p>
               </div>
 
               {/* Token Column */}
@@ -304,16 +299,12 @@ const TableRow = ({ onCounter, onBorrowWithCheck }: TableRowProps) => {
 
               {/* Interest Rate Column */}
               <div className="text-center px-4 py-6">
-                <p className="font-medium">
-                  {item.interest_rate.toString()}%
-                </p>
+                <p className="font-medium">{item.interest_rate.toString()}%</p>
               </div>
 
               {/* Duration Column */}
               <div className="text-center px-4 py-6">
-                <p className="font-medium">
-                  {item.duration.toString()} days
-                </p>
+                <p className="font-medium">{item.duration.toString()} days</p>
               </div>
 
               {/* Actions Column */}
@@ -339,9 +330,7 @@ const TableRow = ({ onCounter, onBorrowWithCheck }: TableRowProps) => {
 
                 <button
                   className={`px-3 py-2 text-sm rounded-full border border-black text-black bg-white hover:bg-gray-100 transition ${
-                    loading || proposalsLoading
-                      ? "opacity-50 cursor-not-allowed"
-                      : ""
+                    loading || proposalsLoading ? "opacity-50 cursor-not-allowed" : ""
                   }`}
                   onClick={() =>
                     !loading &&
@@ -358,8 +347,8 @@ const TableRow = ({ onCounter, onBorrowWithCheck }: TableRowProps) => {
                 )}
               </div>
             </div>
-        );
-      })}
+          );
+        })}
     </div>
   );
 };
@@ -384,14 +373,14 @@ const Lender = () => {
 
   const { data, isLoading: proposalsLoading } = useContractRead(
     address
-    ? {
-        abi: protocolAbi,
-        address: PROTOCOL_ADDRESS,
-        functionName: "get_lending_proposal_details",
-        args: [],
-        watch: true,
-      }
-    : ({} as any)
+      ? {
+          abi: protocolAbi,
+          address: PROTOCOL_ADDRESS,
+          functionName: "get_lending_proposal_details",
+          args: [],
+          watch: true,
+        }
+      : ({} as any)
   );
 
   const { data: userAssets } = useContractRead(
@@ -429,7 +418,7 @@ const Lender = () => {
 
   // Filter valid proposals based on filterOption and filterValue
   const filteredProposals = useMemo(() => {
-    if (!filterValue) return validProposals;
+    if (!filterValue || filterValue.trim() === "") return validProposals;
     return validProposals.filter((item: any) => {
       const itemTokenSymbol = getTokenName(toHex(item.token.toString()));
       const itemAmount = parseFloat(item.amount.toString());
@@ -438,7 +427,8 @@ const Lender = () => {
 
       switch (filterOption) {
         case "token":
-          return itemTokenSymbol.toLowerCase() === filterValue.toLowerCase();
+          // now using includes() for partial matching
+          return itemTokenSymbol.toLowerCase().includes(filterValue.toLowerCase());
         case "amount": {
           const userAmount = parseFloat(filterValue);
           if (isNaN(userAmount)) return false;
@@ -460,22 +450,21 @@ const Lender = () => {
     });
   }, [validProposals, filterOption, filterValue]);
 
-  const handleOpenModal = (type: "lend" | "counter" | "borrow", proposalId?: string) => {
-// Update the balance check to use the STRK token balance from userAssets:
-const checkBalanceAndProceed = (actionCallback: () => void) => {
-  // Read the user's STRK balance from the userAssets object; default to "0" if not available.
-  const strkBalance =
-    userAssets && userAssets[TOKEN_ADDRESSES.STRK]
-      ? userAssets[TOKEN_ADDRESSES.STRK].toString()
-      : "0";
+  // Update the balance check to use the STRK token balance from userAssets:
+  const checkBalanceAndProceed = (actionCallback: () => void) => {
+    // Read the user's STRK balance from the userAssets object; default to "0" if not available.
+    const strkBalance =
+      userAssets && userAssets[TOKEN_ADDRESSES.STRK]
+        ? userAssets[TOKEN_ADDRESSES.STRK].toString()
+        : "0";
 
-  if (strkBalance === "0") {
-    setPendingAction({ callback: actionCallback });
-    setDepositModalOpen(true);
-  } else {
-    actionCallback();
-  }
-};
+    if (strkBalance === "0") {
+      setPendingAction({ callback: actionCallback });
+      setDepositModalOpen(true);
+    } else {
+      actionCallback();
+    }
+  };
 
   const handleDepositSuccess = () => {
     setDepositModalOpen(false);
@@ -531,7 +520,7 @@ const checkBalanceAndProceed = (actionCallback: () => void) => {
             <TableHeader />
             <div className="w-full">
               <TableRow
-              proposals={filteredProposals}
+                proposals={filteredProposals}
                 onCounter={(proposalId) => handleOpenModal("counter", proposalId)}
                 onBorrowWithCheck={(proposalId, amount, action) =>
                   checkBalanceAndProceed(() =>
@@ -599,6 +588,5 @@ const checkBalanceAndProceed = (actionCallback: () => void) => {
     </main>
   );
 };
-}
 
 export default Lender;

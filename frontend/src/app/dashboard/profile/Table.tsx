@@ -152,7 +152,7 @@ const Table: React.FC = () => {
     allProposals.sort((a: any, b: any) => {
       return Number(b.timestamp) - Number(a.timestamp);
     });
-    // i took the top 5
+    // Take the top 5
     return allProposals.slice(0, 5);
   }, [borrowProposals, lendingProposals]);
 
@@ -164,7 +164,7 @@ const Table: React.FC = () => {
       case "Assets":
         return Array.isArray(userDeposits) ? userDeposits : [];
       case "Position Overview":
-        //  return Array.isArray(borrowProposals) ? borrowProposals : [];
+
         return mergedProposals;
       default:
         return [];
@@ -173,12 +173,10 @@ const Table: React.FC = () => {
 
   const dataForCurrentTab = getDataForActiveTab();
   const totalPages = Math.ceil(dataForCurrentTab?.length / ROWS_PER_PAGE);
-  const currentRows = getDataForActiveTab()
-    ?.sort((a: any, b: any) => {
-      //I Converted timestamps to numbers and sorted it in descending order (latest first)
-      return Number(b.timestamp) - Number(a.timestamp);
-    })
-    ?.slice((currentPage - 1) * ROWS_PER_PAGE, currentPage * ROWS_PER_PAGE);
+  const currentRows = getDataForActiveTab()?.slice(
+    (currentPage - 1) * ROWS_PER_PAGE,
+    currentPage * ROWS_PER_PAGE
+  );
 
   // Pagination Logic
   const handlePageChange = (page: number) => {
@@ -270,21 +268,7 @@ const Table: React.FC = () => {
             </Link>
           )}
         </div>
-        {/* commented out the remove the borrow and lending toggle */}
-        {/* {activeTab === "Position Overview" && (
-          <div className="relative">
-            <select
-              className="px-4 py-2 border rounded-full text-black pr-8 appearance-none"
-              onChange={(e) =>
-                setPositionType(e.target.value as "borrow" | "lend")
-              } // Add this state handler
-            >
-              <option value="borrow">Borrow</option>
-              <option value="lend">Lend</option>
-            </select>
-            <ChevronDown className="cursor-pointer absolute top-3 right-2 w-5 h-5 text-gray-500" />
-          </div>
-        )} */}
+
       </div>
       ...
       {/* Assets Table */}
@@ -435,10 +419,10 @@ const Table: React.FC = () => {
                 <th className="text-left border-b font-semibold">
                   Interest Rate
                 </th>
-                {/* removed this section according to figma design  */}
-                {/* <th className="text-left border-b font-semibold">
+                {/* i have restored this section */}
+                <th className="text-left border-b font-semibold">
                   <p className="mx-10 xl:mx-0">Borrowed</p>
-                </th> */}
+                </th>
                 <th className="text-left border-b font-semibold">
                   <p className="mx-10 xl:mx-0">Amount</p>
                 </th>
@@ -453,31 +437,106 @@ const Table: React.FC = () => {
                 renderLoadingState(5)
               ) : (
                 <>
-                  {mergedProposals.map((row: any, index: number) => {
-                    const tokenInfo = renderTokenInfo(row.token.toString());
+                  {mergedProposals
+                    .filter(
+                      (proposal: any) =>
+                        TokentoHex(proposal.lender.toString()) ===
+                        normalizeAddress(user)
+                    )
+                    .map((row: any, index: number) => {
+                      const tokenInfo = renderTokenInfo(row.token.toString());
 
-                    return (
-                      <tr key={index}>
-                        <td className="p-4 border-b border-l">{tokenInfo}</td>
-                        <td className="p-4 border-b border-l">
-                          {formatDate1(row.repayment_date?.toString())}
-                        </td>
-                        <td className="p-4 border-b border-l">
-                          {Number(row.interest_rate)}%
-                        </td>
-                        <td className="p-4 border-b border-l">
-                          {Number(
-                            formatCurrency(row.token_amount?.toString())
-                          ).toFixed(2)}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                      return (
+                        <tr key={index}>
+                          <td className="p-4 border-b border-l">{tokenInfo}</td>
+                          <td className="p-4 border-b border-l">
+                            {formatDate1(row.repayment_date?.toString())}
+                          </td>
+                          <td className="p-4 border-b border-l">
+                            {Number(row.interest_rate)}%
+                          </td>
+                          <td className="p-4 border-b border-l">
+                            {Number(
+                              formatCurrency(row.token_amount?.toString())
+                            ).toFixed(2)}
+                          </td>
+                          <td className="p-4 border-b border-l">
+                            <button
+                              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                              onClick={() => {
+                                setSelectedProposal({
+                                  id: row.proposal_id,
+                                  amount: row.token_amount,
+                                });
+                                setShowModal(true);
+                              }}
+                            >
+                              Repay
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                 </>
               )}
             </tbody>
           </table>
         </div>
+      )}
+      {/* Pagination Component */}
+      {dataForCurrentTab.length > 0 && (
+        <div className="flex justify-end mt-4 items-center">
+          {/* Previous button */}
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className={`mx-1 px-4 py-2 border text-black rounded-md ${
+              currentPage === 1 ? "cursor-not-allowed" : ""
+            }`}
+          >
+            <ChevronLeft size={20} color="#000000" strokeWidth={2.5} />
+          </button>
+
+          {/* Visible page buttons */}
+          {Array.from({ length: endPage - startPage + 1 }, (_, index) => {
+            const page = startPage + index;
+            return (
+              <button
+                key={page}
+                onClick={() => handlePageChange(page)}
+                className={`mx-1 px-4 py-2 border rounded-md ${
+                  currentPage === page
+                    ? "bg-black text-white"
+                    : "bg-white text-black"
+                }`}
+              >
+                {page}
+              </button>
+            );
+          })}
+
+          {/* Next button */}
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className={`mx-1 px-4 py-2 border text-black rounded-md ${
+              currentPage === totalPages ? "cursor-not-allowed opacity-50" : ""
+            }`}
+          >
+            <ChevronRight size={20} color="#000000" strokeWidth={2.5} />
+          </button>
+        </div>
+      )}
+      {showModal && (
+        <RepayModal
+          isOpen={showModal}
+          onClose={() => {
+            setShowModal(false);
+            setSelectedProposal(null);
+          }}
+          amountBorrowed={selectedProposal?.amount ?? 0}
+          proposalId={selectedProposal?.id}
+        />
       )}
     </div>
   );

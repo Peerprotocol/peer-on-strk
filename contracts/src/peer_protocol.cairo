@@ -39,6 +39,14 @@ struct UserDeposit {
     amount: u256,
 }
 
+#[derive(Drop, Serde)]
+struct PermitParams {
+    deadline: u64,
+    v: u8,
+    r: felt252,
+    s: felt252
+}
+
 
 #[derive(Drop, Serde)]
 struct UserAssets {
@@ -139,6 +147,7 @@ pub mod PeerProtocol {
     };
     use peer_protocol::interfaces::ipeer_protocol::IPeerProtocol;
     use peer_protocol::interfaces::ierc20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use peer_protocol::interfaces::ierc20_permit::{IERC20PermitDispatcher, IERC20PermitDispatcherTrait};
     use peer_protocol::interfaces::ipeer_spok_nft::{
         IPeerSPOKNFTDispatcher, IPeerSPOKNFTDispatcherTrait
     };
@@ -417,14 +426,25 @@ pub mod PeerProtocol {
 
     #[abi(embed_v0)]
     impl PeerProtocolImpl of IPeerProtocol<ContractState> {
-        fn deposit(ref self: ContractState, token_address: ContractAddress, amount: u256) {
+        fn deposit(ref self: ContractState, token_address: ContractAddress, amount: u256, deadline: u64, v: u8, r: felt252, s: felt252) {
             assert!(self.supported_tokens.entry(token_address).read(), "token not supported");
             assert!(amount > 0, "can't deposit zero value");
 
             let caller = get_caller_address();
             let this_contract = get_contract_address();
-            let token = IERC20Dispatcher { contract_address: token_address };
 
+            let permit_token = IERC20PermitDispatcher {contract_address: token_address};
+            permit_token.permit(
+                caller,
+                this_contract,
+                amount,
+                deadline,
+                v,
+                r,
+                s
+            );
+            
+            let token = IERC20Dispatcher { contract_address: token_address };
             let transfer = token.transfer_from(caller, this_contract, amount);
             assert!(transfer, "transfer failed");
 
@@ -1400,12 +1420,12 @@ pub mod PeerProtocol {
             self.pool_rates.entry(token).read()
         }
 
-        fn deposit_to_pool(ref self: ContractState, token: ContractAddress, amount: u256) {
+        fn deposit_to_pool(ref self: ContractState, token: ContractAddress, amount: u256, deadline: u64, v: u8, r: felt252, s: felt252) {
             let pool_data = self.pools.entry(token);
 
             assert!(pool_data.is_active.read(), "Pool is not active");
 
-            self.deposit(token, amount);
+            self.deposit(token, amount,  deadline: deadline, v: v, r: r, s: s);
 
             // Update the pool's total deposited amount
             let updated_deposit = pool_data.total_deposits.read() + amount;

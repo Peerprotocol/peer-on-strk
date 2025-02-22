@@ -6,6 +6,7 @@ pub mod MockToken {
         StoragePointerReadAccess, StoragePointerWriteAccess, Map, StoragePathEntry
     };
     use peer_protocol::interfaces::ierc20::IERC20;
+    use peer_protocol::interfaces::ierc20_permit::IERC20Permit;
     use core::num::traits::Zero;
 
     #[storage]
@@ -14,6 +15,7 @@ pub mod MockToken {
         allowances: Map<
             (ContractAddress, ContractAddress), u256
         >, // Mapping<(owner, spender), amount>
+        nonces: Map<ContractAddress, u256>, // EIP-2612 nonces
         token_name: ByteArray,
         symbol: ByteArray,
         decimal: u8,
@@ -152,6 +154,42 @@ pub mod MockToken {
             self.emit(Transfer { from: zero_address, to: recipient, amount });
 
             true
+        }
+    }
+
+
+#[abi(embed_v0)]
+    impl MockTokenPermitImpl of IERC20Permit<ContractState> {
+        fn permit(
+            ref self: ContractState,
+            owner: ContractAddress,
+            spender: ContractAddress,
+            value: u256,
+            deadline: u64,
+            v: u8,
+            r: felt252,
+            s: felt252
+        ) {
+            // For testing: Skip signature validation but enforce deadline
+            let current_time = starknet::get_block_timestamp();
+            assert!(current_time <= deadline, "permit expired");
+
+            // Increment nonce
+            let nonce = self.nonces.entry(owner).read();
+            self.nonces.entry(owner).write(nonce + 1);
+
+            // Set allowance
+            self.allowances.entry((owner, spender)).write(value);
+
+            self.emit(Approval { owner, spender, value });
+        }
+
+        fn nonces(self: @ContractState, owner: ContractAddress) -> u256 {
+            self.nonces.entry(owner).read()
+        }
+
+        fn DOMAIN_SEPARATOR(self: @ContractState) -> felt252 {
+            0x1234
         }
     }
 }

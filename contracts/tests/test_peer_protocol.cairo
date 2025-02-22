@@ -12,7 +12,6 @@ use peer_protocol::interfaces::ipeer_protocol::{
 use peer_protocol::peer_protocol::{PeerProtocol};
 
 use peer_protocol::interfaces::ierc20::{IERC20Dispatcher, IERC20DispatcherTrait};
-use peer_protocol::interfaces::ierc20_permit::{IERC20PermitDispatcher, IERC20PermitDispatcherTrait};
 use pragma_lib::types::{DataType, PragmaPricesResponse};
 
 use peer_protocol::peer_protocol::{Proposal, ProposalType};
@@ -27,11 +26,6 @@ const SCALE: u256 = 1_000_000;
 const MIN_RATE: u256 = 10_000;
 const MAX_RATE: u256 = 300_000_000;
 const PROTOCOL_FEE_PERCENTAGE: u256 = 1_u256;
-
-const FUTURE_DEADLINE: u64 = 9999999999;
-const DUMMY_V: u8 = 0;
-const DUMMY_R: felt252 = 0;
-const DUMMY_S: felt252 = 0;
 
 fn deploy_token(name: ByteArray) -> ContractAddress {
     let contract = declare("MockToken").unwrap().contract_class();
@@ -86,19 +80,14 @@ fn test_deposit_should_panic_for_unsupported_token() {
     token.mint(caller, mint_amount);
 
     // Approving peer_protocol contract to spend mock_token
-    // start_cheat_caller_address(token_address, caller);
-    // token.approve(peer_protocol_address, mint_amount);
-    // stop_cheat_caller_address(token_address);
+    start_cheat_caller_address(token_address, caller);
+    token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(token_address);
 
     // Prank caller to deposit into peer protocol
     start_cheat_caller_address(peer_protocol_address, caller);
     let deposit_amount: u256 = 100 * ONE_E18;
-    peer_protocol.deposit(token_address, deposit_amount,
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
+    peer_protocol.deposit(token_address, deposit_amount);
     stop_cheat_caller_address(peer_protocol_address);
 }
 
@@ -124,21 +113,16 @@ fn test_deposit() {
     token.mint(caller, mint_amount);
 
     // Approving peer_protocol contract to spend mock_token
-    // start_cheat_caller_address(token_address, caller);
-    // token.approve(peer_protocol_address, mint_amount);
-    // stop_cheat_caller_address(token_address);
+    start_cheat_caller_address(token_address, caller);
+    token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(token_address);
 
     // Prank caller to deposit into peer protocol
     start_cheat_caller_address(peer_protocol_address, caller);
     let deposit_amount: u256 = 100 * ONE_E18;
     let mut spy = spy_events();
 
-    peer_protocol.deposit(token_address, deposit_amount, 
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
+    peer_protocol.deposit(token_address, deposit_amount);
 
     // testing peer_protocol contract balance increase
     assert!(token.balance_of(peer_protocol_address) == deposit_amount, "deposit failed");
@@ -177,17 +161,12 @@ fn test_withdraw() {
     // Mint tokens
     token.mint(caller, mint_amount);
 
-    // start_cheat_caller_address(token_address, caller);
-    // token.approve(peer_protocol_address, mint_amount);
-    // stop_cheat_caller_address(token_address);
+    start_cheat_caller_address(token_address, caller);
+    token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(token_address);
 
     start_cheat_caller_address(peer_protocol_address, caller);
-    peer_protocol.deposit(token_address, deposit_amount, 
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
+    peer_protocol.deposit(token_address, deposit_amount);
 
     let mut spy = spy_events();
     peer_protocol.withdraw(token_address, withdraw_amount);
@@ -235,31 +214,21 @@ fn test_get_user_assets() {
     token2.mint(caller, mint_amount);
 
     // Approving peer_protocol contract to spend mock_token
-    // start_cheat_caller_address(token1_address, caller);
-    // token1.approve(peer_protocol_address, mint_amount);
-    // stop_cheat_caller_address(token1_address);
+    start_cheat_caller_address(token1_address, caller);
+    token1.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(token1_address);
 
-    // start_cheat_caller_address(token2_address, caller);
-    // token2.approve(peer_protocol_address, mint_amount);
-    // stop_cheat_caller_address(token2_address);
+    start_cheat_caller_address(token2_address, caller);
+    token2.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(token2_address);
 
     // Prank caller to deposit into peer protocol
     start_cheat_caller_address(peer_protocol_address, caller);
     let deposit_amount1: u256 = 1000 * ONE_E18;
     let deposit_amount2: u256 = 100 * ONE_E18;
 
-    peer_protocol.deposit(token1_address, deposit_amount1,
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
-    peer_protocol.deposit(token2_address, deposit_amount2, 
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
+    peer_protocol.deposit(token1_address, deposit_amount1);
+    peer_protocol.deposit(token2_address, deposit_amount2);
 
     let user_assets = peer_protocol.get_user_assets(caller);
 
@@ -325,18 +294,8 @@ fn test_get_user_deposits() {
 
     // Make deposits
     start_cheat_caller_address(peer_protocol_address, user);
-    peer_protocol.deposit(token1_address, deposit_amount1, 
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
-    peer_protocol.deposit(token2_address, deposit_amount2, 
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
+    peer_protocol.deposit(token1_address, deposit_amount1);
+    peer_protocol.deposit(token2_address, deposit_amount2);
 
     // Get and verify user deposits
     let user_deposits = peer_protocol.get_user_deposits(user);
@@ -409,18 +368,13 @@ fn test_create_borrow_proposal() {
     collateral_token.mint(borrower, mint_amount);
 
     // Approve collateral token
-    // start_cheat_caller_address(collateral_token_address, borrower);
-    // collateral_token.approve(peer_protocol_address, mint_amount);
-    // stop_cheat_caller_address(collateral_token_address);
+    start_cheat_caller_address(collateral_token_address, borrower);
+    collateral_token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(collateral_token_address);
 
     // Borrower deposits collateral
     start_cheat_caller_address(peer_protocol_address, borrower);
-    peer_protocol.deposit(collateral_token_address, mint_amount, 
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
+    peer_protocol.deposit(collateral_token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
 
     // Borrower creates a borrow proposal
@@ -488,18 +442,13 @@ fn test_create_lending_proposal() {
     assert!(lending_token.balance_of(lender) == mint_amount, "mint failed");
 
     // Approve contract to spend lending token
-    // start_cheat_caller_address(token_address, lender);
-    // lending_token.approve(peer_protocol_address, mint_amount);
-    // stop_cheat_caller_address(token_address);
+    start_cheat_caller_address(token_address, lender);
+    lending_token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(token_address);
 
     // Lender deposits tokens into Peer Protocol
     start_cheat_caller_address(peer_protocol_address, lender);
-    peer_protocol.deposit(token_address, mint_amount, 
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
+    peer_protocol.deposit(token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
     assert!(lending_token.balance_of(lender) == mint_amount - mint_amount, "deposit failed");
     assert!(
@@ -569,18 +518,13 @@ fn test_cancel_proposal() {
     assert!(lending_token.balance_of(lender) == mint_amount, "mint failed");
 
     // Approve contract to spend lending token : Needs to be done before deposits
-    // start_cheat_caller_address(token_address, lender);
-    // lending_token.approve(peer_protocol_address, mint_amount);
-    // stop_cheat_caller_address(token_address);
+    start_cheat_caller_address(token_address, lender);
+    lending_token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(token_address);
 
     // Lender Deposit Token into Peer Protocol
     start_cheat_caller_address(peer_protocol_address, lender);
-    peer_protocol.deposit(token_address, mint_amount, 
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
+    peer_protocol.deposit(token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
     assert!(lending_token.balance_of(lender) == mint_amount - mint_amount, "deposit failed");
     assert!(
@@ -647,18 +591,12 @@ fn test_accept_proposal() {
 
     // Setup lender
     lending_token.mint(lender, mint_amount);
-    
     start_cheat_caller_address(token_address, lender);
     lending_token.approve(peer_protocol_address, mint_amount);
     stop_cheat_caller_address(token_address);
 
     start_cheat_caller_address(peer_protocol_address, lender);
-    peer_protocol.deposit(token_address, mint_amount, 
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
+    peer_protocol.deposit(token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
     
     // Setup borrower collateral
@@ -668,12 +606,7 @@ fn test_accept_proposal() {
     stop_cheat_caller_address(collateral_token_address);
 
     start_cheat_caller_address(peer_protocol_address, borrower);
-    peer_protocol.deposit(collateral_token_address, mint_amount, 
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
+    peer_protocol.deposit(collateral_token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
 
     // Create lending proposal
@@ -746,12 +679,7 @@ fn test_accept_invalid_proposal_should_panic() {
     stop_cheat_caller_address(token_address);
 
     start_cheat_caller_address(peer_protocol_address, lender);
-    peer_protocol.deposit(token_address, mint_amount, 
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
+    peer_protocol.deposit(token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
     
     // Setup borrower collateral
@@ -761,12 +689,7 @@ fn test_accept_invalid_proposal_should_panic() {
     stop_cheat_caller_address(collateral_token_address);
 
     start_cheat_caller_address(peer_protocol_address, borrower);
-    peer_protocol.deposit(collateral_token_address, mint_amount, 
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
+    peer_protocol.deposit(collateral_token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
 
     // Create lending proposal
@@ -833,18 +756,13 @@ fn test_get_borrow_proposal_details() {
     collateral_token.mint(borrower, mint_amount);
 
     // Approve peer protocol contract to spend collateral token
-    // start_cheat_caller_address(collateral_token_address, borrower);
-    // collateral_token.approve(peer_protocol_address, mint_amount);
-    // stop_cheat_caller_address(collateral_token_address);
+    start_cheat_caller_address(collateral_token_address, borrower);
+    collateral_token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(collateral_token_address);
 
     // Deposit collateral token into peer protocol before creating borrow proposal
     start_cheat_caller_address(peer_protocol_address, borrower);
-    peer_protocol.deposit(collateral_token_address, mint_amount, 
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
+    peer_protocol.deposit(collateral_token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
 
     // Create multiple borrow proposals
@@ -919,12 +837,7 @@ fn test_create_counter_proposal() {
 
     // Lender Deposit Token into Peer Protocol
     start_cheat_caller_address(peer_protocol_address, lender);
-    peer_protocol.deposit(token_address, mint_amount, 
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
+    peer_protocol.deposit(token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
     assert!(lending_token.balance_of(lender) == mint_amount - mint_amount, "deposit failed");
     assert!(
@@ -952,12 +865,7 @@ fn test_create_counter_proposal() {
 
     // Borrower Deposit Collateral token before they can create counter proposal
     start_cheat_caller_address(peer_protocol_address, borrower);
-    peer_protocol.deposit(collateral_token_address, mint_amount, 
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
+    peer_protocol.deposit(collateral_token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
     assert!(collateral_token.balance_of(borrower) == 0, "borrower deposit failed");
     assert!(
@@ -1037,12 +945,7 @@ fn test_get_counter_proposals() {
 
     // Lender Deposit Token into Peer Protocol
     start_cheat_caller_address(peer_protocol_address, lender);
-    peer_protocol.deposit(token_address, mint_amount, 
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
+    peer_protocol.deposit(token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
     assert!(lending_token.balance_of(lender) == mint_amount - mint_amount, "deposit failed");
     assert!(
@@ -1070,12 +973,7 @@ fn test_get_counter_proposals() {
 
     // Borrower1 Deposit Collateral token before they can create counter proposal
     start_cheat_caller_address(peer_protocol_address, borrower1);
-    peer_protocol.deposit(collateral_token_address, mint_amount, 
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
+    peer_protocol.deposit(collateral_token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
     assert!(collateral_token.balance_of(borrower1) == 0, "borrower deposit failed");
     assert!(
@@ -1090,12 +988,7 @@ fn test_get_counter_proposals() {
 
     // Borrower2 Deposit Collateral token before they can create counter proposal
     start_cheat_caller_address(peer_protocol_address, borrower2);
-    peer_protocol.deposit(collateral_token_address, mint_amount, 
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
+    peer_protocol.deposit(collateral_token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
     assert!(collateral_token.balance_of(borrower2) == 0, "borrower deposit failed");
     assert!(
@@ -1234,18 +1127,13 @@ fn test_get_lending_proposal_details() {
     assert!(lending_token.balance_of(lender) == mint_amount, "mint failed");
 
     // Approve contract to spend lending token : Needs to be done before deposits
-    // start_cheat_caller_address(token_address, lender);
-    // lending_token.approve(peer_protocol_address, mint_amount);
-    // stop_cheat_caller_address(token_address);
+    start_cheat_caller_address(token_address, lender);
+    lending_token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(token_address);
 
     // Lender Deposit Token into Peer Protocol
     start_cheat_caller_address(peer_protocol_address, lender);
-    peer_protocol.deposit(token_address, mint_amount, 
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
+    peer_protocol.deposit(token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
     assert!(lending_token.balance_of(lender) == 0, "deposit failed");
     assert!(
@@ -1315,18 +1203,13 @@ fn test_repay_proposal() {
     token.mint(lender, mint_amount);
 
     // Approve token
-    // start_cheat_caller_address(token_address, lender);
-    // token.approve(peer_protocol_address, mint_amount);
-    // stop_cheat_caller_address(token_address);
+    start_cheat_caller_address(token_address, lender);
+    token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(token_address);
 
     // lender Deposit token
     start_cheat_caller_address(peer_protocol_address, lender);
-    peer_protocol.deposit(token_address, mint_amount, 
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
+    peer_protocol.deposit(token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
 
     // lender creates a lending proposal
@@ -1343,12 +1226,7 @@ fn test_repay_proposal() {
     stop_cheat_caller_address(token_address);
 
     start_cheat_caller_address(peer_protocol_address, borrower);
-    peer_protocol.deposit(token_address, mint_amount, 
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
+    peer_protocol.deposit(token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
 
     // borrower accepts the borrow proposal
@@ -1469,12 +1347,7 @@ fn test_repay_proposal_2() {
 
     // borower Deposit collateral token
     start_cheat_caller_address(peer_protocol_address, borrower);
-    peer_protocol.deposit(collateral_token_address, mint_amount, 
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
+    peer_protocol.deposit(collateral_token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
 
     //borrower creates a borrow proposal
@@ -1491,12 +1364,7 @@ fn test_repay_proposal_2() {
     stop_cheat_caller_address(token_address);
 
     start_cheat_caller_address(peer_protocol_address, lender);
-    peer_protocol.deposit(token_address, mint_amount, 
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
+    peer_protocol.deposit(token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
 
     //lender accepts the borrow proposal
@@ -1770,11 +1638,7 @@ fn test_deposit_to_pool_should_panic_for_inactive_pool() {
     start_cheat_caller_address(peer_protocol_address, caller);
     let deposit_amount: u256 = 100 * ONE_E18;
 
-    peer_protocol.deposit_to_pool(token_address, deposit_amount, 
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S);
+    peer_protocol.deposit_to_pool(token_address, deposit_amount);
     stop_cheat_caller_address(peer_protocol_address);
 }
 
@@ -1801,20 +1665,16 @@ fn test_deposit_to_pool() {
     token.mint(caller, mint_amount);
 
     // Approving peer_protocol contract to spend caller's tokens
-    // start_cheat_caller_address(token_address, caller);
-    // token.approve(peer_protocol_address, mint_amount);
-    // stop_cheat_caller_address(token_address);
+    start_cheat_caller_address(token_address, caller);
+    token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(token_address);
 
     // Perform the deposit
     start_cheat_caller_address(peer_protocol_address, caller);
     let deposit_amount: u256 = 100 * ONE_E18;
     let mut spy = spy_events();
 
-    peer_protocol.deposit_to_pool(token_address, deposit_amount, 
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S);
+    peer_protocol.deposit_to_pool(token_address, deposit_amount);
 
     // Verify the contract's token balance
     let pool_balance = token.balance_of(peer_protocol_address);
@@ -1878,20 +1738,15 @@ fn test_withdraw_from_pool() {
     token.mint(caller, mint_amount);
 
     // Approve peer_protocol contract to spend the user's tokens
-    // start_cheat_caller_address(token_address, caller);
-    // token.approve(peer_protocol_address, mint_amount);
-    // stop_cheat_caller_address(token_address);
+    start_cheat_caller_address(token_address, caller);
+    token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(token_address);
 
     // Perform the deposit into the pool
     start_cheat_caller_address(peer_protocol_address, caller);
     let deposit_amount: u256 = 100 * ONE_E18;
 
-    peer_protocol.deposit_to_pool(token_address, deposit_amount,
-    
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S);
+    peer_protocol.deposit_to_pool(token_address, deposit_amount);
     stop_cheat_caller_address(peer_protocol_address);
 
     // Withdraw half of the deposited amount
@@ -1956,31 +1811,21 @@ fn test_borrow_from_pool() {
     collateral_token.mint(borrower, mint_amount);
 
     // Lender approves and deposits borrow token into the pool
-    // start_cheat_caller_address(token_address, lender);
-    // token.approve(peer_protocol_address, mint_amount);
-    // stop_cheat_caller_address(token_address);
+    start_cheat_caller_address(token_address, lender);
+    token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(token_address);
 
     start_cheat_caller_address(peer_protocol_address, lender);
-    peer_protocol.deposit_to_pool(token_address, mint_amount, 
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
+    peer_protocol.deposit_to_pool(token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
 
     // Borrower approves and deposits collateral token into the pool
-    // start_cheat_caller_address(collateral_token_address, borrower);
-    // collateral_token.approve(peer_protocol_address, mint_amount);
-    // stop_cheat_caller_address(collateral_token_address);
+    start_cheat_caller_address(collateral_token_address, borrower);
+    collateral_token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(collateral_token_address);
 
     start_cheat_caller_address(peer_protocol_address, borrower);
-    peer_protocol.deposit_to_pool(collateral_token_address, mint_amount, 
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
+    peer_protocol.deposit_to_pool(collateral_token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
 
     // Borrow from the pool
@@ -2084,17 +1929,12 @@ fn test_borrow_from_pool_should_panic_for_insufficient_pool_liquidity() {
     collateral_token.mint(borrower, mint_amount);
 
     // Borrower approves and deposits collateral token into the pool
-    // start_cheat_caller_address(collateral_token_address, borrower);
-    // collateral_token.approve(peer_protocol_address, mint_amount);
-    // stop_cheat_caller_address(collateral_token_address);
+    start_cheat_caller_address(collateral_token_address, borrower);
+    collateral_token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(collateral_token_address);
 
     start_cheat_caller_address(peer_protocol_address, borrower);
-    peer_protocol.deposit_to_pool(collateral_token_address, mint_amount, 
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
+    peer_protocol.deposit_to_pool(collateral_token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
 
     // Attempt to borrow from the pool when there is not enough available liquidity
@@ -2142,26 +1982,16 @@ fn test_should_panic_for_trying_to_withdraw_locked_tokens() {
     stop_cheat_caller_address(token_address);
 
     start_cheat_caller_address(peer_protocol_address, lender);
-    peer_protocol.deposit_to_pool(token_address, mint_amount,
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
+    peer_protocol.deposit_to_pool(token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
 
     // Borrower approves and deposits collateral token into the pool
-    // start_cheat_caller_address(collateral_token_address, borrower);
-    // collateral_token.approve(peer_protocol_address, mint_amount);
-    // stop_cheat_caller_address(collateral_token_address);
+    start_cheat_caller_address(collateral_token_address, borrower);
+    collateral_token.approve(peer_protocol_address, mint_amount);
+    stop_cheat_caller_address(collateral_token_address);
 
     start_cheat_caller_address(peer_protocol_address, borrower);
-    peer_protocol.deposit_to_pool(collateral_token_address, mint_amount, 
-        FUTURE_DEADLINE,
-        DUMMY_V,
-        DUMMY_R,
-        DUMMY_S
-    );
+    peer_protocol.deposit_to_pool(collateral_token_address, mint_amount);
     stop_cheat_caller_address(peer_protocol_address);
 
     // Borrow from the pool

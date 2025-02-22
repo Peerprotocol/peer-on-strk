@@ -10,10 +10,7 @@ use core::array::SpanTrait;
 
 #[starknet::interface]
 pub trait IPeerProtocol<TContractState> {
-    fn deposit(ref self: TContractState, token_address: ContractAddress, amount: u256, deadline: u64,
-        v: u8,
-        r: felt252,
-        s: felt252);
+    fn deposit(ref self: TContractState, token_address: ContractAddress, amount: u256);
     fn add_supported_token(
         ref self: TContractState, token_address: ContractAddress, asset_id: felt252
     );
@@ -98,10 +95,7 @@ pub trait IPeerProtocol<TContractState> {
 
     fn get_pool_rates(self: @TContractState, token: ContractAddress) -> PoolRates;
 
-    fn deposit_to_pool(ref self: TContractState, token: ContractAddress, amount: u256, deadline: u64,
-        v: u8,
-        r: felt252,
-        s: felt252);
+    fn deposit_to_pool(ref self: TContractState, token: ContractAddress, amount: u256);
 
     fn withdraw_from_pool(ref self: TContractState, token: ContractAddress, amount: u256);
 

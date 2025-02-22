@@ -1,15 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@vercel/postgres";
+import { NotificationService } from "@/lib/services/notification";
 
 export async function POST(request: Request) {
   try {
-    const { user_address, token, amount, transaction_type } = await request.json();
+    const { user_address, token, amount, transaction_type } =
+      await request.json();
 
     const result = await sql`
       INSERT INTO transactions (user_address, token, amount, transaction_type)
       VALUES (${user_address}, ${token}, ${amount}, ${transaction_type})
       RETURNING *;
     `;
+
+    // create a notification for the user
+    await NotificationService.createTransactionNotification(
+      user_address,
+      token,
+      amount,
+      transaction_type
+    );
 
     return NextResponse.json(result.rows[0]);
   } catch (error: any) {
@@ -24,7 +34,10 @@ export async function GET(req: NextRequest) {
     const period = searchParams.get("period") || "max";
 
     if (!userAddress) {
-      return NextResponse.json({ error: "User address is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "User address is required" },
+        { status: 400 }
+      );
     }
 
     let result;
@@ -68,5 +81,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-
-

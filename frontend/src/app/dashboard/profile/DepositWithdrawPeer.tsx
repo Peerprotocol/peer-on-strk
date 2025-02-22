@@ -114,11 +114,6 @@ export default function DepositWithdrawPeer() {
     }
   ]
 
-  const { contract: tokenContract } = useContract({
-    abi: mockTokenAbi,
-    address: selectedToken.address,
-  })
-
   const { contract: protocolContract } = useContract({
     abi: protocolAbi,
     address: PROTOCOL_ADDRESS,

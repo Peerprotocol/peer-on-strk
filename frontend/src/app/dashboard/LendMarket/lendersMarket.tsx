@@ -1,8 +1,12 @@
 "use client";
-import { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useAccount, useContractWrite, useContractRead } from "@starknet-react/core";
+import {
+  useAccount,
+  useContractWrite,
+  useContractRead,
+} from "@starknet-react/core";
 import { Plus, X } from "lucide-react";
 import Nav from "../../../components/custom/Nav";
 import Sidebar from "../../../components/custom/sidebar";
@@ -17,7 +21,7 @@ import { TokentoHex } from "../../../components/internal/helpers/index";
 import FilterBar from "@/components/custom/FilterBar";
 
 // Constants
-const ITEMS_PER_PAGE = 7;
+const ITEMS_PER_PAGE = 8;
 const TOKEN_ADDRESSES = {
   STRK: "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
   ETH: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
@@ -250,7 +254,9 @@ const TableRow = ({ proposals, onCounter }: TableRowProps) => {
             </div>
             {/* Quantity */}
             <div className="text-center px-4 py-6">
-              <p className="font-medium">{Number(item.token_amount / BigInt(10 ** 18)).toFixed(2)}</p>
+              <p className="font-medium">
+                {Number(item.token_amount / BigInt(10 ** 18)).toFixed(2)}
+              </p>
             </div>
             {/* Net Value */}
             <div className="text-center px-4 py-6">
@@ -268,7 +274,9 @@ const TableRow = ({ proposals, onCounter }: TableRowProps) => {
             <div className="flex gap-4 justify-center items-center py-6">
               <button
                 className={`px-4 py-2 text-sm rounded-full text-white ${
-                  loading ? "bg-gray-400 cursor-not-allowed" : "bg-black hover:bg-opacity-90 transition"
+                  loading
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-black hover:bg-opacity-90 transition"
                 }`}
                 onClick={() => handleLend(item.id, item.amount.toString())}
                 disabled={loading}
@@ -284,8 +292,13 @@ const TableRow = ({ proposals, onCounter }: TableRowProps) => {
               >
                 Counter
               </button>
-              {TokentoHex(item.lender.toString()) === normalizeAddress(address) && (
-                <X onClick={() => cancelProposal(item.id.toString(), item.amount.toString())} />
+              {TokentoHex(item.lender.toString()) ===
+                normalizeAddress(address) && (
+                <X
+                  onClick={() =>
+                    cancelProposal(item.id.toString(), item.amount.toString())
+                  }
+                />
               )}
             </div>
           </div>
@@ -307,8 +320,6 @@ const Lender = () => {
   // Filter states
   const [filterOption, setFilterOption] = useState("token");
   const [filterValue, setFilterValue] = useState("");
-
-  const totalPages = Math.ceil(5 / ITEMS_PER_PAGE);
 
   // Read lending proposals from contract
   const { address } = useAccount();
@@ -378,7 +389,24 @@ const Lender = () => {
     });
   }, [validProposals, filterOption, filterValue]);
 
-  const handleOpenModal = (type: "lend" | "counter" | "borrow", proposalId?: string) => {
+  // Pagination logic
+  const totalPages = Math.ceil(filteredProposals.length / ITEMS_PER_PAGE);
+  
+  const paginatedProposals = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return filteredProposals.slice(startIndex, endIndex);
+  }, [filteredProposals, currentPage]);
+
+  // Reset current page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filteredProposals]);
+
+  const handleOpenModal = (
+    type: "lend" | "counter" | "borrow",
+    proposalId?: string
+  ) => {
     setModalType(type);
     setModalOpen(true);
     if (proposalId) {
@@ -398,7 +426,43 @@ const Lender = () => {
           <Header />
 
           {/* Single-Filter Bar */}
-          <div className="mx-4 mb-4">
+          <div className="relative hidden lg:block">
+            <FilterBar
+              filterOption={filterOption}
+              filterValue={filterValue}
+              onOptionChange={(opt) => setFilterOption(opt)}
+              onValueChange={(val) => setFilterValue(val)}
+            />
+            <button
+              onClick={() => handleOpenModal("borrow")}
+              className="right-4 top-5 flex items-center gap-2 px-6 py-3 absolute rounded-3xl bg-[#F5F5F5] text-black border border-[rgba(0,0,0,0.8)] font-light hover:bg-[rgba(0,0,0,0.8)] hover:text-white"
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
+            >
+              <p>Create a Borrow Proposal</p>
+              <Plus
+                size={22}
+                strokeWidth={4}
+                color={isHovered ? "#fff" : "#000"}
+                className="transition-opacity duration-300 ease-in-out"
+              />
+            </button>
+          </div>
+          <div className="relative lg:hidden flex flex-col items-center w-full my-5">
+            <button
+              onClick={() => handleOpenModal("borrow")}
+              className="flex items-center gap-2 px-6 py-3 rounded-3xl bg-[#F5F5F5] text-black border border-[rgba(0,0,0,0.8)] font-light hover:bg-[rgba(0,0,0,0.8)] hover:text-white"
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
+            >
+              <p>Create a Borrow Proposal</p>
+              <Plus
+                size={22}
+                strokeWidth={4}
+                color={isHovered ? "#fff" : "#000"}
+                className="transition-opacity duration-300 ease-in-out"
+              />
+            </button>
             <FilterBar
               filterOption={filterOption}
               filterValue={filterValue}
@@ -411,43 +475,31 @@ const Lender = () => {
           <div className="overflow-x-auto text-black border mx-4 mb-4 rounded-xl">
             <TableHeader />
             <TableRow
-              proposals={filteredProposals}
+              proposals={paginatedProposals}
               onCounter={(proposalId) => handleOpenModal("counter", proposalId)}
             />
           </div>
 
-          <button
-            onClick={() => handleOpenModal("borrow")}
-            className="relative flex items-center gap-2 px-6 py-3 rounded-3xl bg-[#F5F5F5] text-black border border-[rgba(0,0,0,0.8)] mx-auto font-light hover:bg-[rgba(0,0,0,0.8)] hover:text-white"
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-          >
-            <p>Create a Borrow Proposal</p>
-            <Plus
-              size={22}
-              strokeWidth={4}
-              color={isHovered ? "#fff" : "#000"}
-              className="transition-opacity duration-300 ease-in-out"
-            />
-          </button>
-
-          <div className="flex justify-end p-4">
-            <div className="flex gap-2">
-              {Array.from({ length: totalPages }, (_, index) => (
-                <button
-                  key={index}
-                  className={`px-4 py-2 ${
-                    currentPage === index + 1
-                      ? "bg-[rgba(0,0,0,0.8)] text-white"
-                      : "bg-[#F5F5F5] text-black border-black border"
-                  } rounded-lg`}
-                  onClick={() => setCurrentPage(index + 1)}
-                >
-                  {index + 1}
-                </button>
-              ))}
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex justify-end p-4">
+              <div className="flex gap-2">
+                {Array.from({ length: totalPages }, (_, index) => (
+                  <button
+                    key={index}
+                    className={`px-4 py-2 ${
+                      currentPage === index + 1
+                        ? "bg-[rgba(0,0,0,0.8)] text-white"
+                        : "bg-[#F5F5F5] text-black border-black border"
+                    } rounded-lg`}
+                    onClick={() => setCurrentPage(index + 1)}
+                  >
+                    {index + 1}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <NewProposalModal
             type={modalType}

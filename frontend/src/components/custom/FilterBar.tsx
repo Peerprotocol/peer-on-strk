@@ -21,12 +21,12 @@ const SingleFilterBar: React.FC<SingleFilterBarProps> = ({
   return (
     <>
       {/* Outer container with justify-end to align children to the right */}
-      <div className="p-4 flex items-center gap-4 justify-end relative">
+      <div className="p-4 flex items-center gap-4 relative">
         {/* "Filter By" label to the left within the right-aligned group */}
         <label className="text-sm font-medium text-black">Filter by</label>
         
         {/* Container with toggle button and input */}
-        <div className="relative w-1/3">
+        <div className="relative ">
           <div className="w-full h-[70px] border border-black rounded-full flex items-center overflow-hidden">
 
           <button

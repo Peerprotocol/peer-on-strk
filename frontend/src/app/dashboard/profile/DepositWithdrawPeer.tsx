@@ -133,6 +133,35 @@ export default function DepositWithdrawPeer() {
     }
   }
 
+  const handleApprove = async () => {
+    if (!tokenContract || !account) {
+      hotToast.error('Wallet not connected')
+      return false
+    }
+
+    try {
+      setLoading(true)
+
+      const amountUint256 = getUint256FromDecimal(amount)
+
+      const approvalCall = tokenContract.populate('approve', [
+        PROTOCOL_ADDRESS,
+        amountUint256
+      ])
+
+      const approvalTx = await account.execute(approvalCall)
+
+      await account.waitForTransaction(approvalTx.transaction_hash)
+      toastify.success('Token approval successful')
+      return true
+    } catch (err: any) {
+      hotToast.error(`Approval failed: ${err.message}`)
+      return false
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     if (/^\d*\.?\d*$/.test(value)) {
@@ -148,6 +177,10 @@ export default function DepositWithdrawPeer() {
   
     try {
       setLoading(true);
+  
+      const isApproved = await handleApprove();
+      if (!isApproved) return;
+  
       const amountUint256 = getUint256FromDecimal(amount);
       const depositCall = protocolContract.populate('deposit', [
         selectedToken.address,

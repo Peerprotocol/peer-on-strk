@@ -196,7 +196,7 @@ export default function DepositWithdrawPeer() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_address: account.address,
-          token: selectedToken.address,
+          token: selectedToken.symbol,
           amount: amount,
           transaction_type: 'deposit'
         })
@@ -236,7 +236,7 @@ export default function DepositWithdrawPeer() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_address: account.address,
-          token: selectedToken.address,
+          token: selectedToken.symbol,
           amount: amount,
           transaction_type: 'withdraw'
         })

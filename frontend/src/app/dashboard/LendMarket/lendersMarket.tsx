@@ -394,13 +394,13 @@ const Lender = () => {
     : ({} as any)
   );
 
-  const { data: lockedFunds } = useContractRead(
+  const { data: userAssets } = useContractRead(
     address
       ? {
           abi: protocolAbi,
           address: PROTOCOL_ADDRESS,
-          functionName: "get_locked_funds",
-          args: [address, TOKEN_ADDRESSES.STRK],
+          functionName: "get_user_assets",
+          args: [address],
           watch: true,
         }
       : ({} as any)
@@ -461,14 +461,21 @@ const Lender = () => {
   }, [validProposals, filterOption, filterValue]);
 
   const handleOpenModal = (type: "lend" | "counter" | "borrow", proposalId?: string) => {
-  const checkBalanceAndProceed = (actionCallback: () => void) => {
-    if (!lockedFunds || lockedFunds.toString() === "0") {
-      setPendingAction({ callback: actionCallback });
-      setDepositModalOpen(true);
-    } else {
-      actionCallback();
-    }
-  };
+// Update the balance check to use the STRK token balance from userAssets:
+const checkBalanceAndProceed = (actionCallback: () => void) => {
+  // Read the user's STRK balance from the userAssets object; default to "0" if not available.
+  const strkBalance =
+    userAssets && userAssets[TOKEN_ADDRESSES.STRK]
+      ? userAssets[TOKEN_ADDRESSES.STRK].toString()
+      : "0";
+
+  if (strkBalance === "0") {
+    setPendingAction({ callback: actionCallback });
+    setDepositModalOpen(true);
+  } else {
+    actionCallback();
+  }
+};
 
   const handleDepositSuccess = () => {
     setDepositModalOpen(false);
@@ -490,7 +497,7 @@ const Lender = () => {
     }
     setModalOpen(true);
     if (type === "counter") {
-      // change title if needed
+      setTitle("Counter this Proposal");
     }
   };
 

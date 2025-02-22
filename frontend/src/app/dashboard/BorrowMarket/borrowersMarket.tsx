@@ -351,13 +351,13 @@ const BorrowersMarket = () => {
 
   const { address } = useAccount();
 
-  const { data: lockedFunds } = useContractRead(
+  const { data: userAssets } = useContractRead(
     address
       ? {
           abi: protocolAbi,
           address: PROTOCOL_ADDRESS,
-          functionName: "get_locked_funds",
-          args: [address, TOKEN_ADDRESSES.STRK],
+          functionName: "get_user_assets",
+          args: [address],
           watch: true,
         }
       : ({} as any)
@@ -436,12 +436,15 @@ const BorrowersMarket = () => {
   // Pagination
   const totalPages = Math.ceil(filteredProposals.length / ITEMS_PER_PAGE);
   const checkBalanceAndProceed = (actionType: ModalType, proposalId?: string) => {
-  
-    if (!lockedFunds || lockedFunds.toString() === "0") {
+    const strkBalance =
+      userAssets && userAssets[TOKEN_ADDRESSES.STRK]
+        ? userAssets[TOKEN_ADDRESSES.STRK].toString()
+        : "0";
+
+    if (strkBalance === "0") {
       setPendingAction({ type: actionType, proposalId });
       setDepositModalOpen(true);
     } else {
-      const numericLockedFunds = BigInt(lockedFunds.toString());
       openModal(actionType, proposalId);
     }
   };

@@ -119,7 +119,7 @@ const Dashboard = () => {
     }
   }, [userAssets, usdValues]);
 
-  if (isLoading || isFetching || isLoadingPrices) {
+  if (isLoadingPrices) {
     return <ProfilecardLoader />;
   }
 

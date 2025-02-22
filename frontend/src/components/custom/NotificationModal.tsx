@@ -2,7 +2,6 @@
 import { CircleArrowDown, X } from "lucide-react";
 import { Raleway } from "next/font/google";
 import React, { useEffect, useRef, useState } from "react";
-import { normalizeAddress } from "../internal/helpers";
 
 const raleway = Raleway({
   subsets: ["latin"],
@@ -35,9 +34,9 @@ const NotificationModal = ({
 
     try {
       const response = await fetch(
-        `/api/database/notifications?user_address=${normalizeAddress(
+        `/api/database/notifications?user_address=${
           walletAddress
-        )}`
+        }`
       );
       const data = await response.json();
       if (data.success) {

@@ -29,14 +29,14 @@ const SingleFilterBar: React.FC<SingleFilterBarProps> = ({
         <div className="relative w-1/3">
           <div className="w-full h-[70px] border border-black rounded-full flex items-center overflow-hidden">
 
-            <button
-              type="button"
-              onClick={() => setIsOptionsOpen(!isOptionsOpen)}
-              className="rounded-full ml-4 px-4 py-2 flex items-center gap-1 border border-black"
-            >
-              <span className="text-[#000000]">{filterOption}</span>
-              <ChevronDown size={16} className="text-black"/>
-            </button>
+          <button
+            type="button"
+            onClick={() => setIsOptionsOpen(!isOptionsOpen)}
+            className="rounded-full mx-4 px-4 py-2 flex items-center gap-1 border border-black"
+          >
+            <span className="text-[#000000]">{filterOption}</span>
+            <ChevronDown size={16} className="text-black" />
+          </button>
 
             <input
               type="text"
@@ -48,7 +48,7 @@ const SingleFilterBar: React.FC<SingleFilterBarProps> = ({
           </div>
           {/* Dropdown for filter options */}
           {isOptionsOpen && (
-            <div className="origin-top-left absolute left-0 mt-2 w-36 rounded-md shadow-lg ring-1 ring-black ring-opacity-100 focus:outline-none z-10">
+            <div className="origin-top-left absolute left-0 mt-2 w-36 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-100 focus:outline-none z-10">
               <div className="py-1">
                 {options.map((option) => (
                   <button

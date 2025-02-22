@@ -163,7 +163,6 @@ export default function DepositWithdrawPeer() {
       setLoading(true);
 
       const response = await multicall();
-      console.log('response', response);
   
       // Record transaction in DB
       await fetch('/api/database/transactions', {
@@ -185,6 +184,16 @@ export default function DepositWithdrawPeer() {
       setLoading(false);
     }
   };
+
+  const { writeAsync: withdrawalcall } = useContractWrite({
+    calls: [
+      {
+        contractAddress: PROTOCOL_ADDRESS,
+        entrypoint: 'withdraw',
+        calldata: [selectedToken.address, amountUint256.low, amountUint256.high]
+      }
+    ]
+  });
   
 
   const handleWithdraw = async () => {
@@ -196,14 +205,7 @@ export default function DepositWithdrawPeer() {
     try {
       setLoading(true);
   
-      const amountUint256 = getUint256FromDecimal(amount);
-      const withdrawCall = protocolContract.populate('withdraw', [
-        selectedToken.address,
-        amountUint256
-      ]);
-  
-      const withdrawTx = await account.execute(withdrawCall);
-      await account.waitForTransaction(withdrawTx.transaction_hash);
+      const response = await withdrawalcall();
   
       // Record transaction in DB
       await fetch('/api/database/transactions', {

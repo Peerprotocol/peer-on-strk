@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { XCircle } from 'lucide-react';
+import { XCircle, ChevronDown } from 'lucide-react';
 import Image from 'next/image';
 
 const DepositTokenModal = ({
@@ -17,6 +17,9 @@ const DepositTokenModal = ({
 }) => {
   const [amount, setAmount] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const depositTokens = ["STRK", "ETH"];
+  const [selectedToken, setSelectedToken] = useState("STRK");
+  const [isTokenOptionsOpen, setIsTokenOptionsOpen] = useState(false);
 
   const handleDeposit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,39 +56,67 @@ const DepositTokenModal = ({
             Available: ${availableBalance}
           </p>
           <div className="relative w-full">
-            <input
-              type="number"
-              placeholder="Enter Amount"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="w-full h-[70px] px-6 py-4 border border-black rounded-full text-black"
-            />
-            <button
-              type="button"
-              onClick={() => setAmount(availableBalance.toString())}
-              className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-[#D9D9D9] rounded-[200px] px-4 py-2"
-            >
-              <span className="text-[#000000]">Max</span>
-            </button>
+            <div className="w-full h-[70px] border border-black rounded-full flex items-center overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setIsTokenOptionsOpen(!isTokenOptionsOpen)}
+                className="rounded-full mx-4 px-4 py-2 flex items-center gap-1 border border-black"
+              >
+                <span className="text-[#000000]">{selectedToken}</span>
+                <ChevronDown size={16} className="text-black" />
+              </button>
+              <input
+                type="number"
+                placeholder="Enter Amount"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="flex-1 h-full px-4 py-4 text-black placeholder:text-[#0000004D] outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setAmount(availableBalance.toString())}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-[#D9D9D9] rounded-[200px] px-4 py-2"
+              >
+                <span className="text-[#000000]">Max</span>
+              </button>
+            </div>
+            {isTokenOptionsOpen && (
+              <div className="origin-top-left absolute left-4 mt-2 w-24 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-100 z-10">
+                <div className="py-1">
+                  {depositTokens.map((token) => (
+                    <button
+                      key={token}
+                      onClick={() => {
+                        setSelectedToken(token);
+                        setIsTokenOptionsOpen(false);
+                      }}
+                      className={`flex items-center w-full px-4 py-2 text-sm ${
+                        token === selectedToken ? "bg-gray-100 text-gray-900" : "text-gray-700"
+                      }`}
+                    >
+                      {token}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           {/* Percentage Buttons */}
-          <div className='flex flex-col w-full'>
-          <div className='justify-end'>
-          <div className="flex justify-end mt-2">
-            <div className="flex gap-2">
-              {[25, 50, 75, 100].map((percentage) => (
-                <button
-                  key={percentage}
-                  type="button"
-                  onClick={() => handlePercentageClick(percentage)}
-                  className="h-[40px] bg-[#D9D9D9] rounded-full text-black text-sm hover:bg-[#C0C0C0] transition-colors px-4"
-                >
-                  {percentage}%
-                </button>
-              ))}
+          <div className="flex flex-col w-full">
+            <div className="flex justify-end mt-2">
+              <div className="flex gap-2">
+                {[25, 50, 75, 100].map((percentage) => (
+                  <button
+                    key={percentage}
+                    type="button"
+                    onClick={() => handlePercentageClick(percentage)}
+                    className="h-[40px] bg-[#D9D9D9] rounded-full text-black text-sm hover:bg-[#C0C0C0] transition-colors px-4"
+                  >
+                    {percentage}%
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-          </div>
           </div>
           <button
             type="submit"

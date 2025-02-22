@@ -14,7 +14,7 @@ import { toast as toastify } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import NewProposalModal from "@/components/proposalModal";
 import { CallData } from "starknet";
-import { TokentoHex } from '../../../components/internal/helpers/index';
+import { TokentoHex } from "../../../components/internal/helpers/index";
 
 // Constants
 const ITEMS_PER_PAGE = 7;
@@ -114,12 +114,22 @@ const TableRow = ({ onCounter }: TableRowProps) => {
             abi: protocolAbi,
             contractAddress: PROTOCOL_ADDRESS,
             entrypoint: "accept_proposal",
-            calldata: CallData.compile([proposalId, '0']),
+            calldata: CallData.compile([proposalId, "0"]),
           },
         ],
       });
 
       if (transaction?.transaction_hash) {
+        // Add notification
+        await fetch("/api/database/notifications", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_address: address,
+            message: `Your lending proposal ${proposalId} has been accepted`,
+          }),
+        });
+
         toastify.success("Proposal Accepted");
         console.log("Transaction submitted:", transaction.transaction_hash);
 
@@ -127,19 +137,29 @@ const TableRow = ({ onCounter }: TableRowProps) => {
         await transaction.wait();
 
         // Record transaction in DB
-        await fetch('/api/database/protocol-data', {
-          method: 'POST',
+        await fetch("/api/database/protocol-data", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json'
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             total_borrow: 0,
             total_lend: amount,
             total_p2p_deals: 1,
             total_interest_earned: 0,
-            total_value_locked: 0
-          })
-        })
+            total_value_locked: 0,
+          }),
+        });
+
+        // Add notification
+        await fetch("/api/database/notifications", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_address: address,
+            message: `Your lending proposal ${proposalId} has been cancelled`,
+          }),
+        });
 
         console.log("Transaction completed!");
       }
@@ -178,25 +198,36 @@ const TableRow = ({ onCounter }: TableRowProps) => {
 
       if (transaction?.transaction_hash) {
         console.log("Transaction submitted:", transaction.transaction_hash);
+
         toastify.success("Proposal Cancelled");
 
         // Wait for transaction
         await transaction.wait();
 
         // Record transaction in DB
-        await fetch('/api/database/protocol-data', {
-          method: 'POST',
+        await fetch("/api/database/protocol-data", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json'
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             total_borrow: 0,
             total_lend: -amount,
             total_p2p_deals: -1,
             total_interest_earned: 0,
-            total_value_locked: 0
-          })
-        })
+            total_value_locked: 0,
+          }),
+        });
+
+        // Add notification
+        await fetch("/api/database/notifications", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_address: address,
+            message: `Your lending proposal ${proposalId} has been cancelled`,
+          }),
+        });
 
         console.log("Transaction completed!");
       }
@@ -256,14 +287,14 @@ const TableRow = ({ onCounter }: TableRowProps) => {
 
               {/* Quantity Column */}
               <div className="text-center px-4 py-6">
-                <p className="font-medium">{Number(item.token_amount / BigInt(10 ** 18)).toFixed(2)}</p>
+                <p className="font-medium">
+                  {Number(item.token_amount / BigInt(10 ** 18)).toFixed(2)}
+                </p>
               </div>
 
               {/* Net Value Column */}
               <div className="text-center px-4 py-6">
-                <p className="font-medium">
-                $ {item.amount.toString()}
-                </p>
+                <p className="font-medium">$ {item.amount.toString()}</p>
               </div>
 
               {/* Interest Rate Column */}
@@ -284,7 +315,10 @@ const TableRow = ({ onCounter }: TableRowProps) => {
                       ? "bg-gray-400 cursor-not-allowed"
                       : "bg-black hover:bg-opacity-90 transition"
                   }`}
-                  onClick={() =>{console.log('item id', item.id), handleLend(item.id, item.amount.toString())}}
+                  onClick={() => {
+                    console.log("item id", item.id),
+                      handleLend(item.id, item.amount.toString());
+                  }}
                   disabled={loading || proposalsLoading}
                 >
                   {loading ? "..." : "Borrow"}
@@ -306,8 +340,13 @@ const TableRow = ({ onCounter }: TableRowProps) => {
                   Counter
                 </button>
 
-                  {TokentoHex(item.lender.toString()) === normalizeAddress(address) && (
-                  <X onClick={() => cancelProposal(item.id.toString(), item.amount.toString())} />
+                {TokentoHex(item.lender.toString()) ===
+                  normalizeAddress(address) && (
+                  <X
+                    onClick={() =>
+                      cancelProposal(item.id.toString(), item.amount.toString())
+                    }
+                  />
                 )}
               </div>
             </div>
@@ -378,7 +417,11 @@ const Lender = () => {
           <div className="overflow-x-auto text-black border border-gray-300 mx-4 mb-4">
             <TableHeader />
             <div className="w-full">
-            <TableRow onCounter={(proposalId) => handleOpenModal("counter", proposalId)} />
+              <TableRow
+                onCounter={(proposalId) =>
+                  handleOpenModal("counter", proposalId)
+                }
+              />
             </div>
           </div>
 

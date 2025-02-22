@@ -99,16 +99,11 @@ export default function AllPositions() {
     ].filter((proposal) => {
         const lender = toHex(proposal?.lender?.toString());
         const borrower = toHex(proposal?.borrower?.toString());
-        console.log('lender: ', lender)
-        console.log('borrower: ', borrower)
 
         return address?.slice(-63) === lender.slice(-63) || address.slice(-63) === borrower.slice(-63)
     })
 
-    // console.log(userPositions)
-
     const formattedUserPositions: FormattedPosition[] = userPositions.map((position, index) => {
-        console.log(position)
         const asset = getTokenName(toHex((position?.token?.toString() as string)));
         const position_type = position?.proposal_type?.variant?.LENDING === undefined ? 'Borrow':'Lend';
         const created_at = timeStampToDate((position?.created_at?.toString()));
@@ -133,10 +128,6 @@ export default function AllPositions() {
             month
         }
     })
-
-    console.log(Array.isArray(formattedUserPositions))
-    // console.log(typeof [])
-    console.log(typeof formattedUserPositions)
 
     const groupPositionsByMonth = (positions: FormattedPosition[]) => {
         // Group positions by month
@@ -170,7 +161,6 @@ export default function AllPositions() {
     };
 
     const groupedPositions = groupPositionsByMonth(formattedUserPositions)
-    console.log(groupedPositions)
 
     return (
         <main className="bg-[#efefef] min-h-screen">

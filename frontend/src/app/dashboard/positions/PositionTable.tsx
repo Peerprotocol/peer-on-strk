@@ -21,7 +21,7 @@ export default function PositionTable({ positionData }: PositionTableProps){
 
     return (
         <div className={`${raleway.className} text-black my-8 overflow-x-auto`}>
-            <h1 className="font-semibold">{positionData[0].month}</h1>
+            <h1 className="font-semibold">{positionData[0]?.month}</h1>
             <table className="w-full md:basis-[100%] text-[10px] md:text-base bg-white-100 text-left min-w-[500px] divide-y divide-gray-700 my-4">
                 <thead className="bg-white-100 text-gray-450 py-4 font-light rounded-t-lg">
                     <tr className="bg-[#bebbbb] px-2">

@@ -3,7 +3,8 @@
 import Image from "next/image"
 import React, { useState, useCallback } from 'react'
 import { uint256 } from 'starknet'
-import { useContract, useAccount, useNetwork, useContractRead } from '@starknet-react/core'
+import { useContract, useContractRead } from '@starknet-react/core';
+import { useContractWrite, useAccount } from '@starknet-react/core';
 import { toast as hotToast } from 'react-hot-toast'
 import { toast as toastify } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
@@ -113,11 +114,6 @@ export default function DepositWithdrawPeer() {
     }
   ]
 
-  const { contract: tokenContract } = useContract({
-    abi: mockTokenAbi,
-    address: selectedToken.address,
-  })
-
   const { contract: protocolContract } = useContract({
     abi: protocolAbi,
     address: PROTOCOL_ADDRESS,
@@ -133,41 +129,29 @@ export default function DepositWithdrawPeer() {
     }
   }
 
-  const handleApprove = async () => {
-    if (!tokenContract || !account) {
-      hotToast.error('Wallet not connected')
-      return false
-    }
-
-    try {
-      setLoading(true)
-
-      const amountUint256 = getUint256FromDecimal(amount)
-
-      const approvalCall = tokenContract.populate('approve', [
-        PROTOCOL_ADDRESS,
-        amountUint256
-      ])
-
-      const approvalTx = await account.execute(approvalCall)
-
-      await account.waitForTransaction(approvalTx.transaction_hash)
-      toastify.success('Token approval successful')
-      return true
-    } catch (err: any) {
-      hotToast.error(`Approval failed: ${err.message}`)
-      return false
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     if (/^\d*\.?\d*$/.test(value)) {
       setAmount(value)
     }
   }
+  
+  const amountUint256 = getUint256FromDecimal(amount);
+
+  const { writeAsync: multicall } = useContractWrite({
+    calls: [
+      {
+        contractAddress: selectedToken.address,
+        entrypoint: 'approve',
+        calldata: [PROTOCOL_ADDRESS, amountUint256.low, amountUint256.high]
+      },
+      {
+        contractAddress: PROTOCOL_ADDRESS,
+        entrypoint: 'deposit',
+        calldata: [selectedToken.address, amountUint256.low, amountUint256.high]
+      }
+    ]
+  });
 
   const handleDeposit = async () => {
     if (!protocolContract || !account) {
@@ -177,18 +161,8 @@ export default function DepositWithdrawPeer() {
   
     try {
       setLoading(true);
-  
-      const isApproved = await handleApprove();
-      if (!isApproved) return;
-  
-      const amountUint256 = getUint256FromDecimal(amount);
-      const depositCall = protocolContract.populate('deposit', [
-        selectedToken.address,
-        amountUint256
-      ]);
-  
-      const depositTx = await account.execute(depositCall);
-      await account.waitForTransaction(depositTx.transaction_hash);
+
+      const response = await multicall();
   
       // Record transaction in DB
       await fetch('/api/database/transactions', {
@@ -196,7 +170,7 @@ export default function DepositWithdrawPeer() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_address: account.address,
-          token: selectedToken.address,
+          token: selectedToken.symbol,
           amount: amount,
           transaction_type: 'deposit'
         })
@@ -210,6 +184,16 @@ export default function DepositWithdrawPeer() {
       setLoading(false);
     }
   };
+
+  const { writeAsync: withdrawalcall } = useContractWrite({
+    calls: [
+      {
+        contractAddress: PROTOCOL_ADDRESS,
+        entrypoint: 'withdraw',
+        calldata: [selectedToken.address, amountUint256.low, amountUint256.high]
+      }
+    ]
+  });
   
 
   const handleWithdraw = async () => {
@@ -221,14 +205,7 @@ export default function DepositWithdrawPeer() {
     try {
       setLoading(true);
   
-      const amountUint256 = getUint256FromDecimal(amount);
-      const withdrawCall = protocolContract.populate('withdraw', [
-        selectedToken.address,
-        amountUint256
-      ]);
-  
-      const withdrawTx = await account.execute(withdrawCall);
-      await account.waitForTransaction(withdrawTx.transaction_hash);
+      const response = await withdrawalcall();
   
       // Record transaction in DB
       await fetch('/api/database/transactions', {
@@ -236,7 +213,7 @@ export default function DepositWithdrawPeer() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_address: account.address,
-          token: selectedToken.address,
+          token: selectedToken.symbol,
           amount: amount,
           transaction_type: 'withdraw'
         })

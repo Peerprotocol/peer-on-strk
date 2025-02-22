@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sql } from "@vercel/postgres";
+import { NotificationService } from "@/lib/services/notification";
 
 // GET: Fetch notifications for a specific user address
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const userAddress = searchParams.get("user_address");
-    
+
     if (!userAddress) {
       return NextResponse.json(
         { success: false, message: "User address is required" },
@@ -15,22 +15,23 @@ export async function GET(req: NextRequest) {
     }
 
     // Get notifications for the user, ordered by most recent first
-    const result = await sql`
-      SELECT id, message, timestamp
-      FROM notifications
-      WHERE user_address = ${userAddress}
-      ORDER BY timestamp DESC;
-    `;
+    const notifications = await NotificationService.getByUserAddress(
+      userAddress
+    );
 
     return NextResponse.json({
       success: true,
-      data: result.rows,
-      count: result.rowCount
+      data: notifications,
+      count: notifications.length,
     });
   } catch (error: any) {
     console.error("Error fetching notifications:", error);
     return NextResponse.json(
-      { success: false, message: "Error fetching notifications", error: error.message },
+      {
+        success: false,
+        message: "Error fetching notifications",
+        error: error.message,
+      },
       { status: 500 }
     );
   }
@@ -49,22 +50,27 @@ export async function POST(req: Request) {
       );
     }
 
-    // Insert new notification
-    const result = await sql`
-      INSERT INTO notifications (user_address, message)
-      VALUES (${user_address}, ${message})
-      RETURNING id, user_address, message, timestamp;
-    `;
+    const notification = await NotificationService.create({
+      user_address,
+      message,
+    });
 
-    return NextResponse.json({
-      success: true,
-      message: "Notification created successfully",
-      data: result.rows[0]
-    }, { status: 201 });
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Notification created successfully",
+        data: notification,
+      },
+      { status: 201 }
+    );
   } catch (error: any) {
     console.error("Error creating notification:", error);
     return NextResponse.json(
-      { success: false, message: "Error creating notification", error: error.message },
+      {
+        success: false,
+        message: "Error creating notification",
+        error: error.message,
+      },
       { status: 500 }
     );
   }
@@ -75,7 +81,7 @@ export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const notificationId = searchParams.get("id");
-    
+
     if (!notificationId) {
       return NextResponse.json(
         { success: false, message: "Notification ID is required" },
@@ -84,13 +90,9 @@ export async function DELETE(req: NextRequest) {
     }
 
     // Delete the notification
-    const result = await sql`
-      DELETE FROM notifications
-      WHERE id = ${notificationId}
-      RETURNING id;
-    `;
+    const result = await NotificationService.delete(notificationId);
 
-    if (result.rowCount === 0) {
+    if (!result) {
       return NextResponse.json(
         { success: false, message: "Notification not found" },
         { status: 404 }
@@ -100,12 +102,16 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({
       success: true,
       message: "Notification deleted successfully",
-      id: result.rows[0].id
+      id: result.id,
     });
   } catch (error: any) {
     console.error("Error deleting notification:", error);
     return NextResponse.json(
-      { success: false, message: "Error deleting notification", error: error.message },
+      {
+        success: false,
+        message: "Error deleting notification",
+        error: error.message,
+      },
       { status: 500 }
     );
   }

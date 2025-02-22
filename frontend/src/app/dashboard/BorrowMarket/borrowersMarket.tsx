@@ -12,20 +12,19 @@ import protocolAbi from "../../../../public/abi/protocol.json";
 import { normalizeAddress, toHex } from "@/components/internal/helpers";
 import { useAccount } from "@starknet-react/core";
 import { useContractWrite } from "@starknet-react/core";
-import { toast as toastify } from 'react-toastify'
-import 'react-toastify/dist/ReactToastify.css'
+import { toast as toastify } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import NewProposalModal from "@/components/proposalModal";
-import { TokentoHex } from '../../../components/internal/helpers/index';
+import { TokentoHex } from "../../../components/internal/helpers/index";
 
-type ModalType = "borrow" | "counter" | 'lend';
-
+type ModalType = "borrow" | "counter" | "lend";
 
 //Constants
 const ITEMS_PER_PAGE = 7;
 const TOKEN_ADDRESSES = {
-  STRK: '0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d',
-  ETH: '0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7'
-}
+  STRK: "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+  ETH: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+};
 
 // Component for the table header
 const TableHeader = () => (
@@ -51,12 +50,12 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
   const { data, isLoading: proposalsLoading } = useContractRead(
     address
       ? {
-        abi: protocolAbi,
-        address: PROTOCOL_ADDRESS,
-        functionName: "get_borrow_proposal_details",
-        args: [],
-        watch: true,
-      }
+          abi: protocolAbi,
+          address: PROTOCOL_ADDRESS,
+          functionName: "get_borrow_proposal_details",
+          args: [],
+          watch: true,
+        }
       : ({} as any)
   );
 
@@ -70,50 +69,62 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
         contractAddress: PROTOCOL_ADDRESS,
         entrypoint: "accept_proposal",
         calldata: [], // This will be filled when calling
-      }
+      },
     ],
   });
 
   const handleLend = async (proposalId: any, amount: any) => {
-    console.log('proposal id', proposalId);
+    console.log("proposal id", proposalId);
     setLoading(true);
     try {
       const transaction = await lend({
-        calls: [{
-          abi: protocolAbi,
-          contractAddress: PROTOCOL_ADDRESS,
-          entrypoint: "accept_proposal",
-          calldata: [proposalId, '0']
-        }]
+        calls: [
+          {
+            abi: protocolAbi,
+            contractAddress: PROTOCOL_ADDRESS,
+            entrypoint: "accept_proposal",
+            calldata: [proposalId, "0"],
+          },
+        ],
       });
 
       if (transaction?.transaction_hash) {
-        toastify.success('Proposal Accepted')
+        toastify.success("Proposal Accepted");
         console.log("Transaction submitted:", transaction.transaction_hash);
 
         // Wait for transaction
         await transaction.wait();
 
         // Record transaction in DB
-        await fetch('/api/database/protocol-data', {
-          method: 'POST',
+        await fetch("/api/database/protocol-data", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json'
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             total_borrow: amount,
             total_lend: 0,
             total_p2p_deals: 1,
             total_interest_earned: 0,
-            total_value_locked: 0
-          })
-        })
+            total_value_locked: 0,
+          }),
+        });
+
+        // Add notification
+        await fetch("/api/database/notifications", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_address: address,
+            message: `Your borrowing proposal ${proposalId} has been accepted`,
+          }),
+        });
 
         console.log("Transaction completed!");
       }
     } catch (error) {
       console.error("Error borrowing:", error);
-      toastify.error('Failed. Try again!')
+      toastify.error("Failed. Try again!");
     } finally {
       setLoading(false);
     }
@@ -126,7 +137,7 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
         contractAddress: PROTOCOL_ADDRESS,
         entrypoint: "cancel_proposal",
         calldata: [], // This will be filled when calling
-      }
+      },
     ],
   });
 
@@ -134,41 +145,54 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
     setLoading(true);
     try {
       const transaction = await cancel({
-        calls: [{
-          abi: protocolAbi,
-          contractAddress: PROTOCOL_ADDRESS,
-          entrypoint: "cancel_proposal",
-          calldata: [proposalId, "0"]
-        }]
+        calls: [
+          {
+            abi: protocolAbi,
+            contractAddress: PROTOCOL_ADDRESS,
+            entrypoint: "cancel_proposal",
+            calldata: [proposalId, "0"],
+          },
+        ],
       });
 
       if (transaction?.transaction_hash) {
         console.log("Transaction submitted:", transaction.transaction_hash);
-        toastify.success('Proposal Cancelled')
+
+        toastify.success("Proposal Cancelled");
 
         // Wait for transaction
         await transaction.wait();
 
         // Record transaction in DB
-        await fetch('/api/database/protocol-data', {
-          method: 'POST',
+        await fetch("/api/database/protocol-data", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json'
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             total_borrow: -amount,
             total_lend: 0,
             total_p2p_deals: -1,
             total_interest_earned: 0,
-            total_value_locked: 0
-          })
-        })
+            total_value_locked: 0,
+          }),
+        });
+
+        // Add notification
+        await fetch("/api/database/notifications", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_address: address,
+            message: `Your borrowing proposal ${proposalId} has been cancelled`,
+          }),
+        });
 
         console.log("Transaction completed!");
       }
     } catch (error) {
       console.error("Error borrowing:", error);
-      toastify.error('Failed. Try again')
+      toastify.error("Failed. Try again");
     } finally {
       setLoading(false);
     }
@@ -187,13 +211,15 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
   return (
     <div className="border-t border-gray-300 min-w-[800px] w-full">
       {lendingProposals
-        .filter((item: any) => item.is_cancelled !== true && item.is_accepted !== true)
+        .filter(
+          (item: any) => item.is_cancelled !== true && item.is_accepted !== true
+        )
         .map((item: any, index: number) => {
           const tokenHex = toHex(item.token.toString());
           let lenderHex = toHex(item.lender.toString());
 
           if (item.borrower == address) {
-            lenderHex = 'Me'
+            lenderHex = "Me";
           }
 
           return (
@@ -207,7 +233,10 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
                   alt="phantomicon"
                   className="h-5 w-5"
                 />
-                <p className="font-medium ml-2">{`${lenderHex.slice(0, 5)}..`}</p>
+                <p className="font-medium ml-2">{`${lenderHex.slice(
+                  0,
+                  5
+                )}..`}</p>
               </div>
 
               {/* Token Column */}
@@ -217,7 +246,9 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
 
               {/* Quantity Column */}
               <div className="text-center px-4 py-6">
-                <p className="font-medium">{Number(item.token_amount / BigInt(10 ** 18)).toFixed(2)}</p>
+                <p className="font-medium">
+                  {Number(item.token_amount / BigInt(10 ** 18)).toFixed(2)}
+                </p>
               </div>
 
               {/* Net Value Column */}
@@ -238,19 +269,27 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
               {/* Actions Column */}
               <div className="flex gap-4 justify-center items-center py-6">
                 <button
-                  className={`px-4 py-2 text-sm rounded-full text-white ${loading || proposalsLoading
+                  className={`px-4 py-2 text-sm rounded-full text-white ${
+                    loading || proposalsLoading
                       ? "bg-gray-400 cursor-not-allowed"
                       : "bg-black hover:bg-opacity-90 transition"
-                    }`}
-
-                  onClick={() => {console.log('item id', item.id), handleLend(item.id.toString(), item.amount.toString())}}
+                  }`}
+                  onClick={() => {
+                    console.log("item id", item.id),
+                      handleLend(item.id.toString(), item.amount.toString());
+                  }}
                   disabled={loading || proposalsLoading}
                 >
                   {loading ? "..." : "Lend"}
                 </button>
-                    {/* can only counter lending proposals */}
-                 {TokentoHex(item.borrower.toString()) == normalizeAddress(address) && (
-                 <X onClick={() => cancelProposal(item.id.toString(), item.amount.toString())} />
+                {/* can only counter lending proposals */}
+                {TokentoHex(item.borrower.toString()) ==
+                  normalizeAddress(address) && (
+                  <X
+                    onClick={() =>
+                      cancelProposal(item.id.toString(), item.amount.toString())
+                    }
+                  />
                 )}
               </div>
             </div>
@@ -260,14 +299,12 @@ const TableRow = ({ onCounterProposal }: TableRowProps) => {
   );
 };
 
-
-
 // Component for the proposal form in modal
 
 const Pagination = ({
   currentPage,
   totalPages,
-  onPageChange
+  onPageChange,
 }: {
   currentPage: number;
   totalPages: number;
@@ -278,10 +315,11 @@ const Pagination = ({
       {Array.from({ length: totalPages }, (_, index) => (
         <button
           key={index}
-          className={`px-4 py-2 ${currentPage === index + 1
-            ? "bg-[rgba(0,0,0,0.8)] text-white"
-            : "bg-[#F5F5F5] text-black border-black border"
-            } rounded-lg`}
+          className={`px-4 py-2 ${
+            currentPage === index + 1
+              ? "bg-[rgba(0,0,0,0.8)] text-white"
+              : "bg-[#F5F5F5] text-black border-black border"
+          } rounded-lg`}
           onClick={() => onPageChange(index + 1)}
         >
           {index + 1}
@@ -299,7 +337,7 @@ const BorrowersMarket = () => {
   const [isHovered, setIsHovered] = useState(false);
   const [selectedProposalId, setSelectedProposalId] = useState<string>("");
   const [modalType, setModalType] = useState<ModalType>("lend");
-  const [title, setTitle] = useState('Create a Lending Proposal');
+  const [title, setTitle] = useState("Create a Lending Proposal");
 
   const totalPages = Math.ceil(5 / ITEMS_PER_PAGE);
 
@@ -308,10 +346,10 @@ const BorrowersMarket = () => {
     setModalType(type);
     if (proposalId) {
       setSelectedProposalId(proposalId);
-  }
+    }
     setModalOpen(true);
-    if (type === 'counter') {
-      setTitle('Counter this Proposal')
+    if (type === "counter") {
+      setTitle("Counter this Proposal");
     }
   };
 
@@ -323,12 +361,25 @@ const BorrowersMarket = () => {
           <Nav />
           <div className="flex justify-left items-center gap-3 p-4">
             <Link href="/dashboard">
-              <Image src={BackButton} height={40} width={40} alt="back-button" className="cursor-pointer" />
+              <Image
+                src={BackButton}
+                height={40}
+                width={40}
+                alt="back-button"
+                className="cursor-pointer"
+              />
             </Link>
             <div className="flex items-center gap-2">
-              <h1 className="text-black text-2xl md:text-4xl">Borrowers Market</h1>
+              <h1 className="text-black text-2xl md:text-4xl">
+                Borrowers Market
+              </h1>
               <div className="flex gap-2 border rounded-3xl text-black border-gray-500 px-3 py-1 items-center">
-                <Image src="/images/starknet.png" height={20} width={20} alt="starknet-logo" />
+                <Image
+                  src="/images/starknet.png"
+                  height={20}
+                  width={20}
+                  alt="starknet-logo"
+                />
                 <p className="text-xs">Starknet</p>
               </div>
             </div>
@@ -336,9 +387,11 @@ const BorrowersMarket = () => {
           <div className="overflow-x-auto text-black border mx-4 mb-4 rounded-xl">
             <TableHeader />
             <div>
-
-            <TableRow onCounterProposal={(proposalId) => openModal("counter", proposalId)} />
-
+              <TableRow
+                onCounterProposal={(proposalId) =>
+                  openModal("counter", proposalId)
+                }
+              />
             </div>
           </div>
           <button
@@ -352,11 +405,23 @@ const BorrowersMarket = () => {
               size={22}
               strokeWidth={3}
               absoluteStrokeWidth
-              className={`transition-colors duration-300 ease-in-out ${isHovered ? "text-white" : "text-black"}`}
+              className={`transition-colors duration-300 ease-in-out ${
+                isHovered ? "text-white" : "text-black"
+              }`}
             />
           </button>
-          <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
-          <NewProposalModal type={modalType} show={isModalOpen} onClose={() => setModalOpen(prev => !prev)} title={title} proposalId={selectedProposalId}  />
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+          />
+          <NewProposalModal
+            type={modalType}
+            show={isModalOpen}
+            onClose={() => setModalOpen((prev) => !prev)}
+            title={title}
+            proposalId={selectedProposalId}
+          />
         </div>
       </div>
     </main>

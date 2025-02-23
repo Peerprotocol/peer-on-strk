@@ -20,19 +20,18 @@ const SingleFilterBar: React.FC<SingleFilterBarProps> = ({
 
   return (
     <>
-      {/* Outer container with justify-end to align children to the right */}
-      <div className="p-4 flex items-center gap-4 justify-end relative">
+      <div className="p-4 flex items-center gap-2 md:gap-4 relative">
         {/* "Filter By" label to the left within the right-aligned group */}
         <label className="text-sm font-medium text-black">Filter by</label>
         
         {/* Container with toggle button and input */}
-        <div className="relative w-1/3">
+        <div className="relative ">
           <div className="w-full h-[70px] border border-black rounded-full flex items-center overflow-hidden">
 
           <button
             type="button"
             onClick={() => setIsOptionsOpen(!isOptionsOpen)}
-            className="rounded-full mx-4 px-4 py-2 flex items-center gap-1 border border-black"
+            className="rounded-full mx-4 px-2 py-2 flex items-center gap-1 border border-black"
           >
             <span className="text-[#000000]">{filterOption}</span>
             <ChevronDown size={16} className="text-black" />
@@ -43,7 +42,7 @@ const SingleFilterBar: React.FC<SingleFilterBarProps> = ({
               placeholder={`Enter ${filterOption}...`}
               value={filterValue}
               onChange={(e) => onValueChange(e.target.value)}
-              className="flex-1 h-full px-4 py-4 text-black placeholder:text-[#0000004D] outline-none"
+              className="flex-1 h-full px-2 py-4 text-black placeholder:text-[#0000004D] outline-none"
             />
           </div>
           {/* Dropdown for filter options */}
@@ -57,7 +56,7 @@ const SingleFilterBar: React.FC<SingleFilterBarProps> = ({
                       onOptionChange(option);
                       setIsOptionsOpen(false);
                     }}
-                    className={`flex items-center w-full px-4 py-2 text-sm ${
+                    className={`flex items-center w-full px-2 py-2 text-sm ${
                       option === filterOption
                         ? "bg-gray-100 text-gray-900"
                         : "text-gray-700"

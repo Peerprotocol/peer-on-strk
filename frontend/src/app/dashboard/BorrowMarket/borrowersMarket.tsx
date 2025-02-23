@@ -1,6 +1,6 @@
 "use client";
+import React, { useState, useMemo, useEffect } from "react";
 import BackButton from "../../../../public/images/back-button.svg";
-import { useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Plus, X } from "lucide-react";
@@ -21,7 +21,7 @@ import FilterBar from "@/components/custom/FilterBar";
 type ModalType = "borrow" | "counter" | "lend";
 
 //Constants
-const ITEMS_PER_PAGE = 7;
+const ITEMS_PER_PAGE = 8;
 const TOKEN_ADDRESSES = {
   STRK: "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
   ETH: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
@@ -275,16 +275,21 @@ const TableRow = ({ proposals, onCounterProposal }: TableRowProps) => {
                       ? "bg-gray-400 cursor-not-allowed"
                       : "bg-black hover:bg-opacity-90 transition"
                   }`}
-                  onClick={() => handleLend(item.id.toString(), item.amount.toString())}
+                  onClick={() =>
+                    handleLend(item.id.toString(), item.amount.toString())
+                  }
                   disabled={loading}
                 >
                   {loading ? "..." : "Lend"}
                 </button>
                 {/* Cancel only if I'm the borrower */}
-                {TokentoHex(item.borrower.toString()) === normalizeAddress(address) && (
+                {TokentoHex(item.borrower.toString()) ===
+                  normalizeAddress(address) && (
                   <X
                     className="cursor-pointer"
-                    onClick={() => cancelProposal(item.id.toString(), item.amount.toString())}
+                    onClick={() =>
+                      cancelProposal(item.id.toString(), item.amount.toString())
+                    }
                   />
                 )}
               </div>
@@ -326,7 +331,6 @@ const Pagination = ({
     </div>
   </div>
 );
-
 // -------------------------
 // Main BorrowersMarket
 // -------------------------
@@ -339,8 +343,8 @@ const BorrowersMarket = () => {
   const [title, setTitle] = useState("Create a Lending Proposal");
 
   // SINGLE-TOGGLE FILTER:
-  const [filterOption, setFilterOption] = useState("token");       // "token" | "amount" | "interestRate" | "duration"
-  const [filterValue, setFilterValue] = useState("");              // user-typed value
+  const [filterOption, setFilterOption] = useState("token");
+  const [filterValue, setFilterValue] = useState("");
 
   // Read proposals from contract
   const { address } = useAccount();
@@ -378,12 +382,10 @@ const BorrowersMarket = () => {
   // Filter Proposals based on selected filterOption
   const filteredProposals = useMemo(() => {
     if (!filterValue) {
-      // If user hasn't typed anything, show all valid proposals
       return validProposals;
     }
 
     return validProposals.filter((item: any) => {
-      // Convert item fields to easily comparable data
       const itemTokenSymbol = getTokenSymbol(toHex(item.token.toString()));
       const itemAmount = parseFloat(item.amount.toString());
       const itemInterest = parseFloat(item.interest_rate.toString());
@@ -391,7 +393,6 @@ const BorrowersMarket = () => {
 
       switch (filterOption) {
         case "token":
-          // Compare case-insensitively
           return itemTokenSymbol.toLowerCase() === filterValue.toLowerCase();
         case "amount": {
           const userAmount = parseFloat(filterValue);
@@ -414,21 +415,31 @@ const BorrowersMarket = () => {
     });
   }, [validProposals, filterOption, filterValue]);
 
-  // Pagination
+  // Pagination Logic
   const totalPages = Math.ceil(filteredProposals.length / ITEMS_PER_PAGE);
+
+  // Slice for current page
+  const currentPageProposals = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return filteredProposals.slice(startIndex, endIndex);
+  }, [filteredProposals, currentPage]);
+
+  // Reset current page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filteredProposals]);
+
   const handlePageChange = (page: number) => setCurrentPage(page);
 
   const openModal = (type: ModalType, proposalId?: string) => {
     setModalType(type);
     setSelectedProposalId(proposalId || "");
     setModalOpen(true);
-    setTitle(type === "counter" ? "Counter this Proposal" : "Create a Lending Proposal");
+    setTitle(
+      type === "counter" ? "Counter this Proposal" : "Create a Lending Proposal"
+    );
   };
-
-  // Slice for current page
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const endIndex = startIndex + ITEMS_PER_PAGE;
-  const currentPageProposals = filteredProposals.slice(startIndex, endIndex);
 
   return (
     <main className="bg-[#F5F5F5]">
@@ -449,7 +460,9 @@ const BorrowersMarket = () => {
               />
             </Link>
             <div className="flex items-center gap-2">
-              <h1 className="text-black text-2xl md:text-4xl">Borrowers Market</h1>
+              <h1 className="text-black text-2xl md:text-4xl">
+                Borrowers Market
+              </h1>
               <div className="flex gap-2 border rounded-3xl text-black border-gray-500 px-3 py-1 items-center">
                 <Image
                   src="/images/starknet.png"
@@ -463,7 +476,51 @@ const BorrowersMarket = () => {
           </div>
 
           {/* Single-Filter Bar */}
-          <div className="mx-4 mb-4">
+          <div className="mx-4 mb-4 relative hidden lg:block">
+            <FilterBar
+              filterOption={filterOption}
+              filterValue={filterValue}
+              onOptionChange={(opt) => setFilterOption(opt)}
+              onValueChange={(val) => setFilterValue(val)}
+            />
+            <button
+              onClick={() => openModal("lend")}
+              className=" flex items-center gap-2 px-6 py-3 rounded-3xl absolute
+                       bg-[#F5F5F5] text-black border border-[rgba(0,0,0,0.8)] 
+                       mx-auto font-light hover:bg-[rgba(0,0,0,0.8)] hover:text-white top-[1.6em] right-2"
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
+            >
+              <p>Create a Lending Proposal</p>
+              <Plus
+                size={22}
+                strokeWidth={3}
+                absoluteStrokeWidth
+                className={`transition-colors duration-300 ease-in-out ${
+                  isHovered ? "text-white" : "text-black"
+                }`}
+              />
+            </button>
+          </div>
+          <div className="mx-4 mb-4 flex-col items-center block lg:hidden">
+            <button
+              onClick={() => openModal("lend")}
+              className=" flex items-center gap-2 px-6 py-3 rounded-3xl 
+                       bg-[#F5F5F5] text-black border border-[rgba(0,0,0,0.8)] 
+                       mx-auto font-light hover:bg-[rgba(0,0,0,0.8)] hover:text-white "
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
+            >
+              <p>Create a Lending Proposal</p>
+              <Plus
+                size={22}
+                strokeWidth={3}
+                absoluteStrokeWidth
+                className={`transition-colors duration-300 ease-in-out ${
+                  isHovered ? "text-white" : "text-black"
+                }`}
+              />
+            </button>
             <FilterBar
               filterOption={filterOption}
               filterValue={filterValue}
@@ -477,32 +534,14 @@ const BorrowersMarket = () => {
             <TableHeader />
             <TableRow
               proposals={currentPageProposals}
-              onCounterProposal={(proposalId) => openModal("counter", proposalId)}
+              onCounterProposal={(proposalId) =>
+                openModal("counter", proposalId)
+              }
             />
           </div>
 
-          {/* Create a Lending Proposal Button */}
-          <button
-            onClick={() => openModal("lend")}
-            className="relative flex items-center gap-2 px-6 py-3 rounded-3xl 
-                       bg-[#F5F5F5] text-black border border-[rgba(0,0,0,0.8)] 
-                       mx-auto font-light hover:bg-[rgba(0,0,0,0.8)] hover:text-white"
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-          >
-            <p>Create a Lending Proposal</p>
-            <Plus
-              size={22}
-              strokeWidth={3}
-              absoluteStrokeWidth
-              className={`transition-colors duration-300 ease-in-out ${
-                isHovered ? "text-white" : "text-black"
-              }`}
-            />
-          </button>
-
           {/* Pagination */}
-          {filteredProposals.length > ITEMS_PER_PAGE && (
+          {totalPages > 1 && (
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}

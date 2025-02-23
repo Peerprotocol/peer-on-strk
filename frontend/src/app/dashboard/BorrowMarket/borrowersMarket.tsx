@@ -18,6 +18,10 @@ import NewProposalModal from "@/components/proposalModal";
 import { TokentoHex } from "../../../components/internal/helpers/index";
 import FilterBar from "@/components/custom/FilterBar";
 import AssetsLoader from "../loaders/assetsloader";
+import DepositTokenModal from "@/components/custom/DepositTokenModal";
+import { uint256 } from "starknet";
+import { toast as hotToast } from "react-hot-toast";
+import { useContract } from "@starknet-react/core";
 
 type ModalType = "borrow" | "counter" | "lend";
 
@@ -350,6 +354,84 @@ const BorrowersMarket = () => {
       : ({} as any)
   );
 
+  // NEW: Read user's asset data from protocol (for available asset sum)
+  const { data: userAssetData } = useContractRead(
+    address
+      ? {
+          abi: protocolAbi,
+          address: PROTOCOL_ADDRESS,
+          functionName: "get_user_assets",
+          args: [address],
+          watch: true,
+        }
+      : ({} as any)
+  );
+  const [totalUserAsset, setTotalUserAsset] = useState<bigint>(BigInt(0));
+  // NEW: Deposit modal state
+  const [depositModalOpen, setDepositModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (userAssetData && Array.isArray(userAssetData)) {
+      let sum = BigInt(0);
+      userAssetData.forEach((item: any) => {
+        sum += item.available_balance ?? BigInt(0);
+      });
+      setTotalUserAsset(sum);
+    }
+  }, [userAssetData]);
+
+  // Add deposit multicall for the deposit modal (similar to lendersMarket)
+  const { writeAsync: depositCall } = useContractWrite({
+    calls: [
+      {
+        contractAddress: TOKEN_ADDRESSES.STRK, // Using STRK as default here
+        entrypoint: "approve",
+        calldata: [],
+      },
+      {
+        contractAddress: PROTOCOL_ADDRESS,
+        entrypoint: "deposit",
+        calldata: [],
+      },
+    ],
+  });
+
+  // Helper to convert a float amount to Starknet uint256
+  function getUint256FromDecimal(decimalAmount: number, decimals: number) {
+    const multiplied = decimalAmount * Math.pow(10, decimals);
+    return uint256.bnToUint256(multiplied.toString());
+  }
+
+  // Define handleDepositTransaction so DepositTokenModal can call it
+  async function handleDepositTransaction(amount: number, tokenSymbol: string) {
+    if (!protocolContract) {
+      hotToast.error("Wallet not connected");
+      return;
+    }
+    try {
+      const decimals = 18;
+      const tokenAddress = tokenSymbol === "ETH" ? TOKEN_ADDRESSES.ETH : TOKEN_ADDRESSES.STRK;
+      const amountUint256 = getUint256FromDecimal(amount, decimals);
+      await depositCall({
+        calls: [
+          {
+            contractAddress: tokenAddress,
+            entrypoint: "approve",
+            calldata: [PROTOCOL_ADDRESS, amountUint256.low, amountUint256.high],
+          },
+          {
+            contractAddress: PROTOCOL_ADDRESS,
+            entrypoint: "deposit",
+            calldata: [tokenAddress, amountUint256.low, amountUint256.high],
+          },
+        ],
+      });
+      toastify.success("Deposit successful");
+    } catch (err: any) {
+      hotToast.error(`Deposit failed: ${err.message}`);
+    }
+  }
+
   // All proposals
   const allProposals = Array.isArray(data) ? data : [];
 
@@ -422,7 +504,16 @@ const BorrowersMarket = () => {
 
   const handlePageChange = (page: number) => setCurrentPage(page);
 
+  const { contract: protocolContract } = useContract({
+    abi: protocolAbi,
+    address: PROTOCOL_ADDRESS,
+  });
+
   const openModal = (type: ModalType, proposalId?: string) => {
+    if (totalUserAsset <= BigInt(0)) {
+      setDepositModalOpen(true);
+      return;
+    }
     setModalType(type);
     setSelectedProposalId(proposalId || "");
     setModalOpen(true);
@@ -547,6 +638,17 @@ const BorrowersMarket = () => {
             title={title}
             proposalId={selectedProposalId}
           />
+          {/* NEW: Render DepositTokenModal */}
+          {depositModalOpen && (
+            <DepositTokenModal
+              isOpen={depositModalOpen}
+              onClose={() => setDepositModalOpen(false)}
+              walletAddress={address || ""}
+              onDeposit={async (depositAmount: number, tokenSymbol: string) => {
+                await handleDepositTransaction(depositAmount, tokenSymbol);
+              }}
+            />
+          )}
         </div>
       </div>
     </main>

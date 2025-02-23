@@ -1,17 +1,19 @@
 "use client";
-import React, { useState, useMemo} from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
   useAccount,
   useContractWrite,
   useContractRead,
+  useContract,
 } from "@starknet-react/core";
 import { Plus, X } from "lucide-react";
 import Nav from "../../../components/custom/Nav";
 import Sidebar from "../../../components/custom/sidebar";
 import { PROTOCOL_ADDRESS } from "@/components/internal/helpers/constant";
 import protocolAbi from "../../../../public/abi/protocol.json";
+import Erc20Abi from "../../../../public/abi/token.abi.json";
 import { normalizeAddress, toHex } from "@/components/internal/helpers";
 import { toast as toastify } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -20,6 +22,9 @@ import { CallData } from "starknet";
 import { TokentoHex } from "../../../components/internal/helpers/index";
 import FilterBar from "@/components/custom/FilterBar";
 import AssetsLoader from "../loaders/assetsloader";
+import DepositTokenModal from "@/components/custom/DepositTokenModal";
+import { uint256 } from "starknet";
+import { toast as hotToast } from "react-hot-toast";
 
 // Constants
 const ITEMS_PER_PAGE = 5;
@@ -311,10 +316,12 @@ const TableRow = ({ proposals, onCounter }: TableRowProps) => {
 const Lender = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [isModalOpen, setModalOpen] = useState(false);
+  const [depositModalOpen, setDepositModalOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [selectedProposalId, setSelectedProposalId] = useState<string>("");
   const [modalType, setModalType] = useState<"lend" | "counter" | "borrow">("borrow");
   const [title, setTitle] = useState("Create a Borrow Proposal");
+  const [totalUserAsset, setTotalUserAsset] = useState<bigint>(BigInt(0));
 
   // Filter states
   const [filterOption, setFilterOption] = useState("token");
@@ -322,6 +329,104 @@ const Lender = () => {
 
   // Read lending proposals from contract
   const { address } = useAccount();
+
+  const { data: userAssetData } = useContractRead(
+    address
+      ? {
+          abi: protocolAbi,
+          address: PROTOCOL_ADDRESS,
+          functionName: "get_user_assets",
+          args: [address],
+        }
+      : ({} as any)
+  );
+
+  useEffect(() => {
+    if (userAssetData && Array.isArray(userAssetData)) {
+      let sum = BigInt(0);
+      userAssetData.forEach((item: any) => {
+        sum += item.available_balance ?? BigInt(0);
+      });
+      setTotalUserAsset(sum);
+    }
+  }, [userAssetData]);
+
+  function getUint256FromDecimal(decimalAmount: number, decimals: number) {
+    // Convert a float value to a Starknet uint256
+    const multiplied = decimalAmount * Math.pow(10, decimals);
+    return uint256.bnToUint256(multiplied.toString());
+  }
+
+  // Provide a deposit multicall (similar to DepositWithdrawPeer's)
+  const { contract: protocolContract } = useContract({
+    abi: protocolAbi,
+    address: PROTOCOL_ADDRESS,
+  });
+
+  // This handles both "approve" + "deposit"
+  const { writeAsync: depositCall } = useContractWrite({
+    calls: [
+      {
+        contractAddress: TOKEN_ADDRESSES.STRK, // Placeholder; we'll override below
+        entrypoint: "approve",
+        calldata: [],
+      },
+      {
+        contractAddress: PROTOCOL_ADDRESS,
+        entrypoint: "deposit",
+        calldata: [],
+      },
+    ],
+  });
+
+  async function handleDepositTransaction(amount: number, tokenSymbol: string) {
+    if (!protocolContract) {
+      hotToast.error("Wallet not connected");
+      return;
+    }
+    try {
+      // Decide which token address + decimals based on symbol
+      const decimals = 18;
+      const tokenAddress =
+        tokenSymbol === "ETH" ? TOKEN_ADDRESSES.ETH : TOKEN_ADDRESSES.STRK;
+
+      // Convert amount to uint256
+      const amountUint256 = getUint256FromDecimal(amount, decimals);
+
+      // Execute deposit multicall (approve + deposit)
+      await depositCall({
+        calls: [
+          {
+            contractAddress: tokenAddress,
+            entrypoint: "approve",
+            calldata: [PROTOCOL_ADDRESS, amountUint256.low, amountUint256.high],
+          },
+          {
+            contractAddress: PROTOCOL_ADDRESS,
+            entrypoint: "deposit",
+            calldata: [tokenAddress, amountUint256.low, amountUint256.high],
+          },
+        ],
+      });
+
+      // Optionally record transaction in DB
+      await fetch("/api/database/transactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_address: address,
+          token: tokenSymbol,
+          amount,
+          transaction_type: "deposit",
+        }),
+      });
+
+      toastify.success("Deposit successful");
+    } catch (err: any) {
+      hotToast.error(`Deposit failed: ${err.message}`);
+    }
+  }
+
   const { data, isLoading: proposalsLoading } = useContractRead(
     address
       ? {
@@ -397,10 +502,11 @@ const Lender = () => {
     return filteredProposals.slice(startIndex, endIndex);
   }, [filteredProposals, currentPage]);
 
-  const handleOpenModal = (
-    type: "lend" | "counter" | "borrow",
-    proposalId?: string
-  ) => {
+  function handleOpenModal(type: "lend" | "counter" | "borrow", proposalId?: string) {
+    if (totalUserAsset <= BigInt(0)) {
+      setDepositModalOpen(true);
+      return;
+    }
     setModalType(type);
     setModalOpen(true);
     if (proposalId) {
@@ -409,7 +515,7 @@ const Lender = () => {
     if (type === "counter") {
       setTitle("Counter this Proposal");
     }
-  };
+  }
 
   return (
     <main className="bg-[#F5F5F5] backdrop-blur-sm">
@@ -502,6 +608,18 @@ const Lender = () => {
             title={title}
             proposalId={selectedProposalId}
           />
+
+        {/* Deposit Token Modal */}
+        {depositModalOpen && (
+          <DepositTokenModal
+            isOpen={depositModalOpen}
+            onClose={() => setDepositModalOpen(false)}
+            walletAddress={address || ""}
+            onDeposit={async (depositAmount: number, tokenSymbol: string) => {
+              await handleDepositTransaction(depositAmount, tokenSymbol);
+            }}
+          />
+        )}
         </div>
       </div>
     </main>

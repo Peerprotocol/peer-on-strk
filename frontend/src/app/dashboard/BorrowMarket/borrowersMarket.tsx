@@ -3,38 +3,60 @@ import React, { useState, useMemo, useEffect } from "react";
 import BackButton from "../../../../public/images/back-button.svg";
 import Link from "next/link";
 import Image from "next/image";
-import { Plus, X } from "lucide-react";
+import { Plus } from "lucide-react";
 import Nav from "../../../components/custom/Nav";
 import Sidebar from "../../../components/custom/sidebar";
 import { PROTOCOL_ADDRESS } from "@/components/internal/helpers/constant";
-import { useContractRead } from "@starknet-react/core";
+import { useContractRead, useAccount, useContractWrite, useContract } from "@starknet-react/core";
 import protocolAbi from "../../../../public/abi/protocol.json";
-import { normalizeAddress, toHex } from "@/components/internal/helpers";
-import { useAccount } from "@starknet-react/core";
-import { useContractWrite } from "@starknet-react/core";
+import { normalizeAddress, toHex, TokentoHex } from "@/components/internal/helpers";
 import { toast as toastify } from "react-toastify";
+import { toast as hotToast } from "react-hot-toast";
 import "react-toastify/dist/ReactToastify.css";
 import NewProposalModal from "@/components/proposalModal";
-import { TokentoHex } from "../../../components/internal/helpers/index";
 import FilterBar from "@/components/custom/FilterBar";
 import AssetsLoader from "../loaders/assetsloader";
 import DepositTokenModal from "@/components/custom/DepositTokenModal";
-import { uint256 } from "starknet";
-import { toast as hotToast } from "react-hot-toast";
-import { useContract } from "@starknet-react/core";
+import { CallData, uint256 } from "starknet";
 
 type ModalType = "borrow" | "counter" | "lend";
 
-//Constants
 const ITEMS_PER_PAGE = 5;
 const TOKEN_ADDRESSES = {
   STRK: "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
   ETH: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
 };
 
-// -------------------------
-// Table Header
-// -------------------------
+// Header Component
+const Header = () => (
+  <div className="flex justify-left items-center gap-3 p-4">
+    <Link href="/dashboard">
+      <Image
+        src={BackButton}
+        height={40}
+        width={40}
+        alt="back-button"
+        className="cursor-pointer"
+      />
+    </Link>
+    <div className="flex items-center gap-2">
+      <h1 className="text-black text-2xl md:text-4xl">
+        Borrowers Market
+      </h1>
+      <div className="flex gap-2 border rounded-3xl text-black border-gray-500 px-3 py-1 items-center">
+        <Image
+          src="/images/starknet.png"
+          height={20}
+          width={20}
+          alt="starknet-logo"
+        />
+        <p className="text-xs">Starknet</p>
+      </div>
+    </div>
+  </div>
+);
+
+// Table Header Component
 const TableHeader = () => (
   <div className="grid grid-cols-7 pt-6 rounded-t-xl bg-smoke-white py-4 min-w-[800px]">
     <div className="text-center font-semibold">Borrower</div>
@@ -47,257 +69,7 @@ const TableHeader = () => (
   </div>
 );
 
-// -------------------------
-// Table Row
-// -------------------------
-interface TableRowProps {
-  proposals: any[];
-  onCounterProposal: (item: string) => void;
-}
-
-const TableRow = ({ proposals, onCounterProposal }: TableRowProps) => {
-  const [loading, setLoading] = useState(false);
-  const { address } = useAccount();
-
-  const { write: lend, isLoading: isLendLoading } = useContractWrite({
-    calls: [
-      {
-        abi: protocolAbi,
-        contractAddress: PROTOCOL_ADDRESS,
-        entrypoint: "accept_proposal",
-        calldata: [],
-      },
-    ],
-  });
-
-  const handleLend = async (proposalId: any, amount: any) => {
-    setLoading(true);
-    try {
-      const transaction = await lend({
-        calls: [
-          {
-            abi: protocolAbi,
-            contractAddress: PROTOCOL_ADDRESS,
-            entrypoint: "accept_proposal",
-            calldata: [proposalId, "0"],
-          },
-        ],
-      });
-
-      if (transaction?.transaction_hash) {
-        toastify.success("Proposal Accepted");
-        await transaction.wait();
-
-        // Record transaction in DB
-        await fetch("/api/database/protocol-data", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            total_borrow: amount,
-            total_lend: 0,
-            total_p2p_deals: 1,
-            total_interest_earned: 0,
-            total_value_locked: 0,
-          }),
-        });
-
-        // Add notification
-        await fetch("/api/database/notifications", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            user_address: address,
-            message: `Your borrowing proposal with Id ${proposalId} has been accepted`,
-          }),
-        });
-
-        console.log("Transaction completed!");
-      }
-    } catch (error) {
-      console.error("Error borrowing:", error);
-      toastify.error("Failed. Try again!");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const { write: cancel } = useContractWrite({
-    calls: [
-      {
-        abi: protocolAbi,
-        contractAddress: PROTOCOL_ADDRESS,
-        entrypoint: "cancel_proposal",
-        calldata: [],
-      },
-    ],
-  });
-
-  const cancelProposal = async (proposalId: any, amount: any) => {
-    setLoading(true);
-    try {
-      const transaction = await cancel({
-        calls: [
-          {
-            abi: protocolAbi,
-            contractAddress: PROTOCOL_ADDRESS,
-            entrypoint: "cancel_proposal",
-            calldata: [proposalId, "0"],
-          },
-        ],
-      });
-
-        toastify.success("Proposal Cancelled");
-
-        // Wait for transaction
-        // await transaction.wait();
-
-        // Record transaction in DB
-        await fetch("/api/database/protocol-data", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            total_borrow: -amount,
-            total_lend: 0,
-            total_p2p_deals: -1,
-            total_interest_earned: 0,
-            total_value_locked: 0,
-          }),
-        });
-
-        // Add notification
-        await fetch("/api/database/notifications", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            user_address: address,
-            message: `Your borrowing proposal with Id ${proposalId} has been cancelled`,
-          }),
-        });
-
-    } catch (error) {
-      console.error("Error borrowing:", error);
-      toastify.error("Failed. Try again");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getTokenName = (tokenAddress: string): string => {
-    const normalizedAddress = tokenAddress.toLowerCase();
-    for (const [name, addr] of Object.entries(TOKEN_ADDRESSES)) {
-      if (addr.toLowerCase() === normalizedAddress) {
-        return name;
-      }
-    }
-    return "Unknown";
-  };
-
-  return (
-    <>
-    {loading ? (
-      <AssetsLoader />
-    ) : (
-<div className="border-t border-gray-300 min-w-[800px] w-full">
-      {proposals
-        .filter((item: any) => !item.is_cancelled && !item.is_accepted)
-        .map((item: any, index: number) => {
-          const tokenHex = toHex(item.token.toString());
-          const isOwner = normalizeAddress(TokentoHex(item.borrower.toString())) === normalizeAddress(address);
-          let lenderHex = toHex(item.borrower.toString());
-
-          if (isOwner) {
-            lenderHex = "Me";
-          }
-
-          return (
-            <div key={index} className="grid grid-cols-7">
-              {/* Borrower */}
-              <div className="flex items-center justify-center px-4 py-6">
-                <Image
-                  src="/images/phantom-icon.svg"
-                  height={20}
-                  width={20}
-                  alt="phantomicon"
-                  className="h-5 w-5"
-                />
-                <p className="font-medium ml-2">{`${lenderHex.slice(
-                  0,
-                  5
-                )}..`}</p>
-              </div>
-
-              {/* Token */}
-              <div className="text-center px-4 py-6">
-                <p className="font-medium">{getTokenName(tokenHex)}</p>
-              </div>
-
-              {/* Quantity */}
-              <div className="text-center px-4 py-6">
-                <p className="font-medium">
-                  {Number(item.token_amount / BigInt(10 ** 18)).toFixed(2)}
-                </p>
-              </div>
-
-              {/* Net Value */}
-              <div className="text-center px-4 py-6">
-                <p className="font-medium">$ {item.amount.toString()}</p>
-              </div>
-
-              {/* Interest Rate */}
-              <div className="text-center px-4 py-6">
-                <p className="font-medium">{item.interest_rate.toString()}%</p>
-              </div>
-
-              {/* Duration */}
-              <div className="text-center px-4 py-6">
-                <p className="font-medium">{item.duration.toString()} days</p>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-4 justify-center items-center py-6">
-              {isOwner ? (
-                    <button
-                      className="px-4 py-2 text-sm rounded-full border border-red-500 text-red-500 hover:bg-red-50 transition"
-                      onClick={() => cancelProposal(item.id.toString(), item.amount.toString())}
-                      disabled={loading}
-                    >
-                      Cancel
-                    </button>
-                  ) : (
-                    <>
-                <button
-                  className={`px-4 py-2 text-sm rounded-full text-white ${
-                    loading
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-black hover:bg-opacity-90 transition"
-                  }`}
-                  onClick={() =>
-                    handleLend(item.id.toString(), item.amount.toString())
-                  }
-                  disabled={loading}
-                >
-                  {loading ? "..." : "Lend"}
-                </button>
-                </>
-                  )}
-              </div>
-            </div>
-          );
-        })}
-    </div>
-    )}
-    </>
-  );
-};
-
-// -------------------------
-// Pagination
-// -------------------------
-
+// Pagination Component
 const Pagination = ({
   currentPage,
   totalPages,
@@ -325,9 +97,251 @@ const Pagination = ({
     </div>
   </div>
 );
-// -------------------------
-// Main BorrowersMarket
-// -------------------------
+
+// Table Row Props Interface
+interface TableRowProps {
+  proposals: any[];
+  onCounterProposal: (item: string) => void;
+  totalUserbalance: bigint;
+  onDeposit: (amount: number, tokenSymbol: string) => Promise<void>;
+}
+
+// Table Row Component
+const TableRow = ({ proposals, onCounterProposal, totalUserbalance, onDeposit }: TableRowProps) => {
+  const [loading, setLoading] = useState(false);
+  const [depositModalOpen, setDepositModalOpen] = useState(false);
+  const [selectedProposalForLending, setSelectedProposalForLending] = useState<{
+    id: string;
+    amount: string;
+  } | null>(null);
+  const { address } = useAccount();
+
+  const { write: lend } = useContractWrite({
+    calls: [{
+      abi: protocolAbi,
+      contractAddress: PROTOCOL_ADDRESS,
+      entrypoint: "accept_proposal",
+      calldata: [],
+    }],
+  });
+
+  const handleLend = async (proposalId: string, amount: string) => {
+    if (totalUserbalance < BigInt(amount)) {
+      setSelectedProposalForLending({ id: proposalId, amount });
+      setDepositModalOpen(true);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const transaction = await lend({
+        calls: [{
+          abi: protocolAbi,
+          contractAddress: PROTOCOL_ADDRESS,
+          entrypoint: "accept_proposal",
+          calldata: [proposalId, "0"],
+        }],
+      });
+
+      if (transaction?.transaction_hash) {
+        toastify.info("Processing transaction...");
+        await transaction.wait();
+        toastify.success("Proposal Accepted");
+
+        await Promise.all([
+          fetch("/api/database/protocol-data", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              total_borrow: amount,
+              total_lend: 0,
+              total_p2p_deals: 1,
+              total_interest_earned: 0,
+              total_value_locked: 0,
+            }),
+          }),
+          fetch("/api/database/notifications", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              user_address: address,
+              message: `Your borrowing proposal with Id ${proposalId} has been accepted`,
+            }),
+          }),
+        ]);
+      }
+    } catch (error) {
+      console.error("Error lending:", error);
+      toastify.error("Failed. Try again!");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const { write: cancel } = useContractWrite({
+    calls: [{
+      abi: protocolAbi,
+      contractAddress: PROTOCOL_ADDRESS,
+      entrypoint: "cancel_proposal",
+      calldata: [],
+    }],
+  });
+
+  const cancelProposal = async (proposalId: string, amount: string) => {
+    setLoading(true);
+    try {
+      const transaction = await cancel({
+        calls: [{
+          abi: protocolAbi,
+          contractAddress: PROTOCOL_ADDRESS,
+          entrypoint: "cancel_proposal",
+          calldata: [proposalId, "0"],
+        }],
+      });
+
+      if (transaction?.transaction_hash) {
+        toastify.info("Processing cancellation...");
+        await transaction.wait();
+        toastify.success("Proposal Cancelled");
+
+        await Promise.all([
+          fetch("/api/database/protocol-data", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              total_borrow: -amount,
+              total_lend: 0,
+              total_p2p_deals: -1,
+              total_interest_earned: 0,
+              total_value_locked: 0,
+            }),
+          }),
+          fetch("/api/database/notifications", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              user_address: address,
+              message: `Your borrowing proposal ${proposalId} has been cancelled`,
+            }),
+          }),
+        ]);
+      }
+    } catch (error) {
+      console.error("Error cancelling:", error);
+      toastify.error("Failed to cancel. Try again");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDepositComplete = async (depositAmount: number, tokenSymbol: string) => {
+    await onDeposit(depositAmount, tokenSymbol);
+    setDepositModalOpen(false);
+    
+    if (selectedProposalForLending) {
+      await handleLend(selectedProposalForLending.id, selectedProposalForLending.amount);
+      setSelectedProposalForLending(null);
+    }
+  };
+
+  const getTokenName = (tokenAddress: string): string => {
+    const normalizedAddress = tokenAddress.toLowerCase();
+    for (const [name, addr] of Object.entries(TOKEN_ADDRESSES)) {
+      if (addr.toLowerCase() === normalizedAddress) {
+        return name;
+      }
+    }
+    return "Unknown";
+  };
+
+  if (loading) return <AssetsLoader />;
+
+  return (
+    <>
+      <div className="border-t border-gray-300 min-w-[800px] w-full">
+        {proposals
+          .filter((item: any) => !item.is_cancelled && !item.is_accepted)
+          .map((item: any, index: number) => {
+            const tokenHex = toHex(item.token.toString());
+            const isOwner = normalizeAddress(TokentoHex(item.borrower.toString())) === normalizeAddress(address);
+            const lenderHex = isOwner ? "Me" : `${toHex(item.borrower.toString()).slice(0, 5)}..`;
+
+            return (
+              <div key={index} className="grid grid-cols-7 hover:bg-gray-50 transition-colors">
+                <div className="flex items-center justify-center px-4 py-6">
+                  <Image
+                    src="/images/phantom-icon.svg"
+                    height={20}
+                    width={20}
+                    alt="phantomicon"
+                    className="h-5 w-5"
+                  />
+                  <p className="font-medium ml-2">{lenderHex}</p>
+                </div>
+                <div className="text-center px-4 py-6">
+                  <p className="font-medium">{getTokenName(normalizeAddress(tokenHex))}</p>
+                </div>
+                <div className="text-center px-4 py-6">
+                  <p className="font-medium">
+                    {Number(item.token_amount / BigInt(10 ** 18)).toFixed(2)}
+                  </p>
+                </div>
+                <div className="text-center px-4 py-6">
+                  <p className="font-medium">$ {item.amount.toString()}</p>
+                </div>
+                <div className="text-center px-4 py-6">
+                  <p className="font-medium">{item.interest_rate.toString()}%</p>
+                </div>
+                <div className="text-center px-4 py-6">
+                  <p className="font-medium">{item.duration.toString()} days</p>
+                </div>
+                <div className="flex gap-4 justify-center items-center py-6">
+                  {isOwner ? (
+                    <button
+                      className="px-4 py-2 text-sm rounded-full border border-red-500 text-red-500 hover:bg-red-50 transition"
+                      onClick={() => cancelProposal(item.id.toString(), item.amount.toString())}
+                    >
+                      Cancel
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        className="px-4 py-2 text-sm rounded-full text-white bg-black hover:bg-opacity-90 transition"
+                        onClick={() => handleLend(item.id.toString(), item.amount.toString())}
+                      >
+                        Lend
+                      </button>
+                      <button
+                        className="px-3 py-2 text-sm rounded-full border border-black text-black bg-white hover:bg-gray-100 transition"
+                        onClick={() => onCounterProposal(item.id.toString())}
+                      >
+                        Counter
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+      </div>
+
+      {depositModalOpen && (
+        <DepositTokenModal
+          isOpen={depositModalOpen}
+          onClose={() => {
+            setDepositModalOpen(false);
+            setSelectedProposalForLending(null);
+          }}
+          walletAddress={address || ""}
+          onDeposit={handleDepositComplete}
+          text={'Please deposit at least 2x the amount you want to lend.'}
+        />
+      )}
+    </>
+  );
+};
+
+// Main BorrowersMarket Component
 const BorrowersMarket = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [isModalOpen, setModalOpen] = useState(false);
@@ -335,56 +349,43 @@ const BorrowersMarket = () => {
   const [selectedProposalId, setSelectedProposalId] = useState<string>("");
   const [modalType, setModalType] = useState<ModalType>("lend");
   const [title, setTitle] = useState("Create a Lending Proposal");
-
-  // SINGLE-TOGGLE FILTER:
   const [filterOption, setFilterOption] = useState("token");
   const [filterValue, setFilterValue] = useState("");
-
-  // Read proposals from contract
-  const { address } = useAccount();
-  const { data } = useContractRead(
-    address
-      ? {
-          abi: protocolAbi,
-          address: PROTOCOL_ADDRESS,
-          functionName: "get_borrow_proposal_details",
-          args: [],
-          watch: true,
-        }
-      : ({} as any)
-  );
-
-  // NEW: Read user's asset data from protocol (for available asset sum)
-  const { data: userAssetData } = useContractRead(
-    address
-      ? {
-          abi: protocolAbi,
-          address: PROTOCOL_ADDRESS,
-          functionName: "get_user_assets",
-          args: [address],
-          watch: true,
-        }
-      : ({} as any)
-  );
   const [totalUserAsset, setTotalUserAsset] = useState<bigint>(BigInt(0));
-  // NEW: Deposit modal state
   const [depositModalOpen, setDepositModalOpen] = useState(false);
 
-  useEffect(() => {
-    if (userAssetData && Array.isArray(userAssetData)) {
-      let sum = BigInt(0);
-      userAssetData.forEach((item: any) => {
-        sum += item.available_balance ?? BigInt(0);
-      });
-      setTotalUserAsset(sum);
-    }
-  }, [userAssetData]);
+  const { address } = useAccount();
+  const { contract: protocolContract } = useContract({
+    abi: protocolAbi,
+    address: PROTOCOL_ADDRESS,
+  });
 
-  // Add deposit multicall for the deposit modal (similar to lendersMarket)
+  // Contract reads
+  const { data: userAssetData } = useContractRead(
+    address ? {
+      abi: protocolAbi,
+      address: PROTOCOL_ADDRESS,
+      functionName: "get_user_assets",
+      args: [address],
+      watch: true,
+    } : ({} as any)
+  );
+
+  const { data } = useContractRead(
+    address ? {
+      abi: protocolAbi,
+      address: PROTOCOL_ADDRESS,
+      functionName: "get_borrow_proposal_details",
+      args: [],
+      watch: true,
+    } : ({} as any)
+  );
+
+  // Contract writes
   const { writeAsync: depositCall } = useContractWrite({
     calls: [
       {
-        contractAddress: TOKEN_ADDRESSES.STRK, // Using STRK as default here
+        contractAddress: TOKEN_ADDRESSES.STRK,
         entrypoint: "approve",
         calldata: [],
       },
@@ -396,23 +397,33 @@ const BorrowersMarket = () => {
     ],
   });
 
-  // Helper to convert a float amount to Starknet uint256
+  useEffect(() => {
+    if (userAssetData && Array.isArray(userAssetData)) {
+      let sum = BigInt(0);
+      userAssetData.forEach((item: any) => {
+        sum += item.available_balance ?? BigInt(0);
+      });
+      setTotalUserAsset(sum);
+    }
+  }, [userAssetData]);
+
   function getUint256FromDecimal(decimalAmount: number, decimals: number) {
     const multiplied = decimalAmount * Math.pow(10, decimals);
     return uint256.bnToUint256(multiplied.toString());
   }
 
-  // Define handleDepositTransaction so DepositTokenModal can call it
   async function handleDepositTransaction(amount: number, tokenSymbol: string) {
     if (!protocolContract) {
       hotToast.error("Wallet not connected");
       return;
     }
+
     try {
       const decimals = 18;
       const tokenAddress = tokenSymbol === "ETH" ? TOKEN_ADDRESSES.ETH : TOKEN_ADDRESSES.STRK;
       const amountUint256 = getUint256FromDecimal(amount, decimals);
-      await depositCall({
+
+      const tx = await depositCall({
         calls: [
           {
             contractAddress: tokenAddress,
@@ -426,39 +437,49 @@ const BorrowersMarket = () => {
           },
         ],
       });
+
+      toastify.info("Processing deposit...");
+      await tx.wait();
+
+      await fetch("/api/database/transactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_address: address,
+          token: tokenSymbol,
+          amount,
+          transaction_type: "deposit",
+        }),
+      });
+
       toastify.success("Deposit successful");
     } catch (err: any) {
       hotToast.error(`Deposit failed: ${err.message}`);
     }
   }
 
-  // All proposals
-  const allProposals = Array.isArray(data) ? data : [];
-
-  // Exclude canceled/accepted
-  const validProposals = allProposals.filter(
-    (item: any) => !item.is_cancelled && !item.is_accepted
-  );
-
-  // Utility to convert token address to short symbol
-  const getTokenSymbol = (tokenAddress: string): string => {
+  const getTokenName = (tokenAddress: string): string => {
     const normalizedAddress = tokenAddress.toLowerCase();
-    for (const [symbol, addr] of Object.entries(TOKEN_ADDRESSES)) {
+    for (const [name, addr] of Object.entries(TOKEN_ADDRESSES)) {
       if (addr.toLowerCase() === normalizedAddress) {
-        return symbol;
+        return name;
       }
     }
     return "Unknown";
   };
 
-  // Filter Proposals based on selected filterOption
-  const filteredProposals = useMemo(() => {
-    if (!filterValue) {
-      return validProposals;
-    }
+  // Proposal filtering and pagination
+  const validProposals = useMemo(() => {
+    return Array.isArray(data) ? data.filter(
+      (item: any) => !item.is_cancelled && !item.is_accepted
+    ) : [];
+  }, [data]);
 
+  const filteredProposals = useMemo(() => {
+    if (!filterValue) return validProposals;
+    
     return validProposals.filter((item: any) => {
-      const itemTokenSymbol = getTokenSymbol(toHex(item.token.toString()));
+      const itemTokenSymbol = getTokenName(toHex(item.token.toString()));
       const itemAmount = parseFloat(item.amount.toString());
       const itemInterest = parseFloat(item.interest_rate.toString());
       const itemDuration = parseFloat(item.duration.toString());
@@ -468,18 +489,15 @@ const BorrowersMarket = () => {
           return itemTokenSymbol.toLowerCase() === filterValue.toLowerCase();
         case "amount": {
           const userAmount = parseFloat(filterValue);
-          if (isNaN(userAmount)) return false;
-          return itemAmount === userAmount;
+          return !isNaN(userAmount) && itemAmount === userAmount;
         }
         case "interestRate": {
           const userInterest = parseFloat(filterValue);
-          if (isNaN(userInterest)) return false;
-          return itemInterest === userInterest;
+          return !isNaN(userInterest) && itemInterest === userInterest;
         }
         case "duration": {
           const userDuration = parseFloat(filterValue);
-          if (isNaN(userDuration)) return false;
-          return itemDuration === userDuration;
+          return !isNaN(userDuration) && itemDuration === userDuration;
         }
         default:
           return true;
@@ -487,77 +505,38 @@ const BorrowersMarket = () => {
     });
   }, [validProposals, filterOption, filterValue]);
 
-  // Pagination Logic
   const totalPages = Math.ceil(filteredProposals.length / ITEMS_PER_PAGE);
-
-  // Slice for current page
   const currentPageProposals = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const endIndex = startIndex + ITEMS_PER_PAGE;
-    return filteredProposals.slice(startIndex, endIndex);
+    return filteredProposals.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [filteredProposals, currentPage]);
 
-  // Reset current page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [filteredProposals]);
 
-  const handlePageChange = (page: number) => setCurrentPage(page);
-
-  const { contract: protocolContract } = useContract({
-    abi: protocolAbi,
-    address: PROTOCOL_ADDRESS,
-  });
-
-  const openModal = (type: ModalType, proposalId?: string) => {
+  const handleOpenModal = (type: ModalType, proposalId?: string) => {
     if (totalUserAsset <= BigInt(0)) {
       setDepositModalOpen(true);
       return;
     }
     setModalType(type);
-    setSelectedProposalId(proposalId || "");
     setModalOpen(true);
-    setTitle(
-      type === "counter" ? "Counter this Proposal" : "Create a Lending Proposal"
-    );
+    if (proposalId) {
+      setSelectedProposalId(proposalId);
+    }
+    setTitle(type === "counter" ? "Counter this Proposal" : "Create a Lending Proposal");
   };
 
   return (
     <main className="bg-[#F5F5F5]">
-      <div className="flex flex-col md:flex-row h-screen">
+      <div className="flex h-screen">
         <Sidebar />
         <div className="flex-1 flex flex-col h-full max-h-screen overflow-auto">
           <Nav />
+          <Header />
 
-          {/* Page Title & Back Button */}
-          <div className="flex justify-left items-center gap-3 p-4">
-            <Link href="/dashboard">
-              <Image
-                src={BackButton}
-                height={40}
-                width={40}
-                alt="back-button"
-                className="cursor-pointer"
-              />
-            </Link>
-            <div className="flex items-center gap-2">
-              <h1 className="text-black text-2xl md:text-4xl">
-                Borrowers Market
-              </h1>
-              <div className="flex gap-2 border rounded-3xl text-black border-gray-500 px-3 py-1 items-center">
-                <Image
-                  src="/images/starknet.png"
-                  height={20}
-                  width={20}
-                  alt="starknet-logo"
-                />
-                <p className="text-xs">Starknet</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Single-Filter Bar */}
-          <div className="mx-4 mb-4 relative hidden lg:block">
+          <div className="relative hidden lg:block px-4">
             <FilterBar
               filterOption={filterOption}
               filterValue={filterValue}
@@ -565,10 +544,10 @@ const BorrowersMarket = () => {
               onValueChange={(val) => setFilterValue(val)}
             />
             <button
-              onClick={() => openModal("lend")}
-              className=" flex items-center gap-2 px-6 py-3 rounded-3xl absolute
+              onClick={() => handleOpenModal("lend")}
+              className="right-4 top-5 flex items-center gap-2 px-6 py-3 absolute rounded-3xl
                        bg-[#F5F5F5] text-black border border-[rgba(0,0,0,0.8)] 
-                       mx-auto font-light hover:bg-[rgba(0,0,0,0.8)] hover:text-white top-[1.6em] right-2"
+                       font-light hover:bg-[rgba(0,0,0,0.8)] hover:text-white"
               onMouseEnter={() => setIsHovered(true)}
               onMouseLeave={() => setIsHovered(false)}
             >
@@ -583,54 +562,25 @@ const BorrowersMarket = () => {
               />
             </button>
           </div>
-          <div className="mx-4 mb-4 flex-col items-center block lg:hidden">
-            <button
-              onClick={() => openModal("lend")}
-              className=" flex items-center gap-2 px-6 py-3 rounded-3xl 
-                       bg-[#F5F5F5] text-black border border-[rgba(0,0,0,0.8)] 
-                       mx-auto font-light hover:bg-[rgba(0,0,0,0.8)] hover:text-white "
-              onMouseEnter={() => setIsHovered(true)}
-              onMouseLeave={() => setIsHovered(false)}
-            >
-              <p>Create a Lending Proposal</p>
-              <Plus
-                size={22}
-                strokeWidth={3}
-                absoluteStrokeWidth
-                className={`transition-colors duration-300 ease-in-out ${
-                  isHovered ? "text-white" : "text-black"
-                }`}
-              />
-            </button>
-            <FilterBar
-              filterOption={filterOption}
-              filterValue={filterValue}
-              onOptionChange={(opt) => setFilterOption(opt)}
-              onValueChange={(val) => setFilterValue(val)}
-            />
-          </div>
 
-          {/* Table */}
           <div className="overflow-x-auto text-black border mx-4 mb-4 rounded-xl">
             <TableHeader />
             <TableRow
               proposals={currentPageProposals}
-              onCounterProposal={(proposalId) =>
-                openModal("counter", proposalId)
-              }
+              totalUserbalance={totalUserAsset}
+              onCounterProposal={(proposalId) => handleOpenModal("counter", proposalId)}
+              onDeposit={handleDepositTransaction}
             />
           </div>
 
-          {/* Pagination */}
           {totalPages > 1 && (
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
-              onPageChange={handlePageChange}
+              onPageChange={setCurrentPage}
             />
           )}
 
-          {/* Modal */}
           <NewProposalModal
             type={modalType}
             show={isModalOpen}
@@ -638,15 +588,14 @@ const BorrowersMarket = () => {
             title={title}
             proposalId={selectedProposalId}
           />
-          {/* NEW: Render DepositTokenModal */}
+
           {depositModalOpen && (
             <DepositTokenModal
               isOpen={depositModalOpen}
               onClose={() => setDepositModalOpen(false)}
               walletAddress={address || ""}
-              onDeposit={async (depositAmount: number, tokenSymbol: string) => {
-                await handleDepositTransaction(depositAmount, tokenSymbol);
-              }}
+              onDeposit={handleDepositTransaction}
+              text={''}
             />
           )}
         </div>

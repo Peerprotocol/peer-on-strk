@@ -11,6 +11,7 @@ interface DepositTokenModalProps {
   onClose: () => void;
   walletAddress: string;
   onDeposit: (amount: number, tokenSymbol: string) => Promise<void>;
+  text: any;
 }
 
 const DepositTokenModal = ({
@@ -18,6 +19,7 @@ const DepositTokenModal = ({
   onClose,
   walletAddress,
   onDeposit,
+  text
 }: DepositTokenModalProps) => {
   const [amount, setAmount] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -81,7 +83,8 @@ const DepositTokenModal = ({
           className="text-black h-[40px] w-[40px] absolute right-4 cursor-pointer"
           onClick={onClose}
         />
-        <h3 className="text-[25px] font-serif mt-12 mb-8 text-black">Deposit</h3>
+        <h3 className="text-[25px] font-serif mt-12  text-black">Deposit</h3>
+        <p className="text-black text-[14px] font-serif mb-8">{text}</p>
         <form onSubmit={handleDeposit} className="w-full px-8 flex flex-col gap-3">
           <p className="text-[#00000080] text-opacity-50 text-right w-full mb-2">
             Available: {displayedBalance}

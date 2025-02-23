@@ -66,7 +66,7 @@ const Table: React.FC = () => {
       ? {
           abi: protocolAbi,
           address: PROTOCOL_ADDRESS,
-          functionName: "get_user_deposits",
+          functionName: "get_user_assets",
           args: [user],
         }
       : ({} as any)
@@ -292,21 +292,21 @@ const Table: React.FC = () => {
                 </tr>
               ) : (
                 currentRows.map((row: any, index: number) => {
-                  const tokenInfo = renderTokenInfo(row.token?.toString());
+                  const tokenInfo = renderTokenInfo(row.token_address?.toString());
                   const token = tokens.find(
-                    (t) => t.address === TokentoHex(row.token?.toString())
+                    (t) => t.address === TokentoHex(row.token_address?.toString())
                   );
 
                   return (
                     <tr key={index}>
                       <td className="p-4 border-b border-l">{tokenInfo}</td>
                       <td className="p-4 border-b border-l">
-                        {Number(formatCurrency(row.amount?.toString())).toFixed(
+                        {Number(formatCurrency(row.available_balance?.toString())).toFixed(
                           3
                         )}
                       </td>
                       <td className="p-4 border-b border-l">
-                        {renderValue(row.amount?.toString(), token)}
+                        {renderValue(row.available_balance?.toString(), token)}
                       </td>
                     </tr>
                   );
@@ -485,7 +485,7 @@ const Table: React.FC = () => {
         </div>
       )}
       {/* Pagination Component */}
-       {dataForCurrentTab.length > 0 && (
+       {dataForCurrentTab.length > 0 && activeTab != 'Position Overview' && (
         <div className="flex justify-end mt-4 items-center">
           {/* Previous button */}
           <button

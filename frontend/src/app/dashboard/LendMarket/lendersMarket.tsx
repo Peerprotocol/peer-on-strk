@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo} from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -19,9 +19,10 @@ import NewProposalModal from "@/components/proposalModal";
 import { CallData } from "starknet";
 import { TokentoHex } from "../../../components/internal/helpers/index";
 import FilterBar from "@/components/custom/FilterBar";
+import AssetsLoader from "../loaders/assetsloader";
 
 // Constants
-const ITEMS_PER_PAGE = 8;
+const ITEMS_PER_PAGE = 5;
 const TOKEN_ADDRESSES = {
   STRK: "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
   ETH: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
@@ -63,8 +64,8 @@ const TableHeader = () => (
   <div className="grid grid-cols-7 pt-6 rounded-t-xl bg-smoke-white py-4 min-w-[800px]">
     <div className="text-center font-semibold">Lender</div>
     <div className="text-center font-semibold">Token</div>
-    <div className="text-center font-semibold">Quantity</div>
-    <div className="text-center font-semibold">Net Value</div>
+    <div className="text-center font-semibold">Amount</div>
+    <div className="text-center font-semibold">Value</div>
     <div className="text-center font-semibold">Interest Rate</div>
     <div className="text-center font-semibold">Duration</div>
     <div className="text-center font-semibold">Actions</div>
@@ -105,7 +106,6 @@ const TableRow = ({ proposals, onCounter }: TableRowProps) => {
         ],
       });
 
-      if (transaction?.transaction_hash) {
         // Add notification
         await fetch("/api/database/notifications", {
           method: "POST",
@@ -117,7 +117,7 @@ const TableRow = ({ proposals, onCounter }: TableRowProps) => {
         });
 
         toastify.success("Proposal Accepted");
-        await transaction.wait();
+        //await transaction.wait();
 
         await fetch("/api/database/protocol-data", {
           method: "POST",
@@ -142,7 +142,6 @@ const TableRow = ({ proposals, onCounter }: TableRowProps) => {
         });
 
         console.log("Transaction completed!");
-      }
     } catch (error) {
       console.error("Error accepting proposal:", error);
       toastify.error("Failed. Try again!");
@@ -176,11 +175,10 @@ const TableRow = ({ proposals, onCounter }: TableRowProps) => {
         ],
       });
 
-      if (transaction?.transaction_hash) {
-        console.log("Transaction submitted:", transaction.transaction_hash);
+ if (transaction?.transaction_hash){
+        await transaction.wait();
 
         toastify.success("Proposal Cancelled");
-        await transaction.wait();
 
         // Record transaction in DB
         await fetch("/api/database/protocol-data", {
@@ -228,11 +226,16 @@ const TableRow = ({ proposals, onCounter }: TableRowProps) => {
   };
 
   return (
-    <div className="border-t border-gray-300 min-w-[800px] w-full">
+    <>
+    {loading ? (
+<AssetsLoader />
+    ) : (
+      <div className="border-t border-gray-300 min-w-[800px] w-full">
       {proposals.map((item: any, index: number) => {
         const tokenHex = toHex(item.token.toString());
+        const isOwner = normalizeAddress(TokentoHex(item.lender.toString())) === normalizeAddress(address);
         let lenderHex = toHex(item.lender.toString());
-        if (item.lender === address) {
+        if (isOwner) {
           lenderHex = "Me";
         }
         return (
@@ -249,62 +252,68 @@ const TableRow = ({ proposals, onCounter }: TableRowProps) => {
               <p className="font-medium ml-2">{`${lenderHex.slice(0, 5)}..`}</p>
             </div>
             {/* Token */}
-            <div className="text-center px-4 py-6">
+            <div className="text-center px-2 py-6">
               <p className="font-medium">{getTokenName(tokenHex)}</p>
             </div>
             {/* Quantity */}
-            <div className="text-center px-4 py-6">
+            <div className="text-center px-2 py-6 ">
               <p className="font-medium">
                 {Number(item.token_amount / BigInt(10 ** 18)).toFixed(2)}
               </p>
             </div>
             {/* Net Value */}
-            <div className="text-center px-4 py-6">
+            <div className="text-center px-2 py-6 ">
               <p className="font-medium">$ {item.amount.toString()}</p>
             </div>
             {/* Interest Rate */}
-            <div className="text-center px-4 py-6">
+            <div className="text-center px-4 py-6 ">
               <p className="font-medium">{item.interest_rate.toString()}%</p>
             </div>
             {/* Duration */}
-            <div className="text-center px-4 py-6">
+            <div className="text-center px-4 py-6 ">
               <p className="font-medium">{item.duration.toString()} days</p>
             </div>
             {/* Actions */}
-            <div className="flex gap-4 justify-center items-center py-6">
-              <button
-                className={`px-4 py-2 text-sm rounded-full text-white ${
-                  loading
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-black hover:bg-opacity-90 transition"
-                }`}
-                onClick={() => handleLend(item.id, item.amount.toString())}
-                disabled={loading}
-              >
-                {loading ? "..." : "Lend"}
-              </button>
-              <button
-                className={`px-3 py-2 text-sm rounded-full border border-black text-black bg-white hover:bg-gray-100 transition ${
-                  loading ? "opacity-50 cursor-not-allowed" : ""
-                }`}
-                onClick={() => !loading && onCounter(item.id.toString())}
-                disabled={loading}
-              >
-                Counter
-              </button>
-              {TokentoHex(item.lender.toString()) ===
-                normalizeAddress(address) && (
-                <X
-                  onClick={() =>
-                    cancelProposal(item.id.toString(), item.amount.toString())
-                  }
-                />
-              )}
-            </div>
+            <div className="flex gap-2 justify-center items-center py-6">
+                  {isOwner ? (
+                    <button
+                      className="px-4 py-2 text-sm rounded-full border border-red-500 text-red-500 hover:bg-red-50 transition"
+                      onClick={() => cancelProposal(item.id.toString(), item.amount.toString())}
+                      disabled={loading}
+                    >
+                      Cancel
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        className={`px-4 py-2 text-sm rounded-full text-white ${
+                          loading
+                            ? "bg-gray-400 cursor-not-allowed"
+                            : "bg-black hover:bg-opacity-90 transition"
+                        }`}
+                        onClick={() => handleLend(item.id, item.amount.toString())}
+                        disabled={loading}
+                      >
+                        {loading ? "..." : "Borrow"}
+                      </button>
+                      <button
+                        className={`px-3 py-2 text-sm rounded-full border border-black text-black bg-white hover:bg-gray-100 transition ${
+                          loading ? "opacity-50 cursor-not-allowed" : ""
+                        }`}
+                        onClick={() => !loading && onCounter(item.id.toString())}
+                        disabled={loading}
+                      >
+                        Counter
+                      </button>
+                    </>
+                  )}
+                </div>
           </div>
         );
       })}
     </div>
+    )}
+      </>
   );
 };
 
@@ -398,11 +407,6 @@ const Lender = () => {
     return filteredProposals.slice(startIndex, endIndex);
   }, [filteredProposals, currentPage]);
 
-  // Reset current page when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filteredProposals]);
-
   const handleOpenModal = (
     type: "lend" | "counter" | "borrow",
     proposalId?: string
@@ -426,7 +430,7 @@ const Lender = () => {
           <Header />
 
           {/* Single-Filter Bar */}
-          <div className="relative hidden lg:block">
+          <div className="relative hidden lg:block px-4">
             <FilterBar
               filterOption={filterOption}
               filterValue={filterValue}

@@ -17,11 +17,12 @@ import "react-toastify/dist/ReactToastify.css";
 import NewProposalModal from "@/components/proposalModal";
 import { TokentoHex } from "../../../components/internal/helpers/index";
 import FilterBar from "@/components/custom/FilterBar";
+import AssetsLoader from "../loaders/assetsloader";
 
 type ModalType = "borrow" | "counter" | "lend";
 
 //Constants
-const ITEMS_PER_PAGE = 8;
+const ITEMS_PER_PAGE = 5;
 const TOKEN_ADDRESSES = {
   STRK: "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
   ETH: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
@@ -53,21 +54,6 @@ interface TableRowProps {
 const TableRow = ({ proposals, onCounterProposal }: TableRowProps) => {
   const [loading, setLoading] = useState(false);
   const { address } = useAccount();
-
-  const { data, isLoading: proposalsLoading } = useContractRead(
-    address
-      ? {
-          abi: protocolAbi,
-          address: PROTOCOL_ADDRESS,
-          functionName: "get_borrow_proposal_details",
-          args: [],
-          watch: true,
-        }
-      : ({} as any)
-  );
-
-  // Ensure data is an array
-  const lendingProposals = Array.isArray(data) ? data : [];
 
   const { write: lend, isLoading: isLendLoading } = useContractWrite({
     calls: [
@@ -158,13 +144,10 @@ const TableRow = ({ proposals, onCounterProposal }: TableRowProps) => {
         ],
       });
 
-      if (transaction?.transaction_hash) {
-        console.log("Transaction submitted:", transaction.transaction_hash);
-
         toastify.success("Proposal Cancelled");
 
         // Wait for transaction
-        await transaction.wait();
+        // await transaction.wait();
 
         // Record transaction in DB
         await fetch("/api/database/protocol-data", {
@@ -191,8 +174,6 @@ const TableRow = ({ proposals, onCounterProposal }: TableRowProps) => {
           }),
         });
 
-        console.log("Transaction completed!");
-      }
     } catch (error) {
       console.error("Error borrowing:", error);
       toastify.error("Failed. Try again");
@@ -212,14 +193,19 @@ const TableRow = ({ proposals, onCounterProposal }: TableRowProps) => {
   };
 
   return (
-    <div className="border-t border-gray-300 min-w-[800px] w-full">
+    <>
+    {loading ? (
+      <AssetsLoader />
+    ) : (
+<div className="border-t border-gray-300 min-w-[800px] w-full">
       {proposals
         .filter((item: any) => !item.is_cancelled && !item.is_accepted)
         .map((item: any, index: number) => {
           const tokenHex = toHex(item.token.toString());
-          let lenderHex = toHex(item.lender.toString());
+          const isOwner = normalizeAddress(TokentoHex(item.borrower.toString())) === normalizeAddress(address);
+          let lenderHex = toHex(item.borrower.toString());
 
-          if (item.borrower === address) {
+          if (isOwner) {
             lenderHex = "Me";
           }
 
@@ -269,6 +255,16 @@ const TableRow = ({ proposals, onCounterProposal }: TableRowProps) => {
 
               {/* Actions */}
               <div className="flex gap-4 justify-center items-center py-6">
+              {isOwner ? (
+                    <button
+                      className="px-4 py-2 text-sm rounded-full border border-red-500 text-red-500 hover:bg-red-50 transition"
+                      onClick={() => cancelProposal(item.id.toString(), item.amount.toString())}
+                      disabled={loading}
+                    >
+                      Cancel
+                    </button>
+                  ) : (
+                    <>
                 <button
                   className={`px-4 py-2 text-sm rounded-full text-white ${
                     loading
@@ -282,21 +278,15 @@ const TableRow = ({ proposals, onCounterProposal }: TableRowProps) => {
                 >
                   {loading ? "..." : "Lend"}
                 </button>
-                {/* Cancel only if I'm the borrower */}
-                {TokentoHex(item.borrower.toString()) ===
-                  normalizeAddress(address) && (
-                  <X
-                    className="cursor-pointer"
-                    onClick={() =>
-                      cancelProposal(item.id.toString(), item.amount.toString())
-                    }
-                  />
-                )}
+                </>
+                  )}
               </div>
             </div>
           );
         })}
     </div>
+    )}
+    </>
   );
 };
 

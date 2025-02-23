@@ -28,6 +28,7 @@ const NotificationModal = ({
       fetchNotifications();
     }
   }, [isOpen]);
+  
   const fetchNotifications = async () => {
     setLoading(true);
     setError(null);

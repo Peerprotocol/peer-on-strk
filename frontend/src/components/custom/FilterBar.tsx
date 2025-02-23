@@ -26,12 +26,12 @@ const SingleFilterBar: React.FC<SingleFilterBarProps> = ({
         
         {/* Container with toggle button and input */}
         <div className="relative ">
-          <div className="w-full h-[70px] border border-black rounded-full flex items-center overflow-hidden">
+          <div className="w-full h-[55px] border border-black rounded-full flex items-center overflow-hidden">
 
           <button
             type="button"
             onClick={() => setIsOptionsOpen(!isOptionsOpen)}
-            className="rounded-full mx-4 px-2 py-2 flex items-center gap-1 border border-black"
+            className="rounded-full mx-2 px-2 py-2 flex items-center gap-1 border border-black"
           >
             <span className="text-[#000000]">{filterOption}</span>
             <ChevronDown size={16} className="text-black" />

@@ -13,6 +13,7 @@ import { PROTOCOL_ADDRESS } from "../internal/helpers/constant";
 import { TokentoHex } from "../internal/helpers";
 import { toast as toastify } from "react-toastify";
 import { CallData } from "starknet";
+import AssetsLoader from "@/app/dashboard/loaders/assetsloader";
 
 type ProposalModalProps = {
   show: boolean;
@@ -39,7 +40,7 @@ export default function NewProposalModal({
   proposalId,
 }: ProposalModalProps) {
   const { account } = useAccount();
-
+  const [Loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<ProposalData>({
     proposalId: "",
     token: "",
@@ -93,6 +94,7 @@ export default function NewProposalModal({
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    setLoading(true);
     try {
       if (!account) {
         toastify.error("Wallet not connected");
@@ -126,18 +128,30 @@ export default function NewProposalModal({
           type === "lend" ? "Lending" : type === "borrow" ? "Borrow" : "Counter"
         } proposal created successfully`
       );
-  
+      setFormData({
+        proposalId: "",
+        token: "",
+        collateral: "",
+        quantity: "",
+        duration: "",
+        interestRate: "",
+      });
       onClose();
     } catch (error) {
       console.error("Error creating proposal:", error);
       toastify.error("Failed to create proposal. Try again.");
+    } finally {
+      setLoading(false);
     }
   };
   
 
   return (
     <Modal show={show} onClose={onClose} title={title}>
-      <form
+      {Loading ? (
+        <AssetsLoader />
+      ) : (
+<form
         className="w-full flex flex-col gap-5 px-8 mb-4"
         onSubmit={handleSubmit}
       >
@@ -202,6 +216,7 @@ export default function NewProposalModal({
           {isLoading ? "Submitting..." : "Submit"}
         </button>
       </form>
+      )}
     </Modal>
   );
 }

@@ -105,7 +105,7 @@ const TableRow = ({ proposals, onCounterProposal }: TableRowProps) => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             user_address: address,
-            message: `Your borrowing proposal ${proposalId} has been accepted`,
+            message: `Your borrowing proposal with Id ${proposalId} has been accepted`,
           }),
         });
 
@@ -170,7 +170,7 @@ const TableRow = ({ proposals, onCounterProposal }: TableRowProps) => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             user_address: address,
-            message: `Your borrowing proposal ${proposalId} has been cancelled`,
+            message: `Your borrowing proposal with Id ${proposalId} has been cancelled`,
           }),
         });
 

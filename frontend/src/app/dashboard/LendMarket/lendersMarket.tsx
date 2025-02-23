@@ -112,7 +112,7 @@ const TableRow = ({ proposals, onCounter }: TableRowProps) => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             user_address: address,
-            message: `Your lending proposal ${proposalId} has been accepted`,
+            message: `Your lending proposal with Id ${proposalId} has been accepted`,
           }),
         });
 
@@ -128,16 +128,6 @@ const TableRow = ({ proposals, onCounter }: TableRowProps) => {
             total_p2p_deals: 1,
             total_interest_earned: 0,
             total_value_locked: 0,
-          }),
-        });
-
-        // Add notification
-        await fetch("/api/database/notifications", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            user_address: address,
-            message: `Your lending proposal ${proposalId} has been cancelled`,
           }),
         });
 
@@ -201,7 +191,7 @@ const TableRow = ({ proposals, onCounter }: TableRowProps) => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             user_address: address,
-            message: `Your lending proposal ${proposalId} has been cancelled`,
+            message: `Your lending proposal with ${proposalId} has been cancelled`,
           }),
         });
 

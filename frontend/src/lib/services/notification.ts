@@ -25,13 +25,13 @@ export class NotificationService {
     amount: number,
     transaction_type: string
   ) {
-    let tokenName;
-    if(normalizeAddress(token) === STRK_SEPOLIA){
-      tokenName = "STRK"
-    } else if(normalizeAddress(token) === ETH_SEPOLIA){
-      tokenName = "ETH"
-    }
-    const message = ` $${amount} ${token} ${transaction_type} proposal created.`;
+    const TOKEN_NAMES = {
+      [ETH_SEPOLIA]: "ETH",
+      [STRK_SEPOLIA]: "STRK"
+    };
+    
+    const tokenName = TOKEN_NAMES[normalizeAddress(token)] || "Unknown";
+    const message = ` $${amount} ${tokenName} ${transaction_type} proposal created.`;
     return this.create({ user_address, message });
   }
 

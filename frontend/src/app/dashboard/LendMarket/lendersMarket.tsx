@@ -384,7 +384,7 @@ const Lender = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_address: address,
+          user_address: address.address,
           token: tokenSymbol,
           amount,
           transaction_type: "deposit",

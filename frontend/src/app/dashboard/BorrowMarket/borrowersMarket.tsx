@@ -385,7 +385,7 @@ const BorrowersMarket = () => {
   const { writeAsync: depositCall } = useContractWrite({
     calls: [
       {
-        contractAddress: TOKEN_ADDRESSES.STRK,
+        contractAddress: TOKEN_ADDRESSES.STRK || TOKEN_ADDRESSES.ETH,
         entrypoint: "approve",
         calldata: [],
       },
@@ -445,7 +445,7 @@ const BorrowersMarket = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_address: address,
+          user_address: address.address,
           token: tokenSymbol,
           amount,
           transaction_type: "deposit",

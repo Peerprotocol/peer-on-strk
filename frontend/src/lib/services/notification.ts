@@ -1,4 +1,6 @@
 import { sql } from "@vercel/postgres";
+import { ETH_SEPOLIA, STRK_SEPOLIA } from '@/components/internal/helpers/constant';
+import { normalizeAddress } from '../../components/internal/helpers/index';
 
 export type Notification = {
   id?: number;
@@ -23,7 +25,13 @@ export class NotificationService {
     amount: number,
     transaction_type: string
   ) {
-    const message = `${transaction_type}: ${amount} ${token}`;
+    let tokenName;
+    if(normalizeAddress(token) === STRK_SEPOLIA){
+      tokenName = "STRK"
+    } else if(normalizeAddress(token) === ETH_SEPOLIA){
+      tokenName = "ETH"
+    }
+    const message = ` $${amount} ${token} ${transaction_type} proposal created.`;
     return this.create({ user_address, message });
   }
 

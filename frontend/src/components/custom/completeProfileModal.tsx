@@ -64,7 +64,7 @@ const EmailTwitterModal = ({
           />
           <input
             type="text"
-            placeholder="Enter your X (Twitter) ID"
+            placeholder="Enter your X (Twitter) Username"
             value={twitter}
             onChange={(e) => setTwitter(e.target.value)}
             className="w-full h-[60px] md:h-[70px] px-6 py-4 border border-black rounded-full md:mb-3 text-black"

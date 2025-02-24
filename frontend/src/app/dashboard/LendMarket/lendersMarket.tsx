@@ -222,7 +222,7 @@ const TableRow = ({ proposals, totalUserbalance, onCounter, onDeposit }: TableRo
   const getTokenName = (tokenAddress: string): string => {
     const normalizedAddress = tokenAddress.toLowerCase();
     for (const [name, addr] of Object.entries(TOKEN_ADDRESSES)) {
-      if (addr.toLowerCase() === normalizedAddress) {
+      if (normalizeAddress(addr.toLowerCase()) === normalizedAddress) {
         return name;
       }
     }

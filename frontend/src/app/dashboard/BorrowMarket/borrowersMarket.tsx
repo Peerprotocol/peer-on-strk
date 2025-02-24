@@ -516,7 +516,7 @@ const BorrowersMarket = () => {
   }, [filteredProposals]);
 
   const handleOpenModal = (type: ModalType, proposalId?: string) => {
-    if (totalUserAsset <= BigInt(0)) {
+    if (totalUserAsset < BigInt(1)) {
       setDepositModalOpen(true);
       return;
     }

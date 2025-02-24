@@ -365,7 +365,7 @@ const Lender = () => {
       const tokenAddress = tokenSymbol === "ETH" ? TOKEN_ADDRESSES.ETH : TOKEN_ADDRESSES.STRK;
       const amountUint256 = getUint256FromDecimal(amount, decimals);
 
-      await depositCall({
+     const transaction =  await depositCall({
         calls: [
           {
             contractAddress: tokenAddress,
@@ -379,7 +379,7 @@ const Lender = () => {
           },
         ],
       });
-
+      if (transaction?.transaction_hash){
       await fetch("/api/database/transactions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -392,6 +392,7 @@ const Lender = () => {
       });
 
       toastify.success("Deposit successful");
+    }
     } catch (err: any) {
       hotToast.error(`Deposit failed: ${err.message}`);}
     }

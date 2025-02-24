@@ -439,7 +439,7 @@ const BorrowersMarket = () => {
       });
 
       toastify.info("Processing deposit...");
-      await tx.wait();
+      if (tx?.transaction_hash){
 
       await fetch("/api/database/transactions", {
         method: "POST",
@@ -453,6 +453,7 @@ const BorrowersMarket = () => {
       });
 
       toastify.success("Deposit successful");
+    }
     } catch (err: any) {
       hotToast.error(`Deposit failed: ${err.message}`);
     }

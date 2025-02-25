@@ -113,7 +113,7 @@ interface TableRowProps {
 // Table Row Component
 const TableRow = ({ proposals, onCounterProposal, totalUserbalance, onDeposit }: TableRowProps) => {
   const [loading, setLoading] = useState(false);
-  const [depositModalOpen, setDepositModalOpen] = useState(true);
+  const [depositModalOpen, setDepositModalOpen] = useState(false);
   const [selectedProposalForLending, setSelectedProposalForLending] = useState<{
     id: string;
     amount: string;
@@ -458,6 +458,16 @@ const BorrowersMarket = ({ defaultToken = 'STRK' }: BorrowersMarketProps) => {
         }),
       });
 
+      // Create notification
+      await fetch("/api/database/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_address: address,
+          message: `your deposit of $${amount} ${tokenSymbol} is successful`,
+        }),
+      });
+
       toastify.success("Deposit successful. You can now create or accept a proposal");
     }
     } catch (err: any) {
@@ -528,10 +538,15 @@ const BorrowersMarket = ({ defaultToken = 'STRK' }: BorrowersMarketProps) => {
   }, [defaultToken]);
 
   const handleOpenModal = (type: ModalType, proposalId?: string) => {
-    if (totalUserAsset < BigInt(1)) {
+    // Convert BigInt to decimal considering 18 decimals
+    const userAssetInDecimal = Number(totalUserAsset) / Math.pow(10, 18);
+    
+    // Check if user has less than minimum required balance (e.g., 0.01)
+    if (userAssetInDecimal < 0.01) {
       setDepositModalOpen(true);
       return;
     }
+
     setModalType(type);
     setModalOpen(true);
     if (proposalId) {

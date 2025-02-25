@@ -175,6 +175,16 @@ export default function DepositWithdrawPeer() {
           transaction_type: 'deposit'
         })
       });
+
+      // Create notification
+      await fetch("/api/database/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_address: address,
+          message: `your deposit of $${amount} ${selectedToken.symbol} is successful`,
+        }),
+      });
   
       toastify.success('Deposit successful');
       setAmount(''); // Reset amount after successful deposit
@@ -217,6 +227,16 @@ export default function DepositWithdrawPeer() {
           amount: amount,
           transaction_type: 'withdraw'
         })
+      });
+
+      // Create notification
+      await fetch("/api/database/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_address: address,
+          message: `your withdrawal of $${amount} ${selectedToken.symbol} is successful`,
+        }),
       });
   
       toastify.success('Withdrawal successful');

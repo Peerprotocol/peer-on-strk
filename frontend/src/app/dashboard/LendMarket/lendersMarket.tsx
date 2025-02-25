@@ -17,7 +17,7 @@ import { normalizeAddress, toHex, TokentoHex } from "@/components/internal/helpe
 import { toast as toastify } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import NewProposalModal from "@/components/proposalModal";
-import { CallData, uint256 } from "starknet";
+import { CallData, uint256, Account } from 'starknet';
 import FilterBar from "@/components/custom/FilterBar";
 import AssetsLoader from "../loaders/assetsloader";
 import DepositTokenModal from "@/components/custom/DepositTokenModal";
@@ -330,7 +330,7 @@ const Lender = ({ Token }: { Token: string }) => {
   const [filterValue, setFilterValue] = useState<string>(Token);
   const [selectedToken, setSelectedToken] = useState(Token);
 
-  const { address } = useAccount();
+  const { account, address } = useAccount();
 
   function getUint256FromDecimal(decimalAmount: number, decimals: number) {
     const multiplied = decimalAmount * Math.pow(10, decimals);
@@ -347,7 +347,7 @@ const Lender = ({ Token }: { Token: string }) => {
   });
 
   async function handleDepositTransaction(amount: number, tokenSymbol: string) {
-    if (!protocolContract) {
+    if (!protocolContract || !account) {
       hotToast.error("Wallet not connected");
       return;
     }
@@ -368,6 +368,7 @@ const Lender = ({ Token }: { Token: string }) => {
       }
 
       const amountUint256 = getUint256FromDecimal(amount, decimals);
+      console.log('user address', account.address)
 
       // Show pending toast
       const pendingToast = hotToast.loading("Processing deposit...");
@@ -397,11 +398,20 @@ const Lender = ({ Token }: { Token: string }) => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            user_address: address.address,
+            user_address: normalizeAddress(account.address),
             token: tokenSymbol,
             amount,
             transaction_type: "deposit",
-            transaction_hash: transaction.transaction_hash,
+          }),
+        });
+
+        // Create notification
+        await fetch("/api/database/notifications", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_address: address,
+            message: `your deposit of $${amount} ${tokenSymbol} is successful`,
           }),
         });
       }
@@ -507,7 +517,11 @@ const Lender = ({ Token }: { Token: string }) => {
   }, [filteredProposals, currentPage]);
 
   function handleOpenModal(type: "lend" | "counter" | "borrow", proposalId?: string) {
-    if (totalUserAsset < BigInt(1)) {
+    // Convert BigInt to decimal considering 18 decimals
+    const userAssetInDecimal = Number(totalUserAsset) / Math.pow(10, 18);
+    
+    // Check if user has less than minimum required balance (e.g., 0.01)
+    if (userAssetInDecimal < 0.01) {
       setDepositModalOpen(true);
       return;
     }

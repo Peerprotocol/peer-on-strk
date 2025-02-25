@@ -27,8 +27,12 @@ const TOKEN_ADDRESSES = {
   ETH: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
 };
 
+interface BorrowersMarketProps {
+  defaultToken?: string;
+}
+
 // Header Component
-const Header = () => (
+const Header = ({ defaultToken }: { defaultToken: string }) => (
   <div className="flex justify-left items-center gap-3 p-4">
     <Link href="/dashboard">
       <Image
@@ -45,12 +49,12 @@ const Header = () => (
       </h1>
       <div className="flex gap-2 border rounded-3xl text-black border-gray-500 px-3 py-1 items-center">
         <Image
-          src="/images/starknet.png"
+          src={`/icons/${defaultToken.toLowerCase()}.svg`}
           height={20}
           width={20}
-          alt="starknet-logo"
+          alt={`${defaultToken}-logo`}
         />
-        <p className="text-xs">Starknet</p>
+        <p className="text-xs">{defaultToken}</p>
       </div>
     </div>
   </div>
@@ -109,7 +113,7 @@ interface TableRowProps {
 // Table Row Component
 const TableRow = ({ proposals, onCounterProposal, totalUserbalance, onDeposit }: TableRowProps) => {
   const [loading, setLoading] = useState(false);
-  const [depositModalOpen, setDepositModalOpen] = useState(false);
+  const [depositModalOpen, setDepositModalOpen] = useState(true);
   const [selectedProposalForLending, setSelectedProposalForLending] = useState<{
     id: string;
     amount: string;
@@ -145,7 +149,6 @@ const TableRow = ({ proposals, onCounterProposal, totalUserbalance, onDeposit }:
 
       if (transaction?.transaction_hash) {
         toastify.info("Processing transaction...");
-        await transaction.wait();
         toastify.success("Proposal Accepted");
 
         await Promise.all([
@@ -201,7 +204,6 @@ const TableRow = ({ proposals, onCounterProposal, totalUserbalance, onDeposit }:
 
       if (transaction?.transaction_hash) {
         toastify.info("Processing cancellation...");
-        await transaction.wait();
         toastify.success("Proposal Cancelled");
 
         await Promise.all([
@@ -245,7 +247,7 @@ const TableRow = ({ proposals, onCounterProposal, totalUserbalance, onDeposit }:
   };
 
   const getTokenName = (tokenAddress: string): string => {
-    const normalizedAddress = tokenAddress.toLowerCase();
+    const normalizedAddress = normalizeAddress(tokenAddress.toLowerCase());
     for (const [name, addr] of Object.entries(TOKEN_ADDRESSES)) {
       if (normalizeAddress(addr.toLowerCase()) === normalizedAddress) {
         return name;
@@ -259,7 +261,7 @@ const TableRow = ({ proposals, onCounterProposal, totalUserbalance, onDeposit }:
   return (
     <>
       <div className="border-t border-gray-300 min-w-[800px] w-full">
-        {proposals
+        {proposals.length > 0 ? proposals
           .filter((item: any) => !item.is_cancelled && !item.is_accepted)
           .map((item: any, index: number) => {
             const tokenHex = toHex(item.token.toString());
@@ -322,7 +324,11 @@ const TableRow = ({ proposals, onCounterProposal, totalUserbalance, onDeposit }:
                 </div>
               </div>
             );
-          })}
+          }) : (
+            <div className="flex justify-center items-center h-full my-[2rem]">
+              <p className="text-gray-500">No proposals found</p>
+            </div>
+          )}
       </div>
 
       {depositModalOpen && (
@@ -342,7 +348,7 @@ const TableRow = ({ proposals, onCounterProposal, totalUserbalance, onDeposit }:
 };
 
 // Main BorrowersMarket Component
-const BorrowersMarket = () => {
+const BorrowersMarket = ({ defaultToken = 'STRK' }: BorrowersMarketProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [isModalOpen, setModalOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -350,7 +356,7 @@ const BorrowersMarket = () => {
   const [modalType, setModalType] = useState<ModalType>("lend");
   const [title, setTitle] = useState("Create a Lending Proposal");
   const [filterOption, setFilterOption] = useState("token");
-  const [filterValue, setFilterValue] = useState("");
+  const [filterValue, setFilterValue] = useState(defaultToken);
   const [totalUserAsset, setTotalUserAsset] = useState<bigint>(BigInt(0));
   const [depositModalOpen, setDepositModalOpen] = useState(false);
 
@@ -452,7 +458,7 @@ const BorrowersMarket = () => {
         }),
       });
 
-      toastify.success("Deposit successful");
+      toastify.success("Deposit successful. You can now create or accept a proposal");
     }
     } catch (err: any) {
       hotToast.error(`Deposit failed: ${err.message}`);
@@ -460,7 +466,7 @@ const BorrowersMarket = () => {
   }
 
   const getTokenName = (tokenAddress: string): string => {
-    const normalizedAddress = tokenAddress.toLowerCase();
+    const normalizedAddress = normalizeAddress(tokenAddress.toLowerCase());
     for (const [name, addr] of Object.entries(TOKEN_ADDRESSES)) {
       if (addr.toLowerCase() === normalizedAddress) {
         return name;
@@ -477,7 +483,7 @@ const BorrowersMarket = () => {
   }, [data]);
 
   const filteredProposals = useMemo(() => {
-    if (!filterValue) return validProposals;
+    if (!validProposals || !filterValue) return validProposals;
     
     return validProposals.filter((item: any) => {
       const itemTokenSymbol = getTokenName(toHex(item.token.toString()));
@@ -485,14 +491,14 @@ const BorrowersMarket = () => {
       const itemInterest = parseFloat(item.interest_rate.toString());
       const itemDuration = parseFloat(item.duration.toString());
 
-      switch (filterOption) {
+      switch (filterOption.toLowerCase()) {
         case "token":
           return itemTokenSymbol.toLowerCase() === filterValue.toLowerCase();
         case "amount": {
           const userAmount = parseFloat(filterValue);
           return !isNaN(userAmount) && itemAmount === userAmount;
         }
-        case "interestRate": {
+        case "interestrate": {
           const userInterest = parseFloat(filterValue);
           return !isNaN(userInterest) && itemInterest === userInterest;
         }
@@ -516,6 +522,11 @@ const BorrowersMarket = () => {
     setCurrentPage(1);
   }, [filteredProposals]);
 
+  useEffect(() => {
+    setFilterOption("token");
+    setFilterValue(defaultToken);
+  }, [defaultToken]);
+
   const handleOpenModal = (type: ModalType, proposalId?: string) => {
     if (totalUserAsset < BigInt(1)) {
       setDepositModalOpen(true);
@@ -535,14 +546,15 @@ const BorrowersMarket = () => {
         <Sidebar />
         <div className="flex-1 flex flex-col h-full max-h-screen overflow-auto">
           <Nav />
-          <Header />
+          <Header defaultToken={defaultToken} />
 
           <div className="relative hidden lg:block px-4">
             <FilterBar
               filterOption={filterOption}
               filterValue={filterValue}
-              onOptionChange={(opt) => setFilterOption(opt)}
-              onValueChange={(val) => setFilterValue(val)}
+              onOptionChange={setFilterOption}
+              onValueChange={setFilterValue}
+              defaultToken={defaultToken}
             />
             <button
               onClick={() => handleOpenModal("lend")}

@@ -1,11 +1,15 @@
-import BorrowersMarket from "./borrowersMarket";
+'use client';
 
-const Page = () => {
+import { useSearchParams } from 'next/navigation';
+import BorrowersMarket from './borrowersMarket';
+
+const BorrowMarket = () => {
+  const searchParams = useSearchParams();
+  const selectedToken = searchParams.get('token') || 'STRK'; // Default to STRK if no token specified
+
   return (
-    <div className="bg-[#F5F5F5]">
-      <BorrowersMarket />
-    </div>
+    <BorrowersMarket defaultToken={selectedToken} />
   );
-}
+};
 
-export default Page;
+export default BorrowMarket;

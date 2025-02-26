@@ -216,7 +216,7 @@ const TableRow = ({ proposals, totalUserbalance, onCounter, onDeposit }: TableRo
   };
 
   const getTokenName = (tokenAddress: string): string => {
-    const normalizedAddress = tokenAddress.toLowerCase();
+    const normalizedAddress = normalizeAddress(tokenAddress.toLowerCase());
     for (const [name, addr] of Object.entries(TOKEN_ADDRESSES)) {
       if (normalizeAddress(addr.toLowerCase()) === normalizedAddress) {
         return name;
@@ -478,7 +478,7 @@ const Lender = ({ Token }: { Token: string }) => {
   const filteredProposals = useMemo(() => {
     if (!filterValue && validProposals.length > 0) return validProposals;
     return validProposals.filter((item: any) => {
-      const itemTokenSymbol = getTokenName(toHex(item.token.toString()));
+      const itemTokenSymbol = getTokenName(normalizeAddress(toHex(item.token.toString() )));
       const itemAmount = parseFloat(item.amount.toString());
       const itemInterest = parseFloat(item.interest_rate.toString());
       const itemDuration = parseFloat(item.duration.toString());

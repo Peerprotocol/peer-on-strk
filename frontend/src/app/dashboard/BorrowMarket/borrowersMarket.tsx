@@ -494,7 +494,7 @@ const BorrowersMarket = ({ defaultToken = 'STRK' }: BorrowersMarketProps) => {
     if (!validProposals || !filterValue) return validProposals;
     
     return validProposals.filter((item: any) => {
-      const itemTokenSymbol = getTokenName(toHex(item.token.toString()));
+      const itemTokenSymbol = getTokenName(normalizeAddress(toHex(item.token.toString())));
       const itemAmount = parseFloat(item.amount.toString());
       const itemInterest = parseFloat(item.interest_rate.toString());
       const itemDuration = parseFloat(item.duration.toString());

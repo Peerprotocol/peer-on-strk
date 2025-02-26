@@ -147,7 +147,6 @@ const TableRow = ({ proposals, onCounterProposal, totalUserbalance, onDeposit }:
         }],
       });
 
-      if (transaction?.transaction_hash) {
         toastify.info("Processing transaction...");
         toastify.success("Proposal Accepted");
 
@@ -171,7 +170,6 @@ const TableRow = ({ proposals, onCounterProposal, totalUserbalance, onDeposit }:
             }),
           }),
         ]);
-      }
     } catch (error) {
       console.error("Error lending:", error);
       toastify.error("Failed. Try again!");
@@ -201,7 +199,6 @@ const TableRow = ({ proposals, onCounterProposal, totalUserbalance, onDeposit }:
         }],
       });
 
-      if (transaction?.transaction_hash) {
         toastify.info("Processing cancellation...");
         toastify.success("Proposal Cancelled");
 
@@ -225,7 +222,6 @@ const TableRow = ({ proposals, onCounterProposal, totalUserbalance, onDeposit }:
             }),
           }),
         ]);
-      }
     } catch (error) {
       console.error("Error cancelling:", error);
       toastify.error("Failed to cancel. Try again");
@@ -444,7 +440,6 @@ const BorrowersMarket = ({ Token }: { Token: string }) => {
       });
 
       toastify.info("Processing deposit...");
-      if (tx?.transaction_hash){
 
       await fetch("/api/database/transactions", {
         method: "POST",
@@ -468,7 +463,6 @@ const BorrowersMarket = ({ Token }: { Token: string }) => {
       });
 
       toastify.success("Deposit successful. You can now create or accept a proposal");
-    }
     } catch (err: any) {
       hotToast.error(`Deposit failed: ${err.message}`);
     }

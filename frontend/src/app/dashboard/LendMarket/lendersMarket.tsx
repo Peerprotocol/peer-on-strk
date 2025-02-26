@@ -117,7 +117,6 @@ const TableRow = ({ proposals, totalUserbalance, onCounter, onDeposit }: TableRo
         }],
       });
 
-      if (transaction?.transaction_hash) {
         toastify.info("Processing transaction...");
         toastify.success("Proposal Accepted");
 
@@ -141,7 +140,6 @@ const TableRow = ({ proposals, totalUserbalance, onCounter, onDeposit }: TableRo
             }),
           }),
         ]);
-      }
     } catch (error) {
       console.error("Error accepting proposal:", error);
       toastify.error("Failed. Try again!");
@@ -171,7 +169,6 @@ const TableRow = ({ proposals, totalUserbalance, onCounter, onDeposit }: TableRo
         }],
       });
 
-      if (transaction?.transaction_hash) {
         toastify.info("Processing cancellation...");
         toastify.success("Proposal Cancelled");
 
@@ -195,7 +192,6 @@ const TableRow = ({ proposals, totalUserbalance, onCounter, onDeposit }: TableRo
             }),
           }),
         ]);
-      }
     } catch (error) {
       console.error("Error cancelling proposal:", error);
       toastify.error("Failed to cancel. Try again");
@@ -371,7 +367,7 @@ const Lender = ({ Token }: { Token: string }) => {
       // Show pending toast
       const pendingToast = hotToast.loading("Processing deposit...");
 
-      const transaction = await depositCall({
+       await depositCall({
         calls: [
           {
             contractAddress: tokenAddress,
@@ -386,7 +382,6 @@ const Lender = ({ Token }: { Token: string }) => {
         ],
       });
 
-      if (transaction?.transaction_hash) {
         // Wait for transaction confirmatiom
         hotToast.dismiss(pendingToast);
         hotToast.success("Deposit successful. You can now create or accept a proposal");
@@ -412,7 +407,6 @@ const Lender = ({ Token }: { Token: string }) => {
             message: `your deposit of $${amount} ${tokenSymbol} is successful`,
           }),
         });
-      }
     } catch (err: any) {
       console.error("Deposit error:", err);
       hotToast.error(
@@ -468,7 +462,7 @@ const Lender = ({ Token }: { Token: string }) => {
   const getTokenName = (tokenAddress: string): string => {
     const normalizedAddress = normalizeAddress(tokenAddress.toLowerCase());
     for (const [name, addr] of Object.entries(TOKEN_ADDRESSES)) {
-      if (addr.toLowerCase() === normalizedAddress) {
+      if (normalizeAddress(addr.toLowerCase()) === normalizedAddress) {
         return name;
       }
     }

@@ -102,7 +102,7 @@ export default function NewProposalModal({
       }
 
       // Execute contract write
-      await createProposal();
+        await createProposal();
 
       // Construct transaction payload
       const transactionData = {

@@ -9,7 +9,6 @@ import { toast as hotToast } from 'react-hot-toast'
 import { toast as toastify } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import protocolAbi from "../../../../public/abi/protocol.json"
-import mockTokenAbi from "../../../../public/abi/mock_token.json"
 import Erc20Abi from "../../../../public/abi/token.abi.json"
 import Logo from "../../../../public/images/LogoBlack.svg"
 import STRK from "../../../../public/images/starknet.png"
@@ -162,7 +161,7 @@ export default function DepositWithdrawPeer() {
     try {
       setLoading(true);
 
-      const response = await multicall();
+       await multicall();
   
       // Record transaction in DB
       await fetch('/api/database/transactions', {
@@ -215,7 +214,7 @@ export default function DepositWithdrawPeer() {
     try {
       setLoading(true);
   
-      const response = await withdrawalcall();
+     await withdrawalcall();
   
       // Record transaction in DB
       await fetch('/api/database/transactions', {

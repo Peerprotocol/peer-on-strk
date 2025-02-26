@@ -76,7 +76,7 @@ const Navbar = () => {
               className={`border border-black px-6 py-2 rounded-3xl ${isDarkMode ? "hover:bg-white hover:text-black bg-black text-white" : "hover:bg-black hover:text-white bg-white text-black"}`}
               style={{ zIndex: 100, position: 'relative' }}
             >
-              Launch
+              Launch App
             </button>
           </Link>
           {/* Dark Mode Toggle */}

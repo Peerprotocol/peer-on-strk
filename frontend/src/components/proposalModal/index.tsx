@@ -59,34 +59,34 @@ export default function NewProposalModal({
       ? "create_counter_proposal"
       : null;
 
-      const { writeAsync: createProposal, isLoading } = useContractWrite({
-        calls: [
-          {
-            contractAddress: PROTOCOL_ADDRESS,
-            entrypoint: entrypoint,
-            calldata: CallData.compile(
-              type === "counter" 
-                ? [
-                    proposalId || "0",
-                    "0",
-                    formData.quantity || "0",
-                    "0",
-                    TokentoHex(formData.collateral || "0x0"),
-                    formData.interestRate || "0",
-                    formData.duration || "0"
-                  ]
-                : [
-                    TokentoHex(formData.token || "0x0"),
-                    TokentoHex(formData.collateral || "0x0"),
-                    formData.quantity || "0",
-                    "0",
-                    formData.interestRate || "0",
-                    formData.duration || "0"
-                  ]
-            ),
-          },
-        ],
-      });
+  const { writeAsync: createProposal, isLoading } = useContractWrite({
+    calls: [
+      {
+        contractAddress: PROTOCOL_ADDRESS,
+        entrypoint: entrypoint,
+        calldata: CallData.compile(
+          type === "counter"
+            ? [
+                proposalId || "0",
+                "0",
+                formData.quantity || "0",
+                "0",
+                TokentoHex(formData.collateral || "0x0"),
+                formData.interestRate || "0",
+                formData.duration || "0",
+              ]
+            : [
+                TokentoHex(formData.token || "0x0"),
+                TokentoHex(formData.collateral || "0x0"),
+                formData.quantity || "0",
+                "0",
+                formData.interestRate || "0",
+                formData.duration || "0",
+              ]
+        ),
+      },
+    ],
+  });
 
   const handleChange = (field: keyof ProposalData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -100,10 +100,10 @@ export default function NewProposalModal({
         toastify.error("Wallet not connected");
         return;
       }
-  
+
       // Execute contract write
       await createProposal();
-  
+
       // Construct transaction payload
       const transactionData = {
         user_address: account.address,
@@ -112,7 +112,7 @@ export default function NewProposalModal({
         transaction_type: type, // lend, borrow, counter
         timestamp: new Date().toISOString(),
       };
-  
+
       // Send transaction data to backend
       await fetch("/api/database/transactions", {
         method: "POST",
@@ -121,7 +121,7 @@ export default function NewProposalModal({
         },
         body: JSON.stringify(transactionData),
       });
-  
+
       // Success message
       toastify.success(
         `${
@@ -144,78 +144,80 @@ export default function NewProposalModal({
       setLoading(false);
     }
   };
-  
 
   return (
     <Modal show={show} onClose={onClose} title={title}>
       {Loading ? (
         <AssetsLoader />
       ) : (
-<form
-        className="w-full flex flex-col gap-5 px-8 mb-4"
-        onSubmit={handleSubmit}
-      >
-        {type != 'counter' && (<div>
-          <label className="text-md text-black">Token to Lend</label>
-          <Dropdown
-            options={tokenOptions}
-            onValueChange={(option) =>
-              handleChange("token", option.value.toString())
-            }
-            placeholder="Select a token"
-          />
-        </div>
-        )}
-        <div>
-          <label className="text-md text-black">Collateral</label>
-          <Dropdown
-            options={collateralOptions}
-            onValueChange={(option) =>
-              handleChange("collateral", option.value.toString())
-            }
-            placeholder="Choose your collateral"
-          />
-        </div>
-        <div>
-          <label className="text-md text-black">Amount in $</label>
-          <input
-            type="text"
-            className="mt-2 w-full text-base text-black border border-black bg-transparent px-4 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-black"
-            placeholder="$10"
-            value={formData.quantity}
-            onChange={(e) => handleChange("quantity", e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="text-md text-black">Duration (days)</label>
-          <Dropdown
-            options={durationOptions}
-            onValueChange={(option) =>
-              handleChange("duration", option.value.toString())
-            }
-            placeholder="Select duration"
-          />
-        </div>
-        <div>
-          <label className="text-md text-black">Interest Rate (%)</label>
-          <Dropdown
-            options={interestRateOptions}
-            onValueChange={(option) =>
-              handleChange("interestRate", option.value.toString())
-            }
-            placeholder="Select interest rate"
-          />
-        </div>
-        <button
-          type="submit"
-          className={`w-max mx-auto mt-6 px-8 py-3 rounded-xl ${
-            isLoading ? "bg-gray-500" : "bg-black text-white"
-          }`}
-          disabled={isLoading}
+        <form
+          className="w-full flex flex-col gap-5 px-8 mb-4"
+          onSubmit={handleSubmit}
         >
-          {isLoading ? "Submitting..." : "Submit"}
-        </button>
-      </form>
+          {type != "counter" && (
+            <div>
+              <label className="text-md text-black">
+                Token to {type === "lend" ? "Lend" : "Borrow"}
+              </label>
+              <Dropdown
+                options={tokenOptions}
+                onValueChange={(option) =>
+                  handleChange("token", option.value.toString())
+                }
+                placeholder="Select a token"
+              />
+            </div>
+          )}
+          <div>
+            <label className="text-md text-black">Collateral</label>
+            <Dropdown
+              options={collateralOptions}
+              onValueChange={(option) =>
+                handleChange("collateral", option.value.toString())
+              }
+              placeholder="Choose your collateral"
+            />
+          </div>
+          <div>
+            <label className="text-md text-black">Amount in $</label>
+            <input
+              type="text"
+              className="mt-2 w-full text-base text-black border border-black bg-transparent px-4 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-black"
+              placeholder="$10"
+              value={formData.quantity}
+              onChange={(e) => handleChange("quantity", e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="text-md text-black">Duration (days)</label>
+            <Dropdown
+              options={durationOptions}
+              onValueChange={(option) =>
+                handleChange("duration", option.value.toString())
+              }
+              placeholder="Select duration"
+            />
+          </div>
+          <div>
+            <label className="text-md text-black">Interest Rate (%)</label>
+            <Dropdown
+              options={interestRateOptions}
+              onValueChange={(option) =>
+                handleChange("interestRate", option.value.toString())
+              }
+              placeholder="Select interest rate"
+            />
+          </div>
+          <button
+            type="submit"
+            className={`w-max mx-auto mt-6 px-8 py-3 rounded-xl ${
+              isLoading ? "bg-gray-500" : "bg-black text-white"
+            }`}
+            disabled={isLoading}
+          >
+            {isLoading ? "Submitting..." : "Submit"}
+          </button>
+        </form>
       )}
     </Modal>
   );

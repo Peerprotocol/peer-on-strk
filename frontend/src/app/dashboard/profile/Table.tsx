@@ -434,7 +434,7 @@ const Table: React.FC = () => {
                     .filter(
                       (proposal: any) =>
                          TokentoHex(proposal.borrower.toString()) ===
-                         normalizeAddress(user) && proposal.is_repaid === false
+                         normalizeAddress(user) && proposal.is_accepted === true && proposal.is_repaid === false
                     )
                     .map((row: any, index: number) => {
                       const tokenInfo = renderTokenInfo(row.token.toString());

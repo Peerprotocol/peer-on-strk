@@ -125,7 +125,7 @@ const Dashboard = () => {
 
   return (
     <div className="border border-gray-200 rounded-[1rem] flex flex-col gap-6 md:p-6 p-2 bg-white w-full">
-      <div className="flex flex-col md:flex-row md:flex-wrap gap-4 3xl:gap-[2rem] w-full">
+      <div className="flex flex-col md:flex-row  md:flex-wrap gap-4 3xl:gap-[2rem] w-full">
         {AllAssetsOverview.map((item, index) => (
           <div
             key={index}

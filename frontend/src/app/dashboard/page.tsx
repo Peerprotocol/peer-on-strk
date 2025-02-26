@@ -6,7 +6,7 @@ import Footer from "../../components/custom/footer";
 import Nav from "../../components/custom/Nav";
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 
 export default function Home() {
   const [showWalkthrough, setShowWalkthrough] = useState(false);
@@ -63,6 +63,12 @@ export default function Home() {
     }
   };
 
+  const handlePreviousStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
   const handleSkipWalkthrough = () => {
     setShowWalkthrough(false);
     localStorage.setItem("hasSeenWalkthrough", "true");
@@ -84,7 +90,8 @@ export default function Home() {
          {/* Walkthrough Modal */}
          {showWalkthrough && (
          <div className="absolute top-0 left-0 w-full h-full bg-black bg-opacity-50 flex flex-col items-center justify-center">
-          <div className="w-[720px] h-fit bg-white rounded-lg p-4">
+          <div className="w-[720px] h-fit bg-white rounded-lg p-4 relative">
+            <button className="absolute top-4 right-4 text-black" onClick={handleSkipWalkthrough}>Skip</button>
             <div className="w-full flex flex-col items-center px-4 py-3 gap-4">
               <h1 className="text-black text-[32px] font-[600] text-center font-serif">{walkthroughSteps[currentStep].title}</h1>
               <p className="text-black max-w-[85%] text-center">
@@ -95,10 +102,11 @@ export default function Home() {
               </div>
             </div>
             <div className="flex justify-between mt-2 px-4">
-              <button className="text-black" onClick={handleSkipWalkthrough}>
-                Skip
+              <button className="flex gap-2 items-center bg-black px-4 py-1 text-white rounded-md k" onClick={handlePreviousStep}>
+                <ArrowLeft className="text-white h-4 w-4" />
+                Previous
               </button>
-              <button className="flex gap-2 items-center bg-black px-4 py-1 text-white rounded-md" onClick={handleNextStep}>
+              <button className="flex gap-2 items-center bg-black px-4 py-1 text-white rounded-md animate-pulse" onClick={handleNextStep}>
                 {currentStep < walkthroughSteps.length - 1 ? "Next" : "Get Started"}
                 <ArrowRight className="text-white h-4 w-4" />
               </button>

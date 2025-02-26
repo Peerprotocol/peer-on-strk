@@ -21,7 +21,6 @@ CREATE TABLE protocol_data (
     total_borrow VARCHAR NOT NULL,
     total_lend VARCHAR NOT NULL,
     total_p2p_deals VARCHAR NOT NULL,
-    total_interest_earned VARCHAR NOT NULL,
     total_value_locked VARCHAR NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -42,6 +41,6 @@ VALUES
 ('0x00B785448cC2e3010c60F7c2F68f1Ae34535EdF5921608E987d6AB204d94D243', 'Congratulations! You''ve completed your first P2P transaction');
 
 INSERT INTO protocol_data 
-    (total_borrow, total_lend, total_p2p_deals, total_interest_earned, total_value_locked)
+    (total_borrow, total_lend, total_p2p_deals, total_value_locked)
 VALUES 
-    ('1245678', '2890123', '1567', '156789', '413580235');
+    ('0', '0', '57', '413580235');

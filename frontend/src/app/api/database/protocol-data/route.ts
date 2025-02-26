@@ -22,7 +22,6 @@ export async function POST(request: Request) {
         total_borrow: (Number(current.total_borrow) + Number(newData.total_borrow)).toString(),
         total_lend: (Number(current.total_lend) + Number(newData.total_lend)).toString(),
         total_p2p_deals: (Number(current.total_p2p_deals) + Number(newData.total_p2p_deals)).toString(),
-        total_interest_earned: (Number(current.total_interest_earned) + Number(newData.total_interest_earned)).toString(),
         total_value_locked: (Number(current.total_value_locked) + Number(newData.total_value_locked)).toString()
       };
     } else {
@@ -35,14 +34,12 @@ export async function POST(request: Request) {
         total_borrow, 
         total_lend, 
         total_p2p_deals, 
-        total_interest_earned, 
         total_value_locked
       )
       VALUES (
         ${updatedData.total_borrow},
         ${updatedData.total_lend},
         ${updatedData.total_p2p_deals},
-        ${updatedData.total_interest_earned},
         ${updatedData.total_value_locked}
       )
       RETURNING *;

@@ -8,7 +8,7 @@ const Dashboard = () => {
         total_lend: "0",
         total_borrow: "0",
         total_p2p_deals: "0",
-        total_interest_earned: "0"
+        total_users: "0"
     });
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -17,13 +17,17 @@ const Dashboard = () => {
         const fetchProtocolData = async () => {
             try {
                 const response = await fetch('/api/database/protocol-data');
+                const usersResponse = await fetch('/api/database/get-users');
                 const result = await response.json();
+                const usersResult = await usersResponse.json();
+
+                const totalUsers = usersResult.length;
                 
                 if (!result.success) {
                     throw new Error(result.message);
                 }
                 
-                setProtocolData(result.data);
+                setProtocolData({...result.data, total_users: totalUsers});
             } catch (err: any) {
                 setError(err.message);
             } finally {
@@ -72,8 +76,8 @@ const Dashboard = () => {
             showInfo: false
         },
         {
-            label: "Total Interest Earned",
-            value: formatCurrency(protocolData.total_interest_earned),
+            label: "Total Users",
+            value: formatNumber(protocolData.total_users),
             showInfo: true
         }
     ];

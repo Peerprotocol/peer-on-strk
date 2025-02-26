@@ -40,7 +40,6 @@ export async function updateProtocolData(data: {
   total_borrow: string;
   total_lend: string;
   total_p2p_deals: string;
-  total_interest_earned: string;
   total_value_locked: string;
 }) {
   const existingData = await sql`SELECT id FROM protocol_data LIMIT 1`;
@@ -52,7 +51,6 @@ export async function updateProtocolData(data: {
         total_borrow = ${data.total_borrow},
         total_lend = ${data.total_lend},
         total_p2p_deals = ${data.total_p2p_deals},
-        total_interest_earned = ${data.total_interest_earned},
         total_value_locked = ${data.total_value_locked}
       WHERE id = ${existingData.rows[0].id}
       RETURNING *
@@ -60,12 +58,11 @@ export async function updateProtocolData(data: {
   } else {
     return sql`
       INSERT INTO protocol_data (
-        total_borrow, total_lend, total_p2p_deals, 
-        total_interest_earned, total_value_locked
+        total_borrow, total_lend, total_p2p_deals,  total_value_locked
       )
       VALUES (
         ${data.total_borrow}, ${data.total_lend}, ${data.total_p2p_deals},
-        ${data.total_interest_earned}, ${data.total_value_locked}
+        ${data.total_value_locked}
       )
       RETURNING *
     `;

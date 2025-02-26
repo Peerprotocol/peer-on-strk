@@ -74,8 +74,8 @@ export default function Home() {
     localStorage.setItem("hasSeenWalkthrough", "true");
   };
   return (
-    <main className="bg-[#efefef] relative">
-        <div className="flex h-screen">
+    <main className="bg-[#efefef] relative max-h-screen">
+        <div className="flex h-full">
           <Sidebar />
           <div className="flex-1 flex flex-col h-full max-h-screen overflow-auto">
             <Nav/>
@@ -123,7 +123,7 @@ export default function Home() {
             </div>
           </div>
         </div>
-         )};
+         )}
     </main>
   );
 }

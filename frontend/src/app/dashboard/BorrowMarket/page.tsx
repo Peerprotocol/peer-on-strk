@@ -8,7 +8,7 @@ const BorrowMarket = () => {
   const selectedToken = searchParams.get('token') || 'STRK'; // Default to STRK if no token specified
 
   return (
-    <BorrowersMarket defaultToken={selectedToken} />
+    <BorrowersMarket Token={selectedToken} />
   );
 };
 

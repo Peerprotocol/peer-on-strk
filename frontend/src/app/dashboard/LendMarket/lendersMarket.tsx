@@ -230,7 +230,7 @@ const TableRow = ({ proposals, totalUserbalance, onCounter, onDeposit }: TableRo
   return (
     <>
       <div className="border-t border-gray-300 min-w-[800px] w-full">
-        {proposals.length > 0 ? proposals.map((item: any, index: number) => {
+        {proposals.length > 0 ?  proposals.filter((item: any) => !item.is_cancelled && !item.is_accepted).map((item: any, index: number) => {
           const tokenHex = toHex(item.token.toString());
           const isOwner = normalizeAddress(TokentoHex(item.lender.toString())) === normalizeAddress(address);
           const lenderHex = isOwner ? "Me" : `${toHex(item.lender.toString()).slice(0, 5)}..`;

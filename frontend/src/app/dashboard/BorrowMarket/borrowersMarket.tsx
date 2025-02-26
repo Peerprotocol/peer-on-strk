@@ -32,7 +32,7 @@ interface BorrowersMarketProps {
 }
 
 // Header Component
-const Header = ({ defaultToken }: { defaultToken: string }) => (
+const Header = ({selectedToken}: {selectedToken: any}) => (
   <div className="flex justify-left items-center gap-3 p-4">
     <Link href="/dashboard">
       <Image
@@ -49,12 +49,12 @@ const Header = ({ defaultToken }: { defaultToken: string }) => (
       </h1>
       <div className="flex gap-2 border rounded-3xl text-black border-gray-500 px-3 py-1 items-center">
         <Image
-          src={`/icons/${defaultToken.toLowerCase()}.svg`}
+          src={`/icons/${selectedToken.toLowerCase()}.svg`}
           height={20}
           width={20}
-          alt={`${defaultToken}-logo`}
+          alt={`${selectedToken}-logo`}
         />
-        <p className="text-xs">{defaultToken}</p>
+        <p className="text-xs">{selectedToken}</p>
       </div>
     </div>
   </div>
@@ -346,7 +346,7 @@ const TableRow = ({ proposals, onCounterProposal, totalUserbalance, onDeposit }:
 };
 
 // Main BorrowersMarket Component
-const BorrowersMarket = ({ defaultToken = 'STRK' }: BorrowersMarketProps) => {
+const BorrowersMarket = ({ Token }: { Token: string }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [isModalOpen, setModalOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -354,9 +354,10 @@ const BorrowersMarket = ({ defaultToken = 'STRK' }: BorrowersMarketProps) => {
   const [modalType, setModalType] = useState<ModalType>("lend");
   const [title, setTitle] = useState("Create a Lending Proposal");
   const [filterOption, setFilterOption] = useState("token");
-  const [filterValue, setFilterValue] = useState(defaultToken);
+  const [filterValue, setFilterValue] = useState<string>(Token);
   const [totalUserAsset, setTotalUserAsset] = useState<bigint>(BigInt(0));
   const [depositModalOpen, setDepositModalOpen] = useState(false);
+  const [selectedToken, setSelectedToken] = useState(Token);
 
   const { address } = useAccount();
   const { contract: protocolContract } = useContract({
@@ -476,7 +477,7 @@ const BorrowersMarket = ({ defaultToken = 'STRK' }: BorrowersMarketProps) => {
   const getTokenName = (tokenAddress: string): string => {
     const normalizedAddress = normalizeAddress(tokenAddress.toLowerCase());
     for (const [name, addr] of Object.entries(TOKEN_ADDRESSES)) {
-      if (addr.toLowerCase() === normalizedAddress) {
+      if (normalizeAddress(addr.toLowerCase()) === normalizedAddress) {
         return name;
       }
     }
@@ -491,15 +492,15 @@ const BorrowersMarket = ({ defaultToken = 'STRK' }: BorrowersMarketProps) => {
   }, [data]);
 
   const filteredProposals = useMemo(() => {
-    if (!validProposals || !filterValue) return validProposals;
+    if (!filterValue && validProposals.length > 0) return validProposals;
     
     return validProposals.filter((item: any) => {
-      const itemTokenSymbol = getTokenName(normalizeAddress(toHex(item.token.toString())));
+      const itemTokenSymbol = getTokenName(normalizeAddress(toHex(item.token.toString()) ));
       const itemAmount = parseFloat(item.amount.toString());
       const itemInterest = parseFloat(item.interest_rate.toString());
       const itemDuration = parseFloat(item.duration.toString());
 
-      switch (filterOption.toLowerCase()) {
+      switch (filterOption) {
         case "token":
           return itemTokenSymbol.toLowerCase() === filterValue.toLowerCase();
         case "amount": {
@@ -530,10 +531,6 @@ const BorrowersMarket = ({ defaultToken = 'STRK' }: BorrowersMarketProps) => {
     setCurrentPage(1);
   }, [filteredProposals]);
 
-  useEffect(() => {
-    setFilterOption("token");
-    setFilterValue(defaultToken);
-  }, [defaultToken]);
 
   const handleOpenModal = (type: ModalType, proposalId?: string) => {
     // Convert BigInt to decimal considering 18 decimals
@@ -559,7 +556,7 @@ const BorrowersMarket = ({ defaultToken = 'STRK' }: BorrowersMarketProps) => {
         <Sidebar />
         <div className="flex-1 flex flex-col h-full max-h-screen overflow-auto">
           <Nav />
-          <Header defaultToken={defaultToken} />
+          <Header selectedToken={selectedToken} />
 
           <div className="relative hidden lg:block px-4">
             <FilterBar
@@ -567,7 +564,7 @@ const BorrowersMarket = ({ defaultToken = 'STRK' }: BorrowersMarketProps) => {
               filterValue={filterValue}
               onOptionChange={setFilterOption}
               onValueChange={setFilterValue}
-              defaultToken={defaultToken}
+              defaultToken={selectedToken}
             />
             <button
               onClick={() => handleOpenModal("lend")}

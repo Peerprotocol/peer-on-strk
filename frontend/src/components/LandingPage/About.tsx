@@ -13,9 +13,19 @@ const About = () => {
         }`}
     >
       <details className="mb-4 cursor-pointer group py-10 border-b border-gray-700">
-        <summary className="lg:text-3xl font-light flex justify-between items-center text-base">
+        <summary className="lg:text-3xl tracking-wide font-light flex justify-between items-center text-base">
           Gradual Liquidation Process
-          <MoveDownRight className="group-open:rotate-[45deg] w-[50px] lg:w-[60px] transition-transform" size={60} color="#fff" strokeWidth={1.25} />
+          <MoveDownRight
+            className="group-open:rotate-[85deg] 
+                 group-open:scale-50 
+                 w-[50px] 
+                 lg:w-[60px] 
+                 transition-transform 
+                 duration-800 
+                 ease-in-out"
+            size={60}
+            strokeWidth={1.25}
+          />
         </summary>
         <p className="mt-2 ml-4 lg:text-xl font-thin font-opensans text-sm">
           To ensure fair market value for collateral, our platform employs limit
@@ -26,9 +36,19 @@ const About = () => {
       </details>
 
       <details className="mb-4 cursor-pointer group py-10 border-b border-gray-700">
-        <summary className="lg:text-3xl tracking-wide font-extralight flex justify-between items-center text-base">
+        <summary className="lg:text-3xl tracking-wide font-light flex justify-between items-center text-base">
           Dynamic Proposal System
-          <MoveDownRight className="group-open:rotate-[45deg] w-[50px] lg:w-[60px] transition-transform" size={60} color="#fff" strokeWidth={1.25} />
+          <MoveDownRight
+            className="group-open:rotate-[85deg] 
+                 group-open:scale-50 
+                 w-[50px] 
+                 lg:w-[60px] 
+                 transition-transform 
+                 duration-800 
+                 ease-in-out"
+            size={60}
+            strokeWidth={1.25}
+          />
         </summary>
         <p className="mt-2 ml-4 lg:text-xl font-thin font-opensans text-sm">
           Users on our platform have the ability to create proposals for lending
@@ -43,9 +63,19 @@ const About = () => {
       </details>
 
       <details className="mb-4 cursor-pointer group py-10 border-b border-gray-700">
-        <summary className="lg:text-3xl tracking-wide font-extralight flex justify-between items-center text-base">
+        <summary className="lg:text-3xl tracking-wide font-light flex justify-between items-center text-base">
           Immutable Deal Creation
-          <MoveDownRight className="group-open:rotate-[45deg] w-[50px] lg:w-[60px] transition-transform" size={60} color="#fff" strokeWidth={1.25} />
+          <MoveDownRight
+            className="group-open:rotate-[85deg] 
+                 group-open:scale-50 
+                 w-[50px] 
+                 lg:w-[60px] 
+                 transition-transform 
+                 duration-800 
+                 ease-in-out"
+            size={60}
+            strokeWidth={1.25}
+          />
         </summary>
         <p className="mt-2 ml-4 lg:text-xl font-thin font-opensans text-sm">
           Details about immutable deal creation.
@@ -53,9 +83,19 @@ const About = () => {
       </details>
 
       <details className="cursor-pointer group py-10">
-        <summary className="lg:text-3xl tracking-wide font-extralight flex justify-between items-center text-base">
+        <summary className="lg:text-3xl tracking-wide font-light flex justify-between items-center text-base">
           Decentralized Peer-to-Peer Lending Deals
-          <MoveDownRight className="group-open:rotate-[45deg] w-[50px] lg:w-[60px] transition-transform" size={60} color="#fff" strokeWidth={1.25} />
+          <MoveDownRight
+            className="group-open:rotate-[85deg] 
+                 group-open:scale-50 
+                 w-[50px] 
+                 lg:w-[60px] 
+                 transition-transform 
+                 duration-800 
+                 ease-in-out"
+            size={60}
+            strokeWidth={1.25}
+          />
         </summary>
         <p className="mt-2 ml-4 lg:text-xl font-thin font-opensans text-sm">
           Peer Protocols decentralized peer-to-peer marketplace serves as the

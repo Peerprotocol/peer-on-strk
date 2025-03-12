@@ -14,7 +14,9 @@ const Features = () => {
     >
 
       {/* Card 1 */}
-      <div className="w-[19rem] lg:w-[26rem] h-[100%] pb-3 bg-black z-10 relative rounded-2xl">
+      <div className={`w-[19rem] lg:w-[26rem] h-[100%] pb-3 z-10 relative rounded-2xl 
+  ${isDarkMode ? "bg-white" : "bg-black"}`}>
+
         <div className={`border-2 border-current z-20 w-[18.5rem] lg:w-[25rem] lg:py-16 lg:px-10 rounded-2xl lg:shadow-custom shadow-custom2 mb-3 p-8 ${isDarkMode ? "bg-black text-white" : "bg-white text-black"
           }`}>
           <div className="flex">
@@ -23,7 +25,7 @@ const Features = () => {
               width={40}
               height={40}
               alt=""
-              className="lg:w-[40px] w-6"
+              className={`lg:w-[40px] w-6 ${isDarkMode ? "invert" : ""}`}
             />
             <p className="font-semibold lg:py-5 p-1">
               Transparent Marketplace
@@ -36,8 +38,10 @@ const Features = () => {
       </div>
 
       {/* Card 2 */}
-      <div className="w-[19rem] lg:w-[26rem] h-[100%] pb-3 bg-black z-10 relative rounded-2xl">
-        <div className={`border-2 border-current z-20 w-[18.5rem] lg:w-[25rem] lg:py-16 lg:px-10 rounded-2xl lg:shadow-custom shadow-custom2 mb-3 p-8 ${isDarkMode ? "bg-black text-white" : "bg-white text-black"
+      <div className={`w-[19rem] lg:w-[26rem] h-[100%] pb-3 z-10 relative rounded-2xl 
+  ${isDarkMode ? "bg-white" : "bg-black"}`}>
+
+        <div className={`border-2 border-current z-20 w-[18.5rem] lg:w-[25rem] lg:py-16 lg:px-10 rounded-2xl  lg:shadow-custom shadow-custom2 mb-3 p-8 ${isDarkMode ? "bg-black text-white" : "bg-white text-black"
           }`}>
           <div className="flex">
             <Image
@@ -45,7 +49,7 @@ const Features = () => {
               width={40}
               height={40}
               alt=""
-              className="lg:w-[40px] w-6"
+              className={`lg:w-[40px] w-6 ${isDarkMode ? "invert" : ""}`}
             />
             <p className="font-semibold lg:py-5 p-1">
               User-Centric Interface
@@ -59,7 +63,9 @@ const Features = () => {
 
 
       {/* Card 3 */}
-      <div className="w-[19rem] lg:w-[26rem] h-[100%] pb-3 bg-black z-10 relative rounded-2xl">
+      <div className={`w-[19rem] lg:w-[26rem] h-[100%] pb-3 z-10 relative rounded-2xl 
+  ${isDarkMode ? "bg-white" : "bg-black"}`}>
+
         <div className={`border-2 border-current z-20 w-[18.5rem] lg:w-[25rem] lg:py-16 lg:px-10 rounded-2xl lg:shadow-custom shadow-custom2 mb-3 p-8 ${isDarkMode ? "bg-black text-white" : "bg-white text-black"
           }`}>
           <div className="flex items-center">
@@ -68,7 +74,7 @@ const Features = () => {
               width={40}
               height={40}
               alt=""
-              className="lg:w-[40px] lg:h-[40px] w-6"
+              className={`lg:w-[40px] w-6 ${isDarkMode ? "invert" : ""}`}
             />
             <p className="font-semibold lg:py-5 p-1">
               Transparent Marketplace

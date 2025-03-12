@@ -1,8 +1,17 @@
 import { MoveDownRight } from "lucide-react";
+import { useContext } from "react";
+import { DarkModeContext } from "./DarkMode";
 
 const About = () => {
+  const { isDarkMode } = useContext(DarkModeContext);
+
   return (
-    <div className="bg-gradient-to-br from-black to-gray-900 rounded-2xl px-8 w-full mx-auto text-white shadow-lg">
+    <div
+      className={`rounded-2xl px-8 w-full mx-auto shadow-lg ${isDarkMode
+        ? "bg-gradient-to-br from-white to-gray-100 text-black"
+        : "bg-gradient-to-br from-black to-gray-900 text-white"
+        }`}
+    >
       <details className="mb-4 cursor-pointer group py-10 border-b border-gray-700">
         <summary className="lg:text-3xl font-light flex justify-between items-center text-base">
           Gradual Liquidation Process

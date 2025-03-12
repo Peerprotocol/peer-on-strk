@@ -78,22 +78,22 @@ const HeroPage = () => {
               src="/images/solanalogo.svg"
               width={200}
               height={0}
-              alt=""
-              className="w-16 lg:w-64 md:w-32"
+              alt="Solana Logo"
+              className={`w-16 lg:w-64 md:w-32 ${isDarkMode ? "brightness-0 invert" : ""}`}
             />
             <Image
               src="/images/xionlogo.svg"
               width={200}
               height={0}
-              alt=""
-              className="w-16 lg:w-64 md:w-32"
+              alt="Xion Logo"
+              className={`w-16 lg:w-64 md:w-32 ${isDarkMode ? "brightness-0 invert" : ""}`}
             />
             <Image
               src="/images/starknetlogo.svg"
               width={200}
               height={0}
-              alt=""
-              className="w-16 lg:w-64 md:w-32"
+              alt="Starknet Logo"
+              className={`w-16 lg:w-64 md:w-32 ${isDarkMode ? "invert hue-rotate-180" : ""}`}
             />
           </div>
         </div>
